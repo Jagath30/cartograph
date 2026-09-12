@@ -55,5 +55,27 @@ services:
       retries: 12
       start_period: 15s
 
+  frontend:
+    build: ./frontend
+    environment:
+      # Read by the browser, so it must be an address the host can reach --
+      # not the compose service name.
+      NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000/api/v1
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 10s
+      retries: 18
+      start_period: 30s
+
 volumes:
   pgdata:

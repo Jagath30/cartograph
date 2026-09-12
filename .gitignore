@@ -10,3 +10,23 @@ node_modules/
 *.csv
 data/
 .DS_Store
+
+# Node / Next.js
+node_modules/
+.next/
+next-env.d.ts
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Node / Next.js
+node_modules/
+.next/
+next-env.d.ts
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/

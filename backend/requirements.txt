@@ -1,7 +1,4 @@
-]633;E;printf '%s\\n' '# Pinned from the first successful build. Top-level intent:' '#   fastapi, uvicorn[standard], pydantic-settings, psycopg[binary],' '#   redis, pytest, httpx' '';5109aa78-efc3-4087-bf6b-9a24f96335d9]633;C# Pinned from the first successful build. Top-level intent:
-#   fastapi, uvicorn[standard], pydantic-settings, psycopg[binary],
-#   redis, pytest, httpx
-
+# Pinned from the first successful build. Intent: fastapi, uvicorn[standard], pydantic-settings, psycopg[binary], redis, pytest, httpx
 annotated-doc==0.0.5
 annotated-types==0.8.0
 anyio==4.15.1

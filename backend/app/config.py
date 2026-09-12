@@ -17,6 +17,14 @@ class Settings(BaseSettings):
     warehouse_database_url: str
     redis_url: str
 
+    # Comma-separated rather than a list: pydantic-settings expects JSON for
+    # complex types, and a plain string with an explicit split is one less
+    # thing to get wrong in a deployment environment variable.
+    frontend_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+
+    def allowed_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.frontend_origins.split(",") if origin.strip()]
+
 
 @lru_cache
 def get_settings() -> Settings:

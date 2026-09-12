@@ -5,6 +5,7 @@ belongs somewhere else.
 """
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import get_settings
@@ -13,6 +14,17 @@ from app.shell.probes import check_postgres, check_redis
 app = FastAPI(title="Cartograph", version="0.1.0")
 
 API = "/api/v1"
+
+# Named origins, never "*". A wildcard is incompatible with credentialed
+# requests, so allowing it now would have to be undone at step 11 when
+# sessions arrive (T-08).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=get_settings().allowed_origins(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get(f"{API}/health")
