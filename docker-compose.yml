@@ -32,5 +32,28 @@ services:
       timeout: 3s
       retries: 12
 
+  backend:
+    build: ./backend
+    environment:
+      APP_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${APP_DB_NAME}
+      WAREHOUSE_DATABASE_URL: postgresql://${WAREHOUSE_RO_USER}:${WAREHOUSE_RO_PASSWORD}@postgres:5432/${WAREHOUSE_DB_NAME}
+      REDIS_URL: redis://redis:6379/0
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health').read()"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
 volumes:
   pgdata:
