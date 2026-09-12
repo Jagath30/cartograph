@@ -1,57 +1,40 @@
-"""HTTP surface: requests in, responses out.
+"""Application construction.
 
-Holds no logic (DD-01). If a decision is being made in this file, it
-belongs somewhere else.
+Nothing in this module runs at import time. `create_app` is called by
+uvicorn through --factory, and by tests with settings of their choosing,
+which is what keeps `import app.main` free of any configuration
+requirement -- and keeps that property visible rather than propped up by
+test scaffolding.
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
-from app.config import get_settings
-from app.shell.probes import check_postgres, check_redis
-
-app = FastAPI(title="Cartograph", version="0.1.0")
-
-API = "/api/v1"
-
-# Named origins, never "*". A wildcard is incompatible with credentialed
-# requests, so allowing it now would have to be undone at step 11 when
-# sessions arrive (T-08).
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=get_settings().allowed_origins(),
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+from app.api import router
+from app.config import Settings, get_settings
 
 
-@app.get(f"{API}/health")
-async def health() -> dict[str, str]:
-    """Liveness. Touches nothing on purpose -- this is what the container
-    healthcheck polls, and it must not fail because a dependency is down."""
-    return {"status": "ok"}
+def create_app(settings: Settings | None = None) -> FastAPI:
+    resolved = settings or get_settings()
 
+    app = FastAPI(title="Cartograph", version="0.1.0")
 
-@app.get(f"{API}/ready")
-async def ready() -> JSONResponse:
-    """Readiness. Checks both database connections separately, with their
-    own credentials, plus Redis."""
-    settings = get_settings()
-
-    app_ok, app_detail = await check_postgres(settings.app_database_url)
-    warehouse_ok, warehouse_detail = await check_postgres(settings.warehouse_database_url)
-    redis_ok, redis_detail = await check_redis(settings.redis_url)
-
-    checks = {
-        "app_database": {"ok": app_ok, "detail": app_detail},
-        "warehouse_database": {"ok": warehouse_ok, "detail": warehouse_detail},
-        "redis": {"ok": redis_ok, "detail": redis_detail},
-    }
-    all_ok = all(check["ok"] for check in checks.values())
-
-    return JSONResponse(
-        status_code=200 if all_ok else 503,
-        content={"status": "ready" if all_ok else "not_ready", "checks": checks},
+    # Named origins, never "*". A wildcard is incompatible with credentialed
+    # requests, so allowing it now would have to be undone at step 11 when
+    # sessions arrive (T-08).
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=resolved.allowed_origins(),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
+
+    app.include_router(router)
+
+    if settings is not None:
+        # Explicitly supplied settings must reach the route handlers too,
+        # not only the middleware above.
+        app.dependency_overrides[get_settings] = lambda: resolved
+
+    return app
