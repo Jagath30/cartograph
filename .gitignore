@@ -30,3 +30,6 @@ next-env.d.ts
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
+# The TPC's constraint file: fetched by scripts/warehouse.sh, never committed.
+backend/warehouse/tpcds_ri.sql
