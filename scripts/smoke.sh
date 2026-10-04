@@ -46,6 +46,21 @@ pg() {
   docker compose exec -T postgres sh -c "$1"
 }
 
+# One value from the warehouse, read as the SELECT-only role.
+wh_ro() {
+  pg "PGPASSWORD=\"\$WAREHOUSE_RO_PASSWORD\" psql -X -At -U \"\$WAREHOUSE_RO_USER\" -d \"\$WAREHOUSE_DB_NAME\" -h 127.0.0.1 -c \"$1\""
+}
+
+# Exact match, where expect's substring match would let 124 pass for 24.
+equal() {
+  local name="$1" want="$2" got="$3"
+  if [[ "$got" == "$want" ]]; then
+    ok "$name"
+  else
+    bad "$name -- wanted '$want', got '${got:-<nothing>}'"
+  fi
+}
+
 stage "Environment"
 ./scripts/bootstrap.sh >/dev/null
 if [[ -f .env ]]; then ok ".env present"; else bad ".env missing"; fi
@@ -68,6 +83,22 @@ refuse "read-only role cannot create a table" \
 refuse "read-only role cannot reach the app database" \
   pg 'PGPASSWORD="$WAREHOUSE_RO_PASSWORD" psql -U "$WAREHOUSE_RO_USER" -d "$POSTGRES_DB" -h 127.0.0.1 -Atc "select 1"'
 
+# A clean clone starts with an empty warehouse, and loading one takes minutes
+# and the duckdb CLI -- so an empty warehouse is a SKIP, and a loaded one is
+# held to the overlay generated from tpcds_ri.sql.
+stage "Warehouse (DR-01, DR-02)"
+wh_tables="$(wh_ro "select count(*) from pg_tables where schemaname = 'public'" 2>/dev/null || true)"
+if [[ "$wh_tables" == "0" ]]; then
+  pending "warehouse is empty -- ./scripts/warehouse.sh loads it"
+else
+  overlay_fks="$(grep -c '^  - from:' backend/overlays/tpcds.yaml)"
+  equal "24 tables" "24" "$wh_tables"
+  equal "17 primary keys in the catalog" "17" \
+    "$(wh_ro "select count(*) from pg_constraint where contype = 'p' and connamespace = 'public'::regnamespace" 2>/dev/null || true)"
+  equal "catalog declares the overlay's $overlay_fks foreign keys" "$overlay_fks" \
+    "$(wh_ro "select count(*) from pg_constraint where contype = 'f' and connamespace = 'public'::regnamespace" 2>/dev/null || true)"
+fi
+
 stage "Backend"
 expect "liveness" '"status":"ok"' curl -sf "$API/health"
 expect "readiness reports ready" '"status":"ready"' curl -sf "$API/ready"
@@ -88,7 +119,7 @@ pending "one known question runs the full pipeline (arrives at step 7)"
 pending "generated SQL joins along the reported path (arrives at step 7)"
 
 printf '\n== Result\n'
-printf '   %d passed, %d failed, %d not yet implemented\n' "$pass" "$fail" "$skip"
+printf '   %d passed, %d failed, %d skipped\n' "$pass" "$fail" "$skip"
 
 if (( fail > 0 )); then
   printf '   SMOKE FAIL\n'
