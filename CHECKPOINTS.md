@@ -691,8 +691,8 @@ by anything.
     4  join tree for N anchors, subgraph bound      done
     5  Alembic and the first migration              done
     6  snapshot store                               done
-    7  embedding adapter                            next
-    8  SemanticIndex
+    7  embedding adapter                            done
+    8  SemanticIndex                                next
     9  runner, step 6 baseline at Design defaults      OWNER REVIEW after it
     10 tuning runs, each logged below
     11 close: smoke, suite, runner, tag
@@ -1417,6 +1417,71 @@ first version let half of the mutation through (the table's text dropped
 from the hash, the columns' kept), because it changed every text at once.
 It now changes one table's text and then one column's.
 
+### Piece 7: the embedding adapter — 8 October 2026
+
+**What exists.** `backend/app/shell/embedder.py`: an `Embedder` protocol,
+`OpenAIEmbedder` (one HTTPS POST per batch of up to 256 texts, through
+`httpx`), and `FakeEmbedder`, deterministic and offline. It is the only
+module in which the provider's name, address or key appears (IR-14).
+`Settings` gains `openai_api_key` (a `SecretStr`, optional),
+`embedding_model` and `embedding_price_per_million`. Compose passes
+`OPENAI_API_KEY` to the backend with an empty default, and `.env.example`
+carries the empty line. 21 tests with no network, and one paid test that
+is skipped unless the key is present and `RUN_PAID_TESTS=1`. 378 tests in
+the container (377 pass, the paid one skips); 344 pass and 34 skip with
+both database URLs and the key unset.
+
+**The key.** Present in the backend container, checked by presence only
+(`True`), never by value. It expires **9 October 2027**. In code it is
+read once, in `make_embedder`, and held by the adapter; it is sent in one
+header and appears in no log line, no exception and no test output.
+
+**Every call logs its tokens and cost** (NFR-14), one JSON line on the
+`cartograph.embedding` logger: model, inputs, tokens, cost, duration.
+
+**Without a key** (criterion 7): `make_embedder` raises
+`EmbeddingKeyMissing` with a sentence saying what to set, where, and how
+to recreate the container. The application factory, the health route and
+everything not embedding are untouched by its absence, and a test starts
+the app with no key and calls it.
+
+**Paid calls so far.** One, made deliberately to prove the real adapter
+end to end from inside the container:
+
+    8 Oct 2026   the paid test   2 texts   9 tokens   $0.00000018   4.5 s
+
+**Decided while building, and told.**
+- **A failure reports the HTTP status and the provider's short error
+  code, never its message.** OpenAI's message for a rejected key quotes
+  part of the key. The code itself is repeated only if it looks like a
+  code (lower-case letters, digits, underscores); anything else becomes
+  "no code". A request that never completes reports the exception's class
+  and drops its text and its chain (`from None`).
+- An answer of the wrong shape is refused: the wrong number of vectors, a
+  vector that is not 1,536 long, a missing token count. Vectors are put
+  back in the order asked by the provider's `index`.
+- The fake hashes each word to a few of 1,536 positions, so texts that
+  share words are closer than texts that share none. It knows nothing of
+  meaning and is for wiring tests only; no tuning is ever done against it.
+
+**Findings.**
+- **A test of "no key" was run with the real key, and failed for it.**
+  `Settings` reads the environment, the container now has
+  `OPENAI_API_KEY`, and a test that built settings without naming the key
+  got the real one. Nothing was printed: the failure was "did not raise".
+  The test helper now passes the key explicitly, `None` included. Any
+  later test that builds `Settings` must do the same.
+- **The first real call took 4.5 seconds for two texts**, connection
+  set-up included. NFR-02 allows retrieval and path finding one second
+  together, excluding the model call; whether an embedding call is "the
+  model call" is not something the SRS says. Measured properly at piece 9.
+- **Mutations.** Ten. Nine caught: the provider's message repeated; the
+  code not checked for shape; vectors in the order received; the key
+  logged; a transport error's text kept; its chain kept; the dimension
+  unchecked; the per-call cost and the total cost each off by a thousand.
+  One was equivalent, not a gap: a blank key let through `make_embedder`
+  is refused by the adapter's own constructor.
+
 ### Tuning log
 
 Empty. No run has been made.
@@ -1498,6 +1563,17 @@ Empty. No run has been made.
 - `monkeypatch.setattr` on the name the module looked up, not on the
   module that defines it; and the `changed=changed` default in the lambda
 - why a test that changes everything at once can pass half a mutation
+- a `Protocol`: why `FakeEmbedder` is an `Embedder` without inheriting
+  from anything
+- `SecretStr`: what `repr`, `model_dump` and `get_secret_value` each show
+- `httpx.MockTransport`: a provider written by hand, and how a test reads
+  the request that would have been sent
+- `raise ... from None`, `__cause__`, `__context__`: what an exception
+  drags along with it and why that matters for a key
+- why a test's settings must not read the machine's environment, and what
+  happened when one did
+- `caplog`, and asserting on what was *not* logged
+- `pytest.mark.skipif` with two conditions: key present AND opted in
 
 ### Carried forward
 

@@ -7,6 +7,7 @@ no component can accidentally hold the wrong one (DD-02, rule 2).
 
 from functools import lru_cache
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,6 +22,16 @@ class Settings(BaseSettings):
     # (DD-16). Optional: a warehouse whose catalog declares everything, and
     # whose names read like English, needs none.
     warehouse_overlay_path: str | None = None
+
+    # The embedding provider's key (IR-14). Optional: a clean clone has
+    # none and still starts. A SecretStr, so that printing the settings, or
+    # an error that carries them, shows asterisks and never the value
+    # (NFR-09).
+    openai_api_key: SecretStr | None = None
+    embedding_model: str = "text-embedding-3-small"
+    # US dollars per million input tokens, for the cost logged with every
+    # call (NFR-14). Confirmed by the owner, 8 October 2026.
+    embedding_price_per_million: float = 0.02
 
     # Comma-separated rather than a list: pydantic-settings expects JSON for
     # complex types, and a plain string with an explicit split is one less

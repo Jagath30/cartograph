@@ -45,6 +45,9 @@ services:
       REDIS_URL: redis://redis:6379/0
       # Relative to /app, the backend's working directory.
       WAREHOUSE_OVERLAY_PATH: overlays/tpcds.yaml
+      # Optional. Empty on a clean clone, and the stack still starts: only
+      # the commands that embed need it, and they say so when it is absent.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     # Migrate, then serve: one process, in sequence (DR-14). Nothing migrates
     # as a side effect of importing the application.
     command: sh -c "alembic upgrade head && exec uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000 --reload"
