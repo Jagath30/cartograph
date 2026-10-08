@@ -688,8 +688,8 @@ by anything.
     1  the step 6 judgement                         done; reviewed; frozen
     2  Retriever (pure)                             done
     3  evidence tie rule in the PathFinder          done
-    4  join tree for N anchors, subgraph bound      next
-    5  Alembic and the first migration
+    4  join tree for N anchors, subgraph bound      done
+    5  Alembic and the first migration              next
     6  snapshot store
     7  embedding adapter
     8  SemanticIndex
@@ -1210,6 +1210,96 @@ least 0.10 either. The test now uses 0.5, 0.25 and 0.25, which are exact,
 and catches it. The same fault was then looked for in piece 2 and found:
 no test stood exactly at the margin for a rival. One was added there.
 
+### Piece 4: the join tree — 8 October 2026
+
+**What exists.** `backend/app/core/join_tree.py`, pure, and
+`explain_tree` and `route_codes` in the Explainer; 38 tests in
+`tests/core/test_join_tree.py`, from the hand-written fixture and from the
+committed TPC-DS DDL and overlay, so all of them run in CI. `build_tree`
+takes the anchors with their scores, the evidence and margin, and the
+tables the Retriever set aside; it returns the seed, each attachment in
+order with its route, its rule and everything it was tied with, the
+tree's tables and joins, the pivots, the ambiguities, and the bounded
+subgraph. The whole of CHECKPOINTS item 32 is now a passing test: `item`
+and `date_dim` join through `store_sales` when it is an anchor, whichever
+of the three is the seed, where the PathFinder alone bridges them through
+`catalog_returns`.
+
+**The method, as built.** The seed is the highest-scoring anchor, ties
+alphabetical. Then, repeatedly: of the anchors not yet in the tree, take
+the one fewest joins from any table already in it (ties: higher score,
+then name); gather every shortest route to every tree table at that
+distance; one candidate is used, several go to DD-12's rules 2 to 4
+through the same `choose` the PathFinder uses. Every table on the chosen
+route joins the tree, so a later anchor can attach to a bridging table.
+
+**Which warning an arbitrary attachment raises.** Both are "the alphabet
+chose", and they differ in what it could not tell apart:
+- `arbitrary_choice` when another candidate attaches at the **same**
+  table: two keys to one table, or two bridges to it. This is step 4's
+  warning unchanged, and with two anchors the tree is exactly the
+  PathFinder's answer (tested for three pairs).
+- `multi_anchor` when another candidate attaches at a **different** tree
+  table. It can only arise with more than two tables in play.
+- Both, when both kinds of rival exist.
+
+**Decided while building, and told.**
+- **`many_to_many` is read off the tree, not off paths.** A table is a
+  pivot when two or more joins of the tree reach it by its primary key.
+  For a path this is step 4's definition; for a tree it needs no pair to
+  be named. A return and its sale do not pivot on the sale (tested on
+  TPC-DS), which the set's note on question 14 requires.
+- **A declared preference cannot decide between two places.** It is
+  declared between two tables and says which route between them is meant,
+  not which of two tables to attach to. Where the candidates span several
+  places it is reported as not applied. Where they all end at one table
+  it applies exactly as in the PathFinder.
+- **`anchor_ambiguity` is raised only for a table that was actually set
+  aside**, that is, one that reached the cut and lost its place to the
+  table a term chose, and only if it is not in the finished tree. A rival
+  that never reached the cut was never a choice the system made. A rival
+  that came in anyway as a bridge changes nothing and does not warn.
+- **Disconnection declines the whole question** (ruling d, DD-10) and
+  names the anchors left out. Nothing partial is returned as a tree.
+- The subgraph is the tree's tables followed by tables that lie only on
+  tied alternatives, as far as the bound allows. When the tree alone is
+  over the bound the lowest-scoring anchor is dropped and the tree
+  rebuilt, repeatedly if need be, down to the seed alone.
+- The warnings about a path within the tree (`route_codes`, the contract
+  of piece 1) are those of every attachment that contributed a join to
+  it, and `many_to_many` when that path itself pivots.
+
+**Findings.**
+- **The accepted risk is real in the structure.** With `store_sales`,
+  `store` and `date_dim` and nothing from the question, `date_dim` is one
+  join from `store_sales` (`ss_sold_date_sk`) and one from `store`
+  (`s_closed_date_sk`); the alphabet attaches it to `store`, the closing
+  date, and `multi_anchor` fires. Whether a question's wording rescues
+  this is for the baseline to show
+  (`test_recorded_the_accepted_risk_...`).
+- **`wp_customer_sk` is still chosen, and no longer silently.** With
+  `web_sales`, `web_page` and `customer`, `customer` has three candidates
+  at one join: the billing key, the shipping key, and `wp_customer_sk`.
+  `web_page` sorts before `web_sales`, so with nothing from the question
+  the tree takes the weakest-evidenced edge in the graph (item 40). At
+  step 5 that route was selected with no warning at all. Now it raises
+  `multi_anchor` and names both routes through the sale
+  (`test_recorded_a_customer_is_as_near_to_a_web_page_...`).
+- **An anchor is never already in the tree when its turn comes.** A table
+  on a shortest route to the tree is nearer to it than the route's far
+  end, so it is attached first. A branch written for that case could not
+  be reached and was removed.
+- **Mutations.** Eighteen. Seventeen caught at once. **One survived:**
+  with the evidence not passed from the tree down to the PathFinder, all
+  37 tests passed, because every test of evidence in a tree used a tie
+  between two places, which the tree settles itself. A 38th decides a tie
+  between two keys to one table inside a tree, and catches it.
+- Two tests were first written to what I expected the structure to do and
+  were wrong: which of three tied candidates the alphabet takes for
+  `customer`, and whether `catalog_sales` can reach `store_sales` in two
+  joins in the miniature. Both were corrected to what the graph does, and
+  the first became the finding above.
+
 ### Tuning log
 
 Empty. No run has been made.
@@ -1255,6 +1345,20 @@ Empty. No run has been made.
 - `choose` as its own function: the three rules after "shortest", usable
   where the tied paths do not share both ends
 - the stable sort in `choose`: equal scores stay in alphabetical order
+- nearest attachment on paper: anchors `store`, `customer`,
+  `customer_address` in the miniature. Which is attached second, and why
+  it is not the second-best scoring
+- why a bridging table joins the tree, and the argument that an anchor is
+  never already in the tree when its turn comes
+- `tied_at_the_same_table` against `tied_at_another_table`: the one line
+  that separates `arbitrary_choice` from `multi_anchor`
+- `_pivots`: "the primary-key side of two joins", and why a sale with its
+  return and its promotion is not one
+- `JoinTree.route`: a walk through the tree that re-reads each join's
+  direction from the side it was entered (`dataclasses.replace`)
+- the loop that drops anchors: what "never cut a connector" means in code
+- why `choose` is given an empty `preferred` when the candidates span two
+  places
 
 ### Carried forward
 

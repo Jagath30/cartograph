@@ -315,6 +315,12 @@ def _table_view(graph: nx.DiGraph) -> nx.MultiGraph:
     return tables
 
 
+def alphabetical(path: Path) -> tuple:
+    """The alphabetical order of DD-12, for callers that gather tied paths
+    themselves (the join tree)."""
+    return _alphabetical(path)
+
+
 def _alphabetical(path: Path) -> tuple:
     """The tie-break of DD-12, rule 2: table names along the path, then
     column names. DD-12 says only "table names", which cannot separate

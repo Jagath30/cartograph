@@ -33,6 +33,20 @@ the routes not taken, so a reader can still say "no, I meant the other".
 
 Alternatives that merely exist do not warn. If the shortest path stood
 alone, the reason says how many routes there were and that is all.
+
+A JOIN TREE (step 6) is explained by `explain_tree`, attachment by
+attachment, with the same sentences and the same four warnings, and two
+more that only exist once a question has been read:
+
+  multi_anchor            an anchor could attach to the tree at two
+                          different tables equally well, and only the
+                          alphabet chose where.
+  anchor_ambiguity        a word of the question could as well have meant
+                          another table, which is not part of this answer.
+
+`route_codes` says which warnings concern the path between two tables
+within a tree: those raised about any join on it, and many_to_many when
+that path itself pivots.
 """
 
 from dataclasses import dataclass
@@ -40,10 +54,13 @@ from typing import Literal
 
 import networkx as nx
 
+from app.core.join_tree import ANCHORS_NOT_CONNECTED, Attachment, JoinTree
 from app.core.path_finder import MANY_TO_ONE, Join, Path, PathResult, Rule
 from app.core.snapshot import Source
 
-WarningCode = Literal["arbitrary_choice", "preference_not_applied", "many_to_many", "no_path"]
+WarningCode = Literal[
+    "arbitrary_choice", "preference_not_applied", "many_to_many", "no_path", "multi_anchor", "anchor_ambiguity"
+]
 
 
 @dataclass(frozen=True)
@@ -255,3 +272,185 @@ def _column(graph: nx.DiGraph, table: str, column: str) -> str:
 
 def _joins(count: int) -> str:
     return "1 join" if count == 1 else f"{count} joins"
+
+
+# --------------------------------------------------------------------------
+# A join tree
+# --------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ExplainedAttachment:
+    anchor: str
+    order: int
+    # None for the seed.
+    attached_to: str | None
+    path: ExplainedPath | None
+    # The candidates it was tied with, wherever they would have attached.
+    alternatives: tuple[ExplainedPath, ...]
+    reason: Reason
+
+
+@dataclass(frozen=True)
+class TreeExplanation:
+    declined: bool
+    # In the order the anchors were attached.
+    attachments: tuple[ExplainedAttachment, ...]
+    tables: tuple[str, ...]
+    reason: str
+    warnings: tuple[PathWarning, ...]
+
+    @property
+    def codes(self) -> frozenset[str]:
+        return frozenset(warning.code for warning in self.warnings)
+
+
+def explain_tree(tree: JoinTree, graph: nx.DiGraph) -> TreeExplanation:
+    if tree.declined:
+        if tree.decline_reason == ANCHORS_NOT_CONNECTED:
+            names = ", ".join(_table(graph, table) for table in tree.unconnected)
+            text = (
+                f"No route of {_joins(tree.max_joins)} or fewer connects {names} to the other tables the "
+                "question is about. Nothing was joined: this question cannot be answered from this schema."
+            )
+            return TreeExplanation(True, (), (), text, (PathWarning("no_path", text, tree.unconnected),))
+        return TreeExplanation(True, (), (), "No table matched the question closely enough to start from.", ())
+
+    warnings: list[PathWarning] = []
+    attachments = []
+    for attachment in tree.attachments:
+        if attachment.path is None:
+            reason = Reason(None, f"Started from {_table(graph, attachment.anchor)}, the table the question matched best.")
+            attachments.append(ExplainedAttachment(attachment.anchor, attachment.order, None, None, (), reason))
+            continue
+
+        chosen = _path(attachment.path, graph, tied=False)
+        alternatives = tuple(_path(path, graph, tied=True) for path in attachment.tied if path is not attachment.path)
+        attachments.append(
+            ExplainedAttachment(
+                attachment.anchor, attachment.order, attachment.attached_to, chosen, alternatives,
+                Reason(attachment.rule, _attachment_reason(attachment, chosen, alternatives, graph)),
+            )
+        )  # fmt: skip
+        warnings += _attachment_warnings(attachment, chosen, graph)
+
+    for pivot, many_sides in tree.pivots:
+        sides = [_table(graph, table) for table in many_sides]
+        name = _table(graph, pivot)
+        warnings.append(
+            PathWarning(
+                "many_to_many",
+                f"This answer joins {' and '.join(sides)} through {name}. One {name} row has many rows of each, "
+                f"so every row of one is paired with every row of the other that shares it: rows multiply, and "
+                "sums and counts over them are inflated.",
+                about=(pivot,),
+            )
+        )
+
+    for entry in tree.ambiguities:
+        chosen, rival = _table(graph, entry.chosen), _table(graph, entry.rival)
+        warnings.append(
+            PathWarning(
+                "anchor_ambiguity",
+                f'"{entry.term}" in the question could as well mean {rival}. {chosen} was used: it scored '
+                f"{entry.chosen_score:.3f} against {entry.rival_score:.3f}, too close to tell apart. "
+                f"{rival} is not part of this answer, and using it would give a different one.",
+                about=(entry.chosen, entry.rival),
+            )
+        )
+
+    names = ", ".join(_table(graph, table) for table in tree.tables)
+    return TreeExplanation(False, tuple(attachments), tree.tables, f"Joined: {names}.", tuple(warnings))
+
+
+def route_codes(tree: JoinTree, start: str, end: str) -> tuple[str, ...]:
+    """The warning codes that concern the path between two tables within
+    the tree: those raised about any join on it, and many_to_many when the
+    path itself pivots. Empty when the tree does not hold both tables."""
+    route = tree.route(start, end)
+    if route is None:
+        return ()
+    codes = set()
+    for attachment in tree.attachments_on(route):
+        if attachment.arbitrary and attachment.tied_at_the_same_table:
+            codes.add("arbitrary_choice")
+        if attachment.arbitrary and attachment.tied_at_another_table:
+            codes.add("multi_anchor")
+        if attachment.preference_not_applied is not None:
+            codes.add("preference_not_applied")
+    if route.many_to_many_at:
+        codes.add("many_to_many")
+    return tuple(sorted(codes))
+
+
+def _attachment_reason(attachment: Attachment, chosen: ExplainedPath, alternatives, graph: nx.DiGraph) -> str:
+    anchor = _table(graph, attachment.anchor)
+    count = len(attachment.tied)
+    tie = f"{count} routes of {_joins(chosen.length)} connect {anchor} to the tables already joined"
+
+    if attachment.rule == "only_path":
+        return f"Only one route of {_joins(attachment.path.length)} or fewer connects {anchor} to the tables already joined."
+    if attachment.rule == "shortest":
+        return f"{attachment.discovered} routes existed; the shortest was used."
+    if attachment.rule == "preference":
+        return f"{tie}. The overlay declares which is meant, because: {attachment.preference_applied.because}."
+    if attachment.rule == "question_evidence":
+        (_, best), (_, next_best) = attachment.evidence[:2]
+        others = " ".join(f"Not taken: {path.description}" for path in alternatives)
+        return (
+            f"{tie}. The wording of the question points to this one: it scores {best:.3f} against "
+            f"{next_best:.3f} for the next, more than the {attachment.margin:.3f} that could be chance. {others}"
+        )
+    reason = f"{tie}. The tie was broken alphabetically, so the choice is arbitrary."
+    if attachment.evidence:
+        (_, best), (_, next_best) = attachment.evidence[:2]
+        reason += (
+            f" The wording of the question did not separate them: {best:.3f} against {next_best:.3f}, "
+            f"within the {attachment.margin:.3f} that could be chance."
+        )
+    return reason
+
+
+def _attachment_warnings(attachment: Attachment, chosen: ExplainedPath, graph: nx.DiGraph) -> list[PathWarning]:
+    warnings = []
+    anchor = _table(graph, attachment.anchor)
+
+    if attachment.arbitrary and attachment.tied_at_the_same_table:
+        same = [_path(path, graph, tied=True) for path in attachment.tied_at_the_same_table]
+        others = " ".join(f"Equally valid: {path.description}" for path in same)
+        warnings.append(
+            PathWarning(
+                "arbitrary_choice",
+                f"I had no basis for this choice. {len(same) + 1} routes of {_joins(chosen.length)} connect "
+                f"{anchor} and {_table(graph, attachment.attached_to)}, and nothing declares which is meant. "
+                f"Used: {chosen.description} {others}",
+                about=(chosen.id, *(path.id for path in same)),
+            )
+        )
+
+    if attachment.arbitrary and attachment.tied_at_another_table:
+        elsewhere = [_path(path, graph, tied=True) for path in attachment.tied_at_another_table]
+        places = sorted({_table(graph, path.tables[-1]) for path in attachment.tied_at_another_table})
+        others = " ".join(f"Equally valid: {path.description}" for path in elsewhere)
+        warnings.append(
+            PathWarning(
+                "multi_anchor",
+                f"I had no basis for where to join {anchor}. It is {_joins(chosen.length)} from "
+                f"{_table(graph, attachment.attached_to)} and equally from {' and '.join(places)}, and nothing "
+                f"declares which is meant. Used: {chosen.description} {others}",
+                about=(chosen.id, *(path.id for path in elsewhere)),
+            )
+        )
+
+    if attachment.preference_not_applied is not None:
+        declared = attachment.preference_not_applied
+        named = " / ".join(sorted(f"{a}={b}" for a, b in declared.prefer))
+        warnings.append(
+            PathWarning(
+                "preference_not_applied",
+                f"The overlay declares a preference between {' and '.join(declared.between)} ({named}) "
+                "that was not applied.",
+                about=(named,),
+            )
+        )
+    return warnings
