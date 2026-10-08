@@ -17,8 +17,10 @@ from pathlib import Path
 import psycopg
 import pytest
 
+from app.core.explainer import explain
 from app.core.graph_builder import build_graph, column_nodes, foreign_key_edges, table_nodes
 from app.core.overlay import parse_overlay
+from app.core.path_finder import find_paths
 from app.shell.schema_ingestor import SchemaIngestor, SuperuserRefused
 
 OVERLAY = Path(__file__).resolve().parents[1] / "overlays" / "tpcds.yaml"
@@ -126,6 +128,26 @@ def test_the_graph_built_from_it_has_the_edges(snapshot) -> None:
     assert graph.has_edge("store_sales.ss_store_sk", "store.s_store_sk")
     assert graph.has_edge("store_sales.ss_customer_sk", "customer.c_customer_sk")
     assert graph.has_edge("customer.c_current_addr_sk", "customer_address.ca_address_sk")
+
+
+def test_paths_over_the_live_graph_tie_where_they_should_and_name_the_catalog(snapshot) -> None:
+    """Step 4 end to end: ingested from the warehouse, built, searched,
+    explained. Every edge an explanation uses here was declared by the
+    database itself, and says so."""
+    graph = build_graph(snapshot)
+
+    tie = explain(find_paths(graph, "catalog_sales", "customer_address"), graph)
+    assert [warning.code for warning in tie.warnings] == ["arbitrary_choice"]
+    assert tie.provenance == (("catalog_sales.cs_bill_addr_sk", "customer_address.ca_address_sk", "catalog"),)
+    assert tie.chosen.description == (
+        "Each catalog sales row has one customer address, through its bill address surrogate key."
+    )
+    assert [path.joins[0].fk_columns for path in tie.alternatives if path.tied_with_chosen] == [("cs_ship_addr_sk",)]
+    assert {join.source for path in tie.alternatives for join in path.joins} == {"catalog"}
+
+    quiet = explain(find_paths(graph, "store_sales", "customer_address"), graph)
+    assert quiet.warnings == ()
+    assert quiet.reason.text == "93 routes existed; the shortest was used."
 
 
 def test_a_superuser_connection_is_refused(warehouse_dsn) -> None:

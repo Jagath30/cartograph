@@ -141,6 +141,27 @@ else
     " — " "$(grep '^naming' <<<"$ingested" || true)"
 fi
 
+# The ambiguity the project exists to surface, on the live graph. A tie must
+# warn and must name the route it did not take; a strictly shorter route
+# must not warn at all. A warning that always fires, or never, fails here.
+stage "Path finding (FR-11 to FR-14, FR-40, DD-21)"
+if [[ "$wh_tables" == "0" ]]; then
+  pending "warehouse is empty -- no paths to find"
+else
+  tie="$(docker compose exec -T backend python -m app.show_paths catalog_sales customer_address 2>/dev/null || true)"
+  contains "billing against shipping address is reported as an arbitrary choice" \
+    "WARNING   arbitrary_choice" "$tie"
+  contains "the route not taken is named in the warning" \
+    "Equally valid: Each catalog sales row has one customer address, through its ship address" "$tie"
+  quiet="$(docker compose exec -T backend python -m app.show_paths store_sales customer_address 2>/dev/null || true)"
+  contains "a strictly shorter route is chosen" "the shortest was used" "$quiet"
+  if [[ "$quiet" == *"WARNING"* ]]; then
+    bad "a strictly shorter route does not warn -- it did"
+  else
+    ok "a strictly shorter route does not warn"
+  fi
+fi
+
 stage "Not yet verified"
 pending "one known question runs the full pipeline (arrives at step 7)"
 pending "generated SQL joins along the reported path (arrives at step 7)"

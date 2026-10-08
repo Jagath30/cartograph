@@ -58,3 +58,15 @@ overlay's `naming` section. That section is written by hand in
 generated and never edited. After changing the naming file:
 
     python3 backend/warehouse/ri.py write-overlay
+
+## Finding join paths
+
+    docker compose exec backend python -m app.show_paths catalog_sales customer_address
+
+prints every route of up to three joins between two tables, the one
+selected, and why. The rule is shortest first; a tie is broken by a
+preference declared in the overlay if there is one, and alphabetically if
+not. An alphabetical choice is reported as arbitrary, and the warning names
+the routes that were not taken. A selected route that joins two "many"
+sides through one table says so, and says what it does to the rows.
+`--all` lists every alternative; `--max-joins 4` raises the limit.
