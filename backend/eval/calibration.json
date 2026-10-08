@@ -1,0 +1,36 @@
+{
+  "computed_on": "2026-10-08",
+  "method": "app.core.calibration, as fixed in CHECKPOINTS.md before any embedding existed",
+  "snapshot_sha256": "4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4302547",
+  "embedding_model": "text-embedding-3-small",
+  "pseudo_questions": 449,
+  "sibling_pairs": 26,
+  "margin_percentile": 95,
+  "margin": {
+    "0.0": {
+      "value": 0.11913037329327517,
+      "observations": 10465
+    },
+    "0.25": {
+      "value": 0.11709832924266105,
+      "observations": 10465
+    },
+    "0.5": {
+      "value": 0.10705139708498754,
+      "observations": 10465
+    },
+    "0.75": {
+      "value": 0.10578770525173026,
+      "observations": 10465
+    },
+    "1.0": {
+      "value": 0.11284909896276835,
+      "observations": 10465
+    }
+  },
+  "floor_percentile": 50,
+  "floor": {
+    "value": 0.5725811586595055,
+    "observations": 449
+  }
+}

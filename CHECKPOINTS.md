@@ -677,12 +677,12 @@ No tag yet. This section is the step's working record: where it stands,
 what was decided before any code, and every tuning run. It becomes
 `checkpoint-06-retrieval` when the step closes.
 
-**Where the work stands.** Pieces 0 to 2 are committed. Pieces 0 and 1 were
-reviewed by the owner; his rulings at that stop are recorded below and the
-step 6 judgement was corrected to them. THE STEP 6 JUDGEMENT IS FROZEN
-like the step 5 one: `app/core/eval_step6.py` changes only on the owner's
-ruling. Nothing has been embedded. No evaluation question has been scored
-by anything.
+**Where the work stands.** Pieces 0 to 8 are committed. The schema is
+stored and embedded once. The margin and the floor are computed and
+committed (`backend/eval/calibration.json`). THE STEP 6 JUDGEMENT IS
+FROZEN like the step 5 one: `app/core/eval_step6.py` changes only on the
+owner's ruling. No evaluation question has been embedded or scored by
+anything.
 
     0  this record                                  done
     1  the step 6 judgement                         done; reviewed; frozen
@@ -692,8 +692,8 @@ by anything.
     5  Alembic and the first migration              done
     6  snapshot store                               done
     7  embedding adapter                            done
-    8  SemanticIndex                                next
-    9  runner, step 6 baseline at Design defaults      OWNER REVIEW after it
+    8  SemanticIndex                                done
+    9  runner, step 6 baseline at Design defaults   next; OWNER REVIEW after it
     10 tuning runs, each logged below
     11 close: smoke, suite, runner, tag
 
@@ -1448,7 +1448,7 @@ the app with no key and calls it.
 **Paid calls so far.** One, made deliberately to prove the real adapter
 end to end from inside the container:
 
-    8 Oct 2026   the paid test   2 texts   9 tokens   $0.00000018   4.5 s
+    8 Oct 2026                                      done
 
 **Decided while building, and told.**
 - **A failure reports the HTTP status and the provider's short error
@@ -1481,6 +1481,111 @@ end to end from inside the container:
   unchecked; the per-call cost and the total cost each off by a thousand.
   One was equivalent, not a gap: a blank key let through `make_embedder`
   is refused by the adapter's own constructor.
+
+### Piece 8: the semantic index, and the margin and floor — 8 October 2026
+
+**What exists.**
+- `backend/app/shell/semantic_index.py`: embeds a snapshot's elements once
+  and scores every element against a text, returning two raw numbers each:
+  cosine similarity by pgvector over every row, exact; and `ts_rank`
+  against the text's words joined by OR. It decides nothing.
+- `backend/app/shell/vector_cache.py`: `CachedEmbedder`, each vector in a
+  file under `backend/eval/.cache/`, which git ignores.
+- `backend/app/core/calibration.py`, pure: the margin and the floor by the
+  methods fixed above.
+- Two commands: `python -m app.ingest_schema` (ingest, store, embed) and
+  `python -m app.calibrate` (writes `backend/eval/calibration.json`).
+- 23 tests of the index and cache in a scratch database with the fake
+  embedder, 13 of the calibration from numbers written by hand. 414 tests
+  in the container (413 pass, the paid one skips); 362 pass and 52 skip
+  with both database URLs and the key unset.
+
+**The order things happened in, which is the point (T-04).** The code was
+committed first (`804f942`), with no value in existence. Then the schema
+was embedded; then the schema's own readable names were embedded and the
+two values computed; then `calibration.json` was committed, in the commit
+that carries this entry. At that commit no evaluation question has been
+embedded or scored by anything, and `app.calibrate` does not read the
+evaluation set.
+
+**The schema, embedded once.** Snapshot 1 of the live warehouse:
+
+    sha256      4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4302547
+    elements    449 (24 tables, 425 columns), all embedded
+    model       text-embedding-3-small
+
+Run a second time, `ingest_schema` reported "already held" and
+"0 elements now, 449 already; 0 tokens". Run a second time, `calibrate`
+made no embedding call and wrote a byte-identical file.
+
+**THE VALUES. Fixed from here; not in the tuning grid; never adjusted.**
+
+    margin   alpha 0      0.119130
+             alpha 0.25   0.117098
+             alpha 0.5    0.107051     the default
+             alpha 0.75   0.105788
+             alpha 1      0.112849
+             each the 95th percentile of 10,465 differences: 26 sibling
+             pairs, under every readable name from a table that is
+             neither end of the pair
+
+    floor    0.572581     raw cosine similarity
+             the median of 449 bests (smallest 0.190, 5th percentile
+             0.332, 95th 0.785, largest 0.838)
+
+There are 26 sibling pairs, not the 24 tied pairs of step 2: the overlay's
+`customer.c_last_review_date_sk` made a third key from `customer` to
+`date_dim`, which adds two pairs.
+
+**A concern recorded BEFORE any question is embedded, so it cannot be
+hindsight.** The floor is 0.573. That is high for this embedding model:
+similarities between a short English question and a description usually
+sit well below it. The known weakness written down with the method, that
+"schema names are not phrased like questions" and may score higher against
+one another than a question does, looks to have materialised. **I expect
+the floor to decline many of the sixteen questions, possibly all of the
+fifteen answerable ones.** If it does, that is a result about the method
+and is reported as one. The value stays where the method put it; whether
+the method is replaced is the owner's decision, and not one to take with
+the baseline in view without saying so.
+
+**Paid calls so far, all of step 6.**
+
+    the paid adapter test        2 texts      9 tokens   $0.00000018
+    the schema, once           449 texts  6,617 tokens   $0.00013234
+    the readable names, once   449 texts  2,253 tokens   $0.00004506
+    total                                 8,879 tokens   $0.00017758
+
+**Decided while building, and told.**
+- **`ts_rank` with Postgres's default normalisation.** It counts how often
+  the words occur and does not divide by the length of the text, so a
+  table's row, which lists what it holds, can outrank a column on the
+  keyword half. Left as Postgres gives it; watched in the tuning log
+  beside the wide-table bias of ruling f.
+- **OR, not AND.** `plainto_tsquery` joins a question's words by AND,
+  which asks one description to hold every word of the question. None
+  would. The words are joined by OR.
+- **A hyphen does not separate two words** ("top-selling" is "top" and
+  "selling", adjacent); any other punctuation does. The compound as a
+  whole, which Postgres also reports, is dropped in favour of its parts.
+- A snapshot embedded by one model is never topped up by another, and a
+  question is never scored against another model's vectors: both raise.
+- The cache returns the 32-bit values it stored, the first time as well,
+  so two runs never differ in the last digits.
+- Percentiles are by nearest rank, so the margin and the floor are values
+  that were actually observed.
+- `httpx` logs each request line at INFO. It holds no key, but the two
+  commands turn it down so that the one line per call is the embedder's
+  own.
+
+**Mutations.** Thirteen against the index and cache, twelve caught: AND
+for OR; distance for similarity; everything re-embedded; a model mismatch
+ignored on embedding and on scoring; unembedded elements not noticed; the
+compound kept; the hyphen separating; stopwords counted as content; the
+cache ignoring the model; a damaged cache file trusted; unrounded values
+returned the first time. **One survived:** with the snapshot filter gone
+from the scoring query every test passed, because no test had two
+snapshots. One now does. Nine against the calibration, all caught at once.
 
 ### Tuning log
 
@@ -1574,6 +1679,20 @@ Empty. No run has been made.
   happened when one did
 - `caplog`, and asserting on what was *not* logged
 - `pytest.mark.skipif` with two conditions: key present AND opted in
+- the scoring query, clause by clause: `<=>`, `1 -`, `ts_rank`,
+  `plainto_tsquery(...)::text` with `&` replaced by `|`
+- `ts_debug`: aliases, lexemes, and how an empty lexeme list marks a
+  stopword
+- why a vector goes to Postgres as text and is cast (`%s::vector`)
+- `array('f')`: 32-bit floats, `tobytes` and `frombytes`, and why 0.1 does
+  not come back as 0.1
+- the margin on paper, with the "rain" example of the tests: why its own
+  table must be left out before normalising
+- nearest-rank percentile: `-(-share * n // 100)` is a ceiling
+- 10,465 differences from 26 pairs and 449 names: where the number comes
+  from
+- why the code was committed before the values, and the values before any
+  question
 
 ### Carried forward
 

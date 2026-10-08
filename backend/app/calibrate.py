@@ -57,6 +57,9 @@ ALPHAS = (0.0, 0.25, 0.5, 0.75, 1.0)
 
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
+    # httpx logs every request line at INFO. It holds no key, but the one
+    # line per call that matters is the embedder's own, with tokens and cost.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     settings = get_settings()
     try:
         embedder = CachedEmbedder(make_embedder(settings), CACHE)
