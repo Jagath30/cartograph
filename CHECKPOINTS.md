@@ -677,17 +677,17 @@ No tag yet. This section is the step's working record: where it stands,
 what was decided before any code, and every tuning run. It becomes
 `checkpoint-06-retrieval` when the step closes.
 
-**Where the work stands.** Pieces 0 and 1 are committed and were reviewed
-by the owner; his rulings at that stop are recorded below and the step 6
-judgement was corrected to them. THE STEP 6 JUDGEMENT IS NOW FROZEN like
-the step 5 one: from piece 2 onwards `app/core/eval_step6.py` changes only
-on the owner's ruling. No retrieval code exists yet. Nothing has been
-embedded. No evaluation question has been scored by anything.
+**Where the work stands.** Pieces 0 to 2 are committed. Pieces 0 and 1 were
+reviewed by the owner; his rulings at that stop are recorded below and the
+step 6 judgement was corrected to them. THE STEP 6 JUDGEMENT IS FROZEN
+like the step 5 one: `app/core/eval_step6.py` changes only on the owner's
+ruling. Nothing has been embedded. No evaluation question has been scored
+by anything.
 
-    0  this record                                     done
-    1  the step 6 judgement                            done; reviewed; frozen
-    2  Retriever (pure)                                next
-    3  evidence tie rule in the PathFinder
+    0  this record                                  done
+    1  the step 6 judgement                         done; reviewed; frozen
+    2  Retriever (pure)                             done
+    3  evidence tie rule in the PathFinder          next
     4  join tree for N anchors, subgraph bound
     5  Alembic and the first migration
     6  snapshot store
@@ -1112,6 +1112,56 @@ embedding existed. Pieces 0 and 1 approved with these.
 6. On the test added because a mutation survived: "exactly the right
    habit. Keep doing it."
 
+### Piece 2: the Retriever — 8 October 2026
+
+**What exists.** `backend/app/core/retriever.py`, pure, 37 tests in
+`tests/core/test_retriever.py` from scores typed by hand. No database, no
+embedding, no key, and no question of the evaluation set. Raw scores in:
+every element against the whole question, and against each term alone.
+Out: every candidate with both raw scores, both normalised scores, the
+combined score and its rank (FR-09); each table's score and the element
+that gave it (ruling f); the anchors and what the bound excluded (DD-11);
+per term, what it considered, what it chose and which tables rival the
+choice (FR-41); unmatched terms; and whether the question is declined
+because nothing rises above the floor (FR-42).
+
+**Ruling c made exact, for the second review stop.** The ruling speaks of
+"the Retriever's choice between two candidates in different tables". The
+anchor rule by itself makes no such choice: two tables that both reach the
+cut both become anchors. So the choice is located at the term, where FR-41
+puts it:
+
+- Each term is scored exactly as the question is, by the same code. A
+  matched term nominates one table: the one holding its best element.
+- Any other table within the margin of the nominee, for that term, is a
+  rival.
+- A table that reaches the cut but is in contention only as a rival, with
+  no term nominating it in its own right, is set aside and not made an
+  anchor beside the table that beat it. The anchor bound records it.
+- A rival is not set aside when the table that beat it is itself below the
+  cut: that would lose both.
+- Whether to warn is not the Retriever's: it depends on whether the rival
+  is in the join tree anyway. Every rival is handed to piece 4.
+
+**Decided while building, and told.**
+- **No table at the cut means no anchors.** The cut is applied as ruled,
+  with no fallback to "the best table anyway". It is not a decline either:
+  ruling d names two conditions and this is neither. The result says the
+  anchor list is empty, and at step 6 such a question disagrees.
+- The evidence handed to the PathFinder is the combined score of each
+  column for the whole question, the same quantity the margin's method
+  measures.
+- A term's `considered` list is its five best elements.
+- The cap is applied after rivals are set aside, so a table set aside does
+  not use up a place.
+
+**Mutations.** Twelve, each caught by at least one test: a flat signal
+normalising to 1; the floor as `<`; the floor read on the normalised
+score; a rival set aside although another term nominates it; a rival set
+aside although its chooser is out of the running; alpha ignored; the
+keyword rank left raw; rivals never set aside; the cap before the rivals;
+the term floor ignored; bigrams across a stopword; the cut as `>`.
+
 ### Tuning log
 
 Empty. No run has been made.
@@ -1143,6 +1193,13 @@ Empty. No run has been made.
   expectations allow
 - the mutation that survived the first version's 34 tests, and why
   mutating a rule is a better test of its tests than reading them
+- `normalise`: three lines, and the one branch that is the whole of DD-09's
+  warning. Work `[0.6, 0.5, 0.4]` with no keyword hits by hand at alpha 0.5
+- why the decline reads `best_raw` and the anchors read `combined`
+- nominee, rival, set aside: follow "amount" through
+  `test_a_rival_is_not_made_an_anchor_beside_the_table_that_beat_it`
+- `dict.fromkeys` in `make_terms`: order kept, repeats dropped
+- `# fmt: skip` and why a frozen dataclass still allows `@property`
 
 ### Carried forward
 
