@@ -121,6 +121,14 @@ stage "Backend"
 expect "liveness" '"status":"ok"' curl -sf "$API/health"
 expect "readiness reports ready" '"status":"ready"' curl -sf "$API/ready"
 
+# The application store's schema comes from Alembic and from nothing else
+# (DR-14): the backend container migrates before it serves.
+stage "Application store (DR-14, DD-17)"
+expect "migrations are at head" "(head)" \
+  docker compose exec -T backend alembic current
+expect "the three schema tables exist" "schema_edges,schema_elements,schema_snapshots" \
+  pg 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "select string_agg(tablename, '"'"','"'"' order by tablename) from pg_tables where schemaname = '"'"'public'"'"' and tablename like '"'"'schema_%'"'"'"'
+
 stage "Frontend"
 expect "page served and titled" "Cartograph" curl -sf "$WEB"
 
