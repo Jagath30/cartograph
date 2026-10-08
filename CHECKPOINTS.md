@@ -97,6 +97,78 @@ merged catalog-first with provenance on every edge (FR-02, FR-03, FR-43),
 readable descriptions from the overlay's naming section (DD-08), and the
 graph built by a pure GraphBuilder.
 
+## checkpoint-03-ingestion — 8 October 2026
+
+**What works now that did not before.** The application reads the
+warehouse for itself. `SchemaIngestor` (shell) connects as the SELECT-only
+role, reads `pg_catalog`, and returns a flat snapshot: 24 tables, 425
+columns, 17 primary keys, 102 foreign keys, in about 0.2 seconds.
+`build_graph` (core, pure) turns a snapshot into a NetworkX graph of 449
+nodes and 527 edges, 102 of them foreign keys, every one marked
+`source: catalog`. The overlay is merged catalog-first (FR-43) and its new
+`naming` section gives every table and all 425 columns a readable name
+(DD-08): `ss_ext_sales_price` is now "store sales — extended sales price".
+`docker compose exec backend python -m app.show_schema` prints the result
+in three lines. 88 tests locally; 74 pass and 14 skip under CI conditions,
+and CI still sees a 102-edge graph, built from the overlay alone. Each of
+these was broken on purpose and seen to fail a test: an ingestor reading
+`information_schema`, a builder that drops edges, a deleted naming source,
+and a naming source edited without regenerating. Smoke: 17 passed, 0
+failed, 2 skipped.
+
+**To dissect.** Built with assistance and used correctly, but not yet
+understood well enough to defend under questioning:
+- **the overlay hides the failure it exists to survive.** With the key
+  query swapped to `information_schema`, the summary still said "102
+  foreign keys" — `0 catalog, 102 overlay`, and 0 primary keys. Only a
+  check on provenance tells the two apart. Which test does, and which
+  smoke line
+- the two catalog queries, clause by clause: `relkind in ('r', 'p')`,
+  `attnum > 0`, `attisdropped`, `format_type`, and why `conkey` has to be
+  unnested `with ordinality` and joined back to `pg_attribute`
+- why the snapshot types live in `core/` although the shell is what
+  produces them — which way an import may point, and the test that reads
+  every import line in `app/core` to enforce it (`ast.walk`)
+- frozen dataclasses and `dataclasses.replace`: why applying the overlay
+  returns a new snapshot and cannot alter the one it was given
+- why a plain `DiGraph` is enough: columns are nodes, so billing and
+  shipping keys are edges between different nodes. What would have forced
+  a `MultiDiGraph`
+- **one join is three edges in this graph**: table → column → column ←
+  table, and the last is walked against its direction. DD-10's "four hops"
+  is counted in tables. Step 4 has to decide how to count, and how to walk
+  a directed graph both ways
+- why the ingestor is a class and the graph builder a function
+- what "catalog wins" means mechanically — two keys are the same edge when
+  four values match — and what happens with a composite key
+- why an unknown overlay section raises, `preferences` included. Step 4
+  must teach `parse_overlay` that section before the file may carry it
+- the YAML boolean trap: a bare `on` is `True`, and `inv_quantity_on_hand`
+  has that fragment
+- how a name is expanded: longest prefix first, then word by word, a
+  comment beating both; and why there are two strings, `readable` and
+  `description`
+- every line of `tpcds.naming.yaml` is a claim somebody made. `demo` was
+  left out because it means two things; `inc` is read as "including",
+  `fy` as "fiscal". Check them against the TPC-DS specification
+- generated against hand-written: why naming has its own source file, what
+  `naming_section` refuses, and why `write-overlay` exists when
+  `overlay > tpcds.yaml` looks equivalent (the shell empties the file
+  before the command has run)
+- pytest machinery met for the first time: `conftest.py`, a fixture that
+  calls `pytest.skip`, `scope="module"`, `parametrize`
+- the superuser guard: `rolsuper`, and why its test hands the ingestor the
+  *application* database's URL
+- a synchronous `psycopg.connect` inside an application whose routes are
+  `async` — harmless from a command, a question at step 8
+- `app/show_schema.py` is the first place shell and core meet. It is
+  standing in for the orchestrator, and should not grow
+
+**Next single deliverable.** Step 4: path finding, selection and
+explanation over this graph (FR-11 to FR-14, FR-40), the overlay's
+`preferences` section (DD-12), and a script that prints every path between
+two named tables.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
@@ -138,11 +210,15 @@ Deliberate deferrals, recorded while the reasoning is fresh:
 15. Step 3's ingestor must read keys from `pg_catalog`. Through
     `information_schema` the read-only role sees no constraints at all, and
     FR-02 would report an edgeless graph without erroring.
+    **Closed at step 3**: it does, and a test ingests with no overlay to
+    prove the keys come from the catalog.
 16. With all 102 constraints applied, every edge reaches step 3 from both
     the catalog and the overlay. The merge rule says catalog wins, so on
     this warehouse every edge will be marked `source: catalog` and none
     `overlay` — the opposite of what SDD §08 stage 0 narrates. Decide at
     step 3 whether that is the demonstration wanted.
+    **Decided 8 October**: yes. Catalog-wins stands and every edge reads
+    `source: catalog`. The `overlay` marking is exercised by tests only.
 17. All 12 stores at scale factor 1 are in one state, `TN`. The three
     routes do give different answers, but any regional question answered
     through `store` returns nothing outside Tennessee. The headline
@@ -169,3 +245,26 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     headline-shaped question — category revenue over `store_sales`, `item`,
     `customer_address` and `date_dim` — runs in about one second at scale
     factor 1 under the read-only role. One query is not a distribution.
+22. Ingestion emits no structured log entry yet (NFR-22). Its one
+    measurement so far is 185 ms against NFR-04's 30 seconds. The log
+    belongs with the orchestrator at step 7.
+23. The ingestor reads one schema, `public` unless told otherwise. A
+    foreign key pointing into another schema would raise in the builder.
+24. Database comments beat derived names (DD-08) and that is tested from a
+    fixture only: the warehouse has no comments at all, so the path has
+    never run against a real one.
+25. The builder refuses the same foreign key twice. A real warehouse that
+    declares two constraints over one column pair would fail ingestion
+    loudly. Deliberate for now; revisit if a second warehouse appears.
+26. `tests/test_schema_ingestor.py` carries its own copy of the
+    skip-when-no-warehouse fixture instead of sharing step 2's, so that
+    step 2's test file changed by two tests and nothing else.
+27. If `ri.py overlay` fails inside `warehouse.sh`, a `tpcds.yaml.new` is
+    left behind. Older than this step; harmless, untidy.
+28. PyYAML keeps the last of two identical keys without complaint, so a
+    word listed twice in `tpcds.naming.yaml` is not caught.
+29. `networkx` was added to `requirements.txt`. Any change there needs
+    `docker compose build backend`; the bind mount carries source, not
+    installed packages.
+30. SDD section 08, stage 0 still narrates the edges as coming from the
+    overlay. On this warehouse they come from the catalog (item 16).
