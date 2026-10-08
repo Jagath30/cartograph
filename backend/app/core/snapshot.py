@@ -60,6 +60,9 @@ class ForeignKey:
     source: Source
     # The constraint's name in the catalog. An overlay edge has none.
     name: str | None = None
+    # Why a human asserted it. Only an overlay edge can have one: the
+    # catalog's edges are declared by the database and need no defence.
+    note: str | None = None
 
 
 @dataclass(frozen=True)

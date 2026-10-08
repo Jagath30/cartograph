@@ -52,6 +52,8 @@ class ExplainedJoin:
     # Provenance (FR-43): declared by the database, or asserted in the overlay.
     source: Source
     constraint: str | None
+    # For an overlay edge, the reason its author gave for asserting it.
+    note: str | None
     description: str
 
 
@@ -217,6 +219,7 @@ def _join(join: Join, graph: nx.DiGraph) -> ExplainedJoin:
         walked=join.walked,
         source=join.source,
         constraint=join.constraint,
+        note=join.note,
         description=clause,
     )
 

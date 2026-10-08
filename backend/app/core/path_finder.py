@@ -71,6 +71,8 @@ class Join:
     source: Source
     constraint: str | None
     walked: Walked
+    # Why a human asserted this key, where one did (overlay edges only).
+    note: str | None = None
 
     @property
     def from_table(self) -> str:
@@ -203,16 +205,17 @@ def _table_view(graph: nx.DiGraph) -> nx.MultiGraph:
     """One node per table, one edge per foreign key. A multigraph, because
     here two keys between the same two tables really are parallel edges.
 
-    A composite key is several column-to-column edges in the graph sharing
-    one constraint name; they are gathered back into one join. Overlay
-    edges have no constraint name and are always single-column.
+    A key of several columns is several column-to-column edges in the
+    graph, all carrying the same `foreign_key` number; they are gathered
+    back into one join. Grouping by constraint name would not do: overlay
+    edges have none, and a two-column overlay key would come out as two
+    alternative one-column joins.
     """
-    gathered: dict[tuple, dict] = {}
+    gathered: dict[int, dict] = {}
     for start, end, data in foreign_key_edges(graph):
         fk_table, pk_table = graph.nodes[start]["table"], graph.nodes[end]["table"]
-        identity = (fk_table, pk_table, data["constraint"]) if data["constraint"] else (start, end)
         facts = gathered.setdefault(
-            identity,
+            data["foreign_key"],
             {
                 "fk_table": fk_table,
                 "fk_columns": (),
@@ -220,6 +223,7 @@ def _table_view(graph: nx.DiGraph) -> nx.MultiGraph:
                 "pk_columns": (),
                 "source": data["source"],
                 "constraint": data["constraint"],
+                "note": data["note"],
             },
         )
         facts["fk_columns"] += (graph.nodes[start]["name"],)

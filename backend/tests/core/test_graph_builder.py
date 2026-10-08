@@ -86,7 +86,23 @@ def test_every_edge_says_where_it_came_from(small_snapshot) -> None:
     assert [source for start, source in sources.items() if start != "catalog_sales.cs_ship_addr_sk"] == ["catalog"] * 5
 
     bill = graph.edges["catalog_sales.cs_bill_addr_sk", "customer_address.ca_address_sk"]
-    assert bill == {"kind": FOREIGN_KEY, "source": "catalog", "constraint": "cs_bill_addr_sk_fk"}
+    assert bill == {
+        "kind": FOREIGN_KEY,
+        "source": "catalog",
+        "constraint": "cs_bill_addr_sk_fk",
+        "foreign_key": 4,  # fifth of the fixture's six keys
+        "note": None,
+    }
+
+
+def test_the_columns_of_one_key_share_its_number_and_different_keys_do_not(small_snapshot) -> None:
+    pair = ForeignKey("store_sales", ("ss_customer_sk", "ss_ticket_number"), "customer", ("c_customer_sk", "c_current_addr_sk"), "overlay", note="why")
+    graph = build_graph(replace(small_snapshot, foreign_keys=(pair,) + small_snapshot.foreign_keys[1:2]))
+    numbers = {start: data["foreign_key"] for start, _, data in foreign_key_edges(graph)}
+
+    assert numbers["store_sales.ss_customer_sk"] == numbers["store_sales.ss_ticket_number"] == 0
+    assert numbers["store_sales.ss_store_sk"] == 1
+    assert graph.edges["store_sales.ss_ticket_number", "customer.c_current_addr_sk"]["note"] == "why"
 
 
 def test_two_keys_to_the_same_table_stay_two_edges(small_snapshot) -> None:

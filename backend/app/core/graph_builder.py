@@ -13,6 +13,11 @@ edge, each marked by a `kind` attribute:
     edge  store_sales -> store_sales.ss_store_sk         kind="has_column"
     edge  store_sales.ss_store_sk -> store.s_store_sk    kind="foreign_key"
                                                          source="catalog" | "overlay"
+                                                         foreign_key=<its number>
+
+A two-column key is two such edges. They carry the same `foreign_key`
+number, which is how the PathFinder knows they are one join and not two
+alternative ones.
 
 Columns are nodes, so two foreign keys between the same pair of tables --
 cs_bill_addr_sk and cs_ship_addr_sk, both to customer_address -- are two
@@ -83,7 +88,7 @@ def build_graph(snapshot: SchemaSnapshot) -> nx.DiGraph:
                 raise ValueError(f"primary key on {node}, which is not in the snapshot")
             graph.nodes[node]["primary_key"] = True
 
-    for key in snapshot.foreign_keys:
+    for number, key in enumerate(snapshot.foreign_keys):
         if len(key.from_columns) != len(key.to_columns) or not key.from_columns:
             raise ValueError(f"foreign key {key} does not pair its columns one to one")
         for from_name, to_name in zip(key.from_columns, key.to_columns):
@@ -94,7 +99,9 @@ def build_graph(snapshot: SchemaSnapshot) -> nx.DiGraph:
                     raise ValueError(f"foreign key {start} -> {end}: {node} is not in the snapshot")
             if graph.has_edge(start, end):
                 raise ValueError(f"foreign key {start} -> {end} appears twice in the snapshot")
-            graph.add_edge(start, end, kind=FOREIGN_KEY, source=key.source, constraint=key.name)
+            graph.add_edge(
+                start, end, kind=FOREIGN_KEY, source=key.source, constraint=key.name, foreign_key=number, note=key.note
+            )
 
     return graph
 

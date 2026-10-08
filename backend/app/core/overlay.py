@@ -18,6 +18,11 @@ edges. It is only ever a tie-breaker, and whether it applies is decided by
 the PathFinder; what is decided here is whether it is well-formed and
 whether every edge it names is a real foreign key of this warehouse.
 
+A relationship's `from` and `to` are each one `table.column`, or a list of
+them for a key of several columns -- the same number on each side, paired
+by position, each side within one table. An optional `note` says why a
+human asserted it, and travels with the edge into every explanation.
+
 Both functions are strict. A section this code does not understand, a
 relationship that is not `table.column`, or one that names a column the
 warehouse does not have, raises. Passing over any of them would produce a
@@ -39,9 +44,22 @@ _NAMING_SECTIONS = {"prefixes", "words"}
 @dataclass(frozen=True)
 class Relationship:
     from_table: str
-    from_column: str
+    from_columns: tuple[str, ...]
     to_table: str
-    to_column: str
+    to_columns: tuple[str, ...]
+    note: str | None = None
+
+    @property
+    def identity(self) -> tuple:
+        """What makes two relationships the same edge. The note does not."""
+        return (self.from_table, self.from_columns, self.to_table, self.to_columns)
+
+    @property
+    def edges(self) -> tuple[tuple[str, str], ...]:
+        return tuple(
+            (f"{self.from_table}.{start}", f"{self.to_table}.{end}")
+            for start, end in zip(self.from_columns, self.to_columns)
+        )
 
 
 @dataclass(frozen=True)
@@ -60,7 +78,8 @@ def parse_overlay(text: str) -> Overlay:
     _only(document, _SECTIONS, "overlay")
 
     relationships = [_relationship(entry) for entry in document.get("relationships") or []]
-    repeated = sorted({f"{r.from_table}.{r.from_column}" for r in relationships if relationships.count(r) > 1})
+    identities = [relationship.identity for relationship in relationships]
+    repeated = sorted({str(identity) for identity in identities if identities.count(identity) > 1})
     if repeated:
         raise ValueError(f"overlay: relationship listed more than once: {repeated}")
 
@@ -91,17 +110,36 @@ def _only(mapping: dict, allowed: set[str], where: str) -> None:
         raise ValueError(f"{where}: sections not understood: {unknown}; expected only {sorted(allowed)}")
 
 
-def _relationship(entry: object) -> Relationship:
-    if not isinstance(entry, dict) or set(entry) != {"from", "to"}:
-        raise ValueError(f"overlay: a relationship needs exactly `from` and `to`, got {entry!r}")
-    ends = []
+def _relationship(entry: object, note_allowed: bool = True) -> Relationship:
+    allowed = {"from", "to", "note"} if note_allowed else {"from", "to"}
+    if not isinstance(entry, dict) or not {"from", "to"} <= set(entry) <= allowed:
+        raise ValueError(f"overlay: a relationship needs `from` and `to` and may have a `note`, got {entry!r}")
+
+    sides = []
     for side in ("from", "to"):
         value = entry[side]
-        parts = value.split(".") if isinstance(value, str) else []
-        if len(parts) != 2 or not all(parts):
-            raise ValueError(f"overlay: `{side}` must be table.column, got {value!r}")
-        ends.extend(parts)
-    return Relationship(*ends)
+        names = [value] if isinstance(value, str) else value
+        if not isinstance(names, list) or not names:
+            raise ValueError(f"overlay: `{side}` must be table.column or a list of them, got {value!r}")
+        tables, columns = set(), []
+        for name in names:
+            parts = name.split(".") if isinstance(name, str) else []
+            if len(parts) != 2 or not all(parts):
+                raise ValueError(f"overlay: `{side}` must be table.column, got {name!r}")
+            tables.add(parts[0])
+            columns.append(parts[1])
+        if len(tables) != 1 or len(set(columns)) != len(columns):
+            raise ValueError(f"overlay: the columns of `{side}` must be different columns of one table, got {value!r}")
+        sides.append((tables.pop(), tuple(columns)))
+
+    (from_table, from_columns), (to_table, to_columns) = sides
+    if len(from_columns) != len(to_columns):
+        raise ValueError(f"overlay: `from` and `to` must list the same number of columns, got {entry!r}")
+
+    note = entry.get("note")
+    if note is not None and (not isinstance(note, str) or not note.strip()):
+        raise ValueError(f"overlay: a `note` must be text, got {note!r}")
+    return Relationship(from_table, from_columns, to_table, to_columns, " ".join(note.split()) if note else None)
 
 
 def _preference(entry: object) -> Preference:
@@ -120,14 +158,7 @@ def _preference(entry: object) -> Preference:
     prefer = entry["prefer"]
     if not isinstance(prefer, list) or not prefer:
         raise ValueError(f"overlay: `prefer` must list the edges of one route, got {prefer!r}")
-    edges = []
-    for relationship in (_relationship(edge) for edge in prefer):
-        edges.append(
-            (
-                f"{relationship.from_table}.{relationship.from_column}",
-                f"{relationship.to_table}.{relationship.to_column}",
-            )
-        )
+    edges = [edge for entry in prefer for edge in _relationship(entry, note_allowed=False).edges]
 
     because = entry["because"]
     if not isinstance(because, str) or not because.strip():
@@ -160,22 +191,17 @@ def apply_overlay(snapshot: SchemaSnapshot, overlay: Overlay) -> SchemaSnapshot:
 
     added = []
     for relationship in overlay.relationships:
-        for table, column in (
-            (relationship.from_table, relationship.from_column),
-            (relationship.to_table, relationship.to_column),
+        for table, names in (
+            (relationship.from_table, relationship.from_columns),
+            (relationship.to_table, relationship.to_columns),
         ):
-            if (table, column) not in columns_known:
-                raise ValueError(f"overlay: {table}.{column} is not a column of this warehouse")
+            for column in names:
+                if (table, column) not in columns_known:
+                    raise ValueError(f"overlay: {table}.{column} is not a column of this warehouse")
 
-        identity = (
-            relationship.from_table,
-            (relationship.from_column,),
-            relationship.to_table,
-            (relationship.to_column,),
-        )
-        if identity in declared:
+        if relationship.identity in declared:
             continue  # the catalog wins
-        added.append(ForeignKey(*identity, source="overlay"))
+        added.append(ForeignKey(*relationship.identity, source="overlay", note=relationship.note))
 
     tables = []
     for table in snapshot.tables:
@@ -205,22 +231,32 @@ def _check_preference(preference: Preference, foreign_keys: tuple[ForeignKey, ..
     """Every edge must be a foreign key of the warehouse, written in its
     real direction, and together they must be one unbroken route from one
     of the two tables to the other. Whether that route is among the tied
-    shortest ones is not known here; the PathFinder finds that out."""
-    real = {
-        (f"{key.from_table}.{start}", f"{key.to_table}.{end}")
-        for key in foreign_keys
-        for start, end in zip(key.from_columns, key.to_columns)
-    }
+    shortest ones is not known here; the PathFinder finds that out.
+
+    A key of several columns is one join, so it must be named whole -- all
+    of its column pairs or none -- and it counts as one hop."""
+    owner = {}
+    for number, key in enumerate(foreign_keys):
+        for start, end in zip(key.from_columns, key.to_columns):
+            owner[(f"{key.from_table}.{start}", f"{key.to_table}.{end}")] = number
     for edge in preference.prefer:
-        if edge not in real:
+        if edge not in owner:
             raise ValueError(
                 f"overlay: preference between {list(preference.between)} names {edge[0]} -> {edge[1]}, "
                 "which is not a foreign key of this warehouse"
             )
+    named = {owner[edge] for edge in preference.prefer}
+    for number in named:
+        key = foreign_keys[number]
+        if sum(1 for edge in preference.prefer if owner[edge] == number) != len(key.from_columns):
+            raise ValueError(
+                f"overlay: preference between {list(preference.between)} names part of the key from "
+                f"{key.from_table} to {key.to_table}; a key of several columns must be named whole"
+            )
 
-    # Walk from one end, crossing each named edge once, in whichever
+    # Walk from one end, crossing each named key once, in whichever
     # direction it lies. The walk must use them all and stop at the other end.
-    hops = [(start.split(".")[0], end.split(".")[0]) for start, end in preference.prefer]
+    hops = [(foreign_keys[number].from_table, foreign_keys[number].to_table) for number in sorted(named)]
     here, goal = preference.between
     visited = {here}
     while hops:

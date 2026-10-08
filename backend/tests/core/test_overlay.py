@@ -11,7 +11,9 @@ import pytest
 
 from app.core.graph_builder import build_graph, foreign_key_edges
 from app.core.naming import Naming, type_family
+from app.core.explainer import explain
 from app.core.overlay import Overlay, Relationship, apply_overlay, parse_overlay
+from app.core.path_finder import find_paths
 from app.core.snapshot import Column, Preference, Table
 
 NAMING = Naming(
@@ -41,7 +43,7 @@ def catalog_only(snapshot):
 def test_the_two_sections_are_read() -> None:
     overlay = parse_overlay(TEXT)
 
-    assert overlay.relationships == (Relationship("store_sales", "ss_store_sk", "store", "s_store_sk"),)
+    assert overlay.relationships == (Relationship("store_sales", ("ss_store_sk",), "store", ("s_store_sk",)),)
     assert overlay.naming.prefixes == {"ss_": "store sales", "ca_": "customer address"}
     assert overlay.naming.words == {"ext": "extended", "sk": "key"}
 
@@ -81,6 +83,62 @@ def test_a_malformed_relationship_is_refused(entry) -> None:
         parse_overlay(f"relationships:\n  - {entry}\n")
 
 
+def test_a_relationship_may_have_several_columns_and_a_note() -> None:
+    """A return belongs to a sale by two columns together. The single-column
+    form is unchanged and reads as a key of one."""
+    text = """
+relationships:
+  - from: store_sales.ss_store_sk
+    to:   store.s_store_sk
+  - from: [store_returns.sr_item_sk, store_returns.sr_ticket_number]
+    to:   [store_sales.ss_item_sk, store_sales.ss_ticket_number]
+    note: >-
+      Measured, not declared:
+      every return matches one sale.
+"""
+    single, pair = parse_overlay(text).relationships
+
+    assert single == Relationship("store_sales", ("ss_store_sk",), "store", ("s_store_sk",))
+    assert single.note is None
+    assert pair.from_columns == ("sr_item_sk", "sr_ticket_number")
+    assert pair.to_columns == ("ss_item_sk", "ss_ticket_number")
+    assert pair.note == "Measured, not declared: every return matches one sale."
+    assert pair.edges == (
+        ("store_returns.sr_item_sk", "store_sales.ss_item_sk"),
+        ("store_returns.sr_ticket_number", "store_sales.ss_ticket_number"),
+    )
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        "{ from: [a.x, a.y], to: b.p }",  # two columns against one
+        "{ from: [a.x, a.y], to: [b.p] }",
+        "{ from: [a.x, c.y], to: [b.p, b.q] }",  # one side spread over two tables
+        "{ from: [a.x, a.x], to: [b.p, b.q] }",  # the same column twice
+        "{ from: [], to: [] }",
+        "{ from: [a.x, 7], to: [b.p, b.q] }",
+        "{ from: a.x, to: b.p, note: '' }",
+        "{ from: a.x, to: b.p, note: [not, text] }",
+        "{ from: a.x, to: b.p, because: a preference word on a relationship }",
+    ],
+)
+def test_a_malformed_multi_column_relationship_or_note_is_refused(entry) -> None:
+    with pytest.raises(ValueError):
+        parse_overlay(f"relationships:\n  - {entry}\n")
+
+
+def test_the_same_edge_with_a_different_note_is_still_listed_twice() -> None:
+    twice = (
+        "relationships:\n"
+        "  - { from: a.x, to: b.p }\n"
+        "  - { from: a.x, to: b.p, note: said again with a reason }\n"
+    )
+
+    with pytest.raises(ValueError, match="more than once"):
+        parse_overlay(twice)
+
+
 def test_a_relationship_listed_twice_is_refused() -> None:
     twice = "relationships:\n" + "  - { from: store_sales.ss_store_sk, to: store.s_store_sk }\n" * 2
 
@@ -105,7 +163,7 @@ def test_a_word_that_yaml_reads_as_a_boolean_is_refused_and_not_dropped() -> Non
 def test_the_overlay_fills_what_the_catalog_does_not_declare(small_snapshot) -> None:
     before = catalog_only(small_snapshot)
     overlay = Overlay(
-        relationships=(Relationship("catalog_sales", "cs_ship_addr_sk", "customer_address", "ca_address_sk"),)
+        relationships=(Relationship("catalog_sales", ("cs_ship_addr_sk",), "customer_address", ("ca_address_sk",)),)
     )
 
     after = apply_overlay(before, overlay)
@@ -118,13 +176,83 @@ def test_the_overlay_fills_what_the_catalog_does_not_declare(small_snapshot) -> 
     )  # fmt: skip
     assert added.source == "overlay"
     assert added.name is None
+    assert added.note is None
+
+
+RETURN_TO_SALE = Relationship(
+    "store_sales", ("ss_customer_sk", "ss_ticket_number"), "customer", ("c_customer_sk", "c_current_addr_sk"),
+    note="not a real key: two columns each side, to test the mechanism",
+)  # fmt: skip
+
+
+def test_a_two_column_overlay_key_becomes_one_foreign_key_with_its_note(small_snapshot) -> None:
+    after = apply_overlay(replace(small_snapshot, foreign_keys=()), Overlay(relationships=(RETURN_TO_SALE,)))
+
+    [key] = after.foreign_keys
+    assert key.from_columns == ("ss_customer_sk", "ss_ticket_number")
+    assert key.to_columns == ("c_customer_sk", "c_current_addr_sk")
+    assert key.source == "overlay"
+    assert key.note == "not a real key: two columns each side, to test the mechanism"
+
+
+def test_a_two_column_overlay_key_is_one_join_in_the_graph_not_two(small_snapshot) -> None:
+    """The bug this guards: overlay edges have no constraint name, so
+    grouping by name would see two unrelated one-column keys and offer them
+    as two alternative routes -- a tie between two halves of one join."""
+    graph = build_graph(apply_overlay(replace(small_snapshot, foreign_keys=()), Overlay(relationships=(RETURN_TO_SALE,))))
+    edges = foreign_key_edges(graph)
+
+    assert len(edges) == 2
+    assert len({data["foreign_key"] for _, _, data in edges}) == 1
+    assert {data["note"] for _, _, data in edges} == {RETURN_TO_SALE.note}
+
+    result = find_paths(graph, "store_sales", "customer")
+    assert len(result.discovered) == 1
+    assert result.rule == "only_path"
+    [join] = result.selected.joins
+    assert set(zip(join.fk_columns, join.pk_columns)) == {
+        ("ss_customer_sk", "c_customer_sk"),
+        ("ss_ticket_number", "c_current_addr_sk"),
+    }
+    assert join.note == RETURN_TO_SALE.note
+
+
+def test_the_note_reaches_the_explanation(small_snapshot) -> None:
+    graph = build_graph(apply_overlay(replace(small_snapshot, foreign_keys=()), Overlay(relationships=(RETURN_TO_SALE,))))
+    explanation = explain(find_paths(graph, "store_sales", "customer"), graph)
+
+    [join] = explanation.chosen.joins
+    assert join.source == "overlay"
+    assert join.note == "not a real key: two columns each side, to test the mechanism"
+    assert "asserted in the overlay" in join.description
+    assert len(explanation.provenance) == 2  # one line per column pair, both overlay
+    assert {source for _, _, source in explanation.provenance} == {"overlay"}
+
+
+def test_a_catalog_edge_never_takes_a_note_from_the_overlay(small_snapshot) -> None:
+    """Catalog wins, whole: an overlay relationship restating a declared
+    constraint adds nothing, its note included."""
+    before = catalog_only(small_snapshot)
+    restated = Relationship("store_sales", ("ss_store_sk",), "store", ("s_store_sk",), note="a human says so too")
+
+    after = apply_overlay(before, Overlay(relationships=(restated,)))
+
+    assert after.foreign_keys == before.foreign_keys
+    assert all(key.note is None for key in after.foreign_keys)
+
+
+def test_a_two_column_overlay_key_naming_a_missing_column_is_refused(small_snapshot) -> None:
+    wrong = Relationship("store_sales", ("ss_customer_sk", "ss_nothing"), "customer", ("c_customer_sk", "c_current_addr_sk"))
+
+    with pytest.raises(ValueError, match="store_sales.ss_nothing is not a column"):
+        apply_overlay(small_snapshot, Overlay(relationships=(wrong,)))
 
 
 def test_the_catalog_wins_where_both_declare_the_same_edge(small_snapshot) -> None:
     """The situation on the real warehouse, where every constraint applied:
     the overlay restates what the catalog already says, and adds nothing."""
     before = catalog_only(small_snapshot)
-    restated = Overlay(relationships=(Relationship("store_sales", "ss_store_sk", "store", "s_store_sk"),))
+    restated = Overlay(relationships=(Relationship("store_sales", ("ss_store_sk",), "store", ("s_store_sk",)),))
 
     after = apply_overlay(before, restated)
 
@@ -138,8 +266,8 @@ def test_with_no_catalog_keys_at_all_every_edge_comes_from_the_overlay(small_sna
     bare = replace(small_snapshot, foreign_keys=())
     overlay = Overlay(
         relationships=(
-            Relationship("store_sales", "ss_store_sk", "store", "s_store_sk"),
-            Relationship("store_sales", "ss_addr_sk", "customer_address", "ca_address_sk"),
+            Relationship("store_sales", ("ss_store_sk",), "store", ("s_store_sk",)),
+            Relationship("store_sales", ("ss_addr_sk",), "customer_address", ("ca_address_sk",)),
         )
     )
 
@@ -152,9 +280,9 @@ def test_with_no_catalog_keys_at_all_every_edge_comes_from_the_overlay(small_sna
 @pytest.mark.parametrize(
     "relationship",
     [
-        Relationship("store_sales", "ss_shop_sk", "store", "s_store_sk"),
-        Relationship("store_sales", "ss_store_sk", "store", "s_shop_sk"),
-        Relationship("store_sales", "ss_store_sk", "shop", "s_store_sk"),
+        Relationship("store_sales", ("ss_shop_sk",), "store", ("s_store_sk",)),
+        Relationship("store_sales", ("ss_store_sk",), "store", ("s_shop_sk",)),
+        Relationship("store_sales", ("ss_store_sk",), "shop", ("s_store_sk",)),
     ],
 )
 def test_an_overlay_edge_to_something_the_warehouse_does_not_have_is_refused(small_snapshot, relationship) -> None:
@@ -165,7 +293,7 @@ def test_an_overlay_edge_to_something_the_warehouse_does_not_have_is_refused(sma
 def test_applying_leaves_the_original_snapshot_as_it_was(small_snapshot) -> None:
     before = catalog_only(small_snapshot)
     overlay = Overlay(
-        relationships=(Relationship("catalog_sales", "cs_ship_addr_sk", "customer_address", "ca_address_sk"),),
+        relationships=(Relationship("catalog_sales", ("cs_ship_addr_sk",), "customer_address", ("ca_address_sk",)),),
         naming=NAMING,
     )
 
@@ -288,6 +416,23 @@ def preference_text(between: str, *edges: str) -> str:
 def test_a_preference_the_warehouse_cannot_honour_is_refused_at_ingestion(small_snapshot, text, complaint) -> None:
     with pytest.raises(ValueError, match=complaint):
         apply_overlay(small_snapshot, parse_overlay(text))
+
+
+def test_a_preference_naming_a_two_column_key_names_it_whole_and_counts_it_once(small_snapshot) -> None:
+    keyed = "relationships:\n  - { from: [store_sales.ss_customer_sk, store_sales.ss_ticket_number], to: [customer.c_customer_sk, customer.c_current_addr_sk] }\n"
+    bare = replace(small_snapshot, foreign_keys=())
+
+    whole = keyed + (
+        "preferences:\n  - between: [customer, store_sales]\n    because: r\n    prefer:\n"
+        "      - from: [store_sales.ss_customer_sk, store_sales.ss_ticket_number]\n"
+        "        to:   [customer.c_customer_sk, customer.c_current_addr_sk]\n"
+    )
+    [preference] = apply_overlay(bare, parse_overlay(whole)).preferences
+    assert len(preference.prefer) == 2
+
+    half = keyed + preference_text("[customer, store_sales]", "store_sales.ss_customer_sk -> customer.c_customer_sk")
+    with pytest.raises(ValueError, match="must be named whole"):
+        apply_overlay(bare, parse_overlay(half))
 
 
 def test_a_two_join_preference_is_accepted_in_either_order_of_its_edges(small_snapshot) -> None:
