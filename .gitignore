@@ -34,3 +34,6 @@ __pycache__/
 # The TPC's constraint file: fetched by scripts/warehouse.sh, never committed.
 backend/warehouse/tpcds_ri.sql
 docs/superseded/
+
+# Question and term vectors, cached so a re-run costs nothing (step 6).
+backend/eval/.cache/
