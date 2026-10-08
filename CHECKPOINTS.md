@@ -380,6 +380,297 @@ of 102 constraints, 298 seconds. 186 tests locally.
 
 **Next single deliverable.** Unchanged: step 5, the evaluation set.
 
+## checkpoint-05-eval — 8 October 2026
+
+**What works now that did not before.** There is a ground truth, and it was
+written down before anything could be tuned towards it. Sixteen questions
+live in `backend/eval/questions.yaml`, each with the tables and the joins a
+correct answer uses, the one warning a correct system must give, and the
+step at which it first becomes fully evaluable. The file was committed alone
+(`b723ddd`), before any parser, test or runner existed, so the history
+shows the expectations came before any result. Two CI tests guard it from
+committed files alone: its sha256 is pinned inside the test, and every
+table, column and join it names must exist in the DDL and the overlay.
+`docker compose exec backend python -m app.show_eval` runs each of the
+set's 26 pair checks through the PathFinder and reports, without changing
+anything: 21 match, 4 mismatch, 1 expected failure confirmed. 203 tests
+locally; 189 pass and 14 skip with both database URLs unset. Smoke: 25
+passed, 0 failed, 2 skipped.
+
+**The freeze.** The set's sha256, for a human to compare:
+
+    a92f27c2f3fee9c1d178e21504eadc87aa9ec6a622e896561064e798d1100440
+
+It is the value of `PINNED_SHA256` in `backend/tests/core/test_eval_set.py`.
+The freeze binds from the moment step 6 begins. No expectation was
+corrected between the set's commit and this checkpoint.
+
+**Who wrote what.** The questions, their tables, warnings and notes were
+drafted by Claude in a separate Cowork session with no access to any
+retrieval code, reviewed by the owner, revised at his request after an
+adversarial second review, and approved by him, 8-9 October 2026. The
+joins, the pair checks and the evaluable-from field were derived in the
+step 5 build session by reasoning from the DDL, the overlay and what each
+question means, never by running the PathFinder, and all sixteen were shown
+to the owner before any file was written. His rulings at that gate:
+
+1. Questions 2 and 4, and question 16's sale-to-customer pair, are recorded
+   as written, with no warning expected, and left to show as plain
+   mismatches. They are not marked as expected failures: they were not
+   pre-registered, and marking them now would be retroactive. For question
+   16, "buy" means bill: `ws_bill_customer_sk`.
+2. Question 6 carries a check between `store_sales` and `catalog_sales`,
+   expecting the path through `item` and `many_to_many`. No single join can
+   be many-to-many, so that pair is where the question's point lives.
+3. Question 13's one fixed pair, `household_demographics` to `income_band`,
+   is checked now. The question as a whole stays not evaluable and the
+   runner reports it as a partial check, so a matching sub-pair can never
+   make the question look healthy.
+4. Question 3 accepts the bill or the ship address but requires
+   `arbitrary_choice`. Question 14 accepts either item key, because a
+   return and its sale share the item by construction of the composite key.
+5. The set is `backend/eval/questions.yaml`. Provenance is a top-level
+   field, not a comment: the parser requires it and the runner prints it.
+
+**The step 5 baseline.** What step 6 must improve on. Output of
+`python -m app.show_eval` on the live warehouse at scale factor 1,
+8 October 2026, unedited:
+
+    set         backend/eval/questions.yaml
+    sha256      a92f27c2f3fee9c1d178e21504eadc87aa9ec6a622e896561064e798d1100440
+    provenance  Drafted by Claude in a separate Cowork session with no access to
+                any retrieval code (none exists yet); reviewed by Jagath
+                Manjunath, revised at his request after an adversarial second
+                review, and approved by him, 8-9 October 2026.
+    derivation  The joins, checks, evaluable_from, at_step_5 and ambiguity_seen
+                fields were derived by Claude in the step 5 build session on 8
+                October 2026, by reasoning from the committed DDL, the committed
+                overlay and what each question means. No expectation was computed
+                by running the PathFinder. All sixteen were shown to Jagath
+                Manjunath and approved by him before this file was written, and it
+                was committed before any runner existed.
+    graph       107 foreign keys (102 catalog, 5 overlay); routes of up to 3 joins
+
+     1  How much did each store sell last year?
+        expects warning: none; fully evaluable from step 5
+        MATCH  store_sales to store
+        MATCH  store_sales to date_dim
+        question: MATCH
+
+     2  Which states are our catalog customers billed in?
+        expects warning: none; fully evaluable from step 5
+        MISMATCH  catalog_sales to customer_address
+             differs in  warnings
+               expected  catalog_sales.cs_bill_addr_sk = customer_address.ca_address_sk
+                         warnings: none
+               selected  catalog_sales.cs_bill_addr_sk = customer_address.ca_address_sk
+                         warnings: arbitrary_choice; rule: alphabetical
+        question: MISMATCH
+
+     3  Where are our catalog customers located?
+        expects warning: arbitrary_choice; fully evaluable from step 5
+        MATCH  catalog_sales to customer_address
+        question: MATCH
+
+     4  What were the top-selling item categories on the web in Q4 2002?
+        expects warning: none; fully evaluable from step 5
+        MATCH  web_sales to item
+        MISMATCH  web_sales to date_dim
+             differs in  path and warnings
+               expected  web_sales.ws_sold_date_sk = date_dim.d_date_sk
+                         warnings: none
+               selected  web_sales.ws_ship_date_sk = date_dim.d_date_sk
+                         warnings: arbitrary_choice; rule: alphabetical
+        question: MISMATCH
+
+     5  What reasons do customers give when returning items to stores?
+        expects warning: none; fully evaluable from step 5
+        MATCH  store_returns to reason
+        question: MATCH
+
+     6  How does store revenue compare with catalog revenue for the same items?
+        expects warning: many_to_many; fully evaluable from step 5
+        MATCH  store_sales to item
+        MATCH  catalog_sales to item
+        MISMATCH  store_sales to catalog_sales
+             differs in  path and warnings
+               expected  catalog_sales.cs_item_sk = item.i_item_sk
+                         store_sales.ss_item_sk = item.i_item_sk
+                         warnings: many_to_many
+               selected  catalog_sales.cs_bill_customer_sk = customer.c_customer_sk
+                         store_sales.ss_customer_sk = customer.c_customer_sk
+                         warnings: arbitrary_choice, many_to_many; rule: alphabetical
+        question: MISMATCH
+
+     7  Which warehouses held the least stock of each item at the latest inventory date?
+        expects warning: none; fully evaluable from step 5
+        MATCH  inventory to warehouse
+        MATCH  inventory to item
+        MATCH  inventory to date_dim
+        question: MATCH
+
+     8  Did our promotions increase sales?
+        expects warning: anchor_ambiguity (no mechanism yet); fully evaluable from step 6
+        question: NOT EVALUABLE AT THIS STEP (no concrete pair of tables)
+
+     9  What is the average number of dependents in households that shop at our stores?
+        expects warning: anchor_ambiguity (no mechanism yet); fully evaluable from step 6
+        MATCH  store_sales to household_demographics
+        question: EXPECTED FAILURE CONFIRMED (nothing raised anchor_ambiguity)
+
+    10  Which web site sells most, and by which shipping method?
+        expects warning: none; fully evaluable from step 5
+        MATCH  web_sales to web_site
+        MATCH  web_sales to ship_mode
+        question: MATCH
+
+    11  How do store sales break down by fiscal quarter?
+        expects warning: none; fully evaluable from step 5
+        MATCH  store_sales to date_dim
+        question: MATCH
+
+    12  Which call centres handle the most catalog returns?
+        expects warning: none; fully evaluable from step 5
+        MATCH  catalog_returns to call_center
+        question: MATCH
+
+    13  What do customers in the highest income band spend most on?
+        expects warning: anchor_ambiguity (no mechanism yet); fully evaluable from step 6
+        MATCH  household_demographics to income_band
+        question: NOT EVALUABLE AT THIS STEP
+                  partial check only: 1 of 1 fixed pairs match, which says nothing of the question
+
+    14  Are the items returned most often also the ones that were on promotion?
+        expects warning: multi_anchor (no mechanism yet); fully evaluable from step 6
+        MATCH  store_returns to store_sales
+        MATCH  store_sales to promotion
+        MATCH  store_returns to item
+        MATCH  store_sales to item
+        question: EXPECTED FAILURE CONFIRMED (nothing raised multi_anchor)
+
+    15  Which customers abandoned their carts?
+        expects warning: decline (no mechanism yet); fully evaluable from step 6
+        question: NOT EVALUABLE AT THIS STEP (no concrete pair of tables)
+
+    16  Which customers buy through which of our web pages?
+        expects warning: see_note; fully evaluable from step 5
+        MATCH  web_sales to web_page
+        MISMATCH  web_sales to customer
+             differs in  warnings
+               expected  web_sales.ws_bill_customer_sk = customer.c_customer_sk
+                         warnings: none
+               selected  web_sales.ws_bill_customer_sk = customer.c_customer_sk
+                         warnings: arbitrary_choice; rule: alphabetical
+        EXPECTED FAILURE CONFIRMED  web_page to customer
+             differs in  path
+               expected  web_sales.ws_bill_customer_sk = customer.c_customer_sk
+                         web_sales.ws_web_page_sk = web_page.wp_web_page_sk
+                         warnings: none
+               selected  web_page.wp_customer_sk = customer.c_customer_sk
+                         warnings: none; rule: shortest
+              predicted  web_page.wp_customer_sk = customer.c_customer_sk
+                         warnings: none; prediction CONFIRMED
+        question: MISMATCH
+
+    checks      26: 21 match, 4 mismatch, 1 expected failure confirmed
+    questions   16: 7 match, 4 mismatch, 2 expected failure confirmed, 3 not evaluable at this step
+
+Read in one breath: every single join from a fact table to a dimension that
+has only one key to it matches. Every disagreement is a place where the
+question's wording, or its other tables, says which route is meant and the
+PathFinder, handed two table names, cannot know.
+
+**To dissect.** Built with assistance and used correctly, but not yet
+understood well enough to defend under questioning:
+- **why the set was committed alone and first**, and what `git log` now
+  proves that a single commit holding the set and its runner could not
+- what pinning a sha256 inside the test buys and what it does not: it
+  cannot stop an edit, it puts the edit and its excuse in one diff. Why the
+  hash covers the comments too
+- **the two hands in one file.** Which fields are the owner's and which
+  were derived, and why `ambiguity_seen` is kept apart from `note`
+- `checks` against `joins`: why the pair checks are written out in the set
+  and not derived by the runner from the joins. What judgement a deriving
+  runner would have had to hold
+- the comparison itself: a path is compared as a set of column pairs, so
+  direction and the order of a composite key's columns do not matter, and
+  warnings must be exactly equal. Why "at least the expected warnings"
+  would have let question 6's wrong pivot pass on its warning
+- **the five statuses, and which is not a verdict.** Why an expected
+  failure exists only where the set said so in advance, and the test that
+  pins the list of them (`test_only_what_the_set_declared_in_advance...`)
+- `judge_question`: the worst news wins. Why question 16 is a mismatch
+  although its prediction was confirmed, and why question 9 is an expected
+  failure although its only check matches
+- "not evaluable" for question 13 with a matching check underneath it:
+  `at_step_5: partial`, and why the parser refuses a question that claims
+  to be not evaluable yet has checks
+- why `eval_set.py` repeats the four warning codes and does not import
+  them from the Explainer it is used to judge
+- `_path`'s connection test: a route touches its two ends once and every
+  table between them twice
+- the names test compares joins against real foreign keys, not only
+  columns against real columns: `r_reason_id` in place of `r_reason_sk` is
+  two real columns and no real key. It was tried, and both guards failed
+- why the runner exits 0 on a mismatch, and why the smoke check asserts
+  that it ran on sixteen questions and not what it found
+- `yaml.safe_dump` in the parser's negative tests: change one thing in the
+  real set and re-serialise, so each refusal has one cause
+
+**Findings.** Recorded as found, not fixed:
+- **The four mismatches are one fault seen four times: the PathFinder is
+  handed tables and the question is about columns.** Question 2 gets the
+  billing address right and calls it arbitrary, because question 3 names
+  the same two tables and it cannot tell them apart. Question 16's
+  sale-to-customer pair is the same. Step 6 has to carry what the question
+  said down to which key is meant, or these two never pass.
+- **Question 4 selects the wrong date, not merely a noisy one.**
+  `ws_ship_date_sk` sorts before `ws_sold_date_sk`, so "top-selling in Q4
+  2002" would be answered by the date goods shipped. The warning fires, so
+  it is not silent; but every web or catalog question with a date in it
+  takes this path. `store_sales` has only the one date key, which is why
+  questions 1 and 11 match.
+- **Question 6: the two sales tables are joined through `customer`, not
+  `item`.** Eight dimensions bridge them at two joins and "customer" sorts
+  first. The `many_to_many` warning does fire, about the wrong table. This
+  is item 32 of the carried-forward list met from the other side: with
+  `item` already an anchor, the bridge should not be a free choice.
+- **The pre-registered prediction for question 16 was confirmed.**
+  `web_page` reaches `customer` by `wp_customer_sk` in one join, with no
+  warning, rule "shortest". A correct answer goes through `web_sales`. So
+  the weakest-evidenced edge in the graph (item 40) produces a confident,
+  unwarned, wrong path for a question a person would actually ask. Nothing
+  in the pair-level rule can see it; whether it matters depends on whether
+  step 6 ever asks for that pair once `web_sales` is an anchor.
+- **Dimension-to-dimension pairs are deliberately not expectations, and
+  are a hazard for step 6.** `store.s_closed_date_sk` joins `store`
+  straight to `date_dim` (question 1); `promotion.p_item_sk` joins
+  `promotion` straight to `item` (question 14); `item` to `date_dim` ties
+  on which fact bridges them (question 4). If step 6 connects every pair
+  of anchors, each of these adds a join a correct answer never makes.
+- **Questions 9 and 14 are expected failures at the question level with
+  every pair matching.** Their joins are already right; what is missing is
+  the warning, for which no mechanism exists. They pass the day something
+  raises `anchor_ambiguity` and `multi_anchor`, and not before.
+- **The set's note on question 2 says the billing address "wins by
+  length".** Against the customer's own address it does. Against the
+  shipping address it ties, and wins by the alphabet. The note is the
+  owner's and stands as written; the baseline shows the tie.
+- **Three ambiguities the set does not mention were seen while deriving**
+  and are recorded in `ambiguity_seen`, checked against nothing: question
+  9's household on the customer's file, question 12's call centre of the
+  original order, and question 13's ship-side household keys.
+- **Two commits of this step left the suite red.** `eval_set.py` imported
+  `collections`, which the core's import allowlist refuses, and only the
+  new test file had been run before committing. The clean-start smoke
+  check caught it. History was not rewritten: it shows the red commits
+  (`356e4ca`, `af8f8b4`) and the fix after them (`afcd4fd`). The
+  runner's output was the same before and after the fix.
+
+**Next single deliverable.** Step 6: retrieval — embeddings, hybrid
+scoring, anchors, expansion, both bounds — tuned against this set and
+never the other way round. The freeze binds from its first commit.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
@@ -563,3 +854,20 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     from `tpcds_ri.sql` and not from the overlay, which also holds the
     hand-declared relationships. Run for real on 8 October: "102 of 102
     applied".
+47. `show_eval` checks pairs only. FR-37 and DD-20 measure the generated
+    SQL, in two modes; that harness arrives at step 10 and reuses the
+    conformance checker of step 7. The set's `joins` field, with its
+    `one_of` alternatives, is what that harness will compare against; the
+    `checks` field is for the PathFinder alone.
+48. The evaluation set lives in a file. SDD figure 4 has `eval_questions`
+    and `eval_runs` as tables in the application store; loading the file
+    into them is step 8 or step 10 work, and the file's hash, not the
+    table, stays the thing that is frozen.
+49. The set's expectations were derived against the 107-key graph at the
+    default limit of three joins. A change to the overlay's relationships
+    or to `DEFAULT_MAX_JOINS` changes what the baseline means without
+    changing the set's hash.
+50. The smoke check asserts that `show_eval` reported on sixteen questions,
+    not what it reported. A PathFinder regression that turned matches into
+    mismatches would pass smoke; it is caught only by reading the report
+    against the step 5 baseline above.
