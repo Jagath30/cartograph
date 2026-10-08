@@ -97,14 +97,18 @@ echo "   sha256 verified"
 # truncated overlay where the committed one was.
 step "Overlay (primary source of the graph)"
 python3 backend/warehouse/ri.py overlay > "$OVERLAY.new"
-expected_fks="$(grep -c '^  - from:' "$OVERLAY.new" || true)"
-if (( expected_fks == 0 )); then
+overlay_fks="$(grep -c '^  - from:' "$OVERLAY.new" || true)"
+# What the database can be asked to declare is what tpcds_ri.sql holds. The
+# overlay holds those and the hand-declared ones, which are never applied
+# as constraints: the three two-column keys have no unique target to point at.
+expected_fks="$(grep -ci '^alter table' "$RI" || true)"
+if (( overlay_fks == 0 || expected_fks == 0 )); then
   rm -f "$OVERLAY.new"
   echo "warehouse: the overlay came out with no relationships; refusing to continue" >&2
   exit 1
 fi
 mv "$OVERLAY.new" "$OVERLAY"
-echo "   $expected_fks relationships written to $OVERLAY"
+echo "   $overlay_fks relationships written to $OVERLAY ($expected_fks from tpcds_ri.sql, $((overlay_fks - expected_fks)) declared by hand)"
 
 step "Stack"
 ./scripts/bootstrap.sh >/dev/null

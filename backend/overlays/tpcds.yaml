@@ -4,15 +4,18 @@
 #
 #   relationships  from backend/warehouse/tpcds_ri.sql, whose sha256 is
 #                  c5fc873d832c6bf5362cb8bd89d6131c65cdb50712301e9f08ccf92213f92d5b
+#                  and then from backend/overlays/tpcds.relationships.yaml
+#                  HAND-DECLARED RELATIONSHIPS BELONG IN tpcds.relationships.yaml, not here.
 #   naming         from backend/overlays/tpcds.naming.yaml
 #                  NAMING EDITS BELONG IN tpcds.naming.yaml, not here.
 #
-# To regenerate after editing the naming source:
+# To regenerate after editing either source:
 #     python3 backend/warehouse/ri.py write-overlay
 # (./scripts/warehouse.sh also regenerates it, and rebuilds the warehouse.)
 #
-# 102 foreign keys the generated warehouse does not declare (FR-43).
-# The preferences section arrives at build step 4 (DD-12).
+# 102 relationships from tpcds_ri.sql, which the generated warehouse does not
+# declare by itself (FR-43), then 5 declared by hand that tpcds_ri.sql omits.
+# The preferences section is absent on purpose (DD-12).
 
 relationships:
   - from: call_center.cc_closed_date_sk
@@ -219,6 +222,51 @@ relationships:
     to:   date_dim.d_date_sk
   - from: web_site.web_open_date_sk
     to:   date_dim.d_date_sk
+
+  # Declared by hand in tpcds.relationships.yaml. Not in tpcds_ri.sql, not in the catalog.
+  - from: customer.c_last_review_date_sk
+    to:   date_dim.d_date_sk
+    note: >-
+      Not in tpcds_ri.sql. Rests on the data: 96,516 non-null values in
+      100,000 rows, 366 distinct, one contiguous year resolving to
+      2002-01-08 through 2003-01-08, and every one of them is a d_date_sk.
+      Zero violations. The column is integer where d_date_sk is bigint.
+
+  - from: web_page.wp_customer_sk
+    to:   customer.c_customer_sk
+    note: >-
+      Not in tpcds_ri.sql. Rests on the column name and the TPC-DS
+      specification, NOT on the data. Only 21 of 60 rows are non-null. All
+      21 match a customer, but they could not have failed to: every integer
+      from 1 to 100,000 is a valid c_customer_sk, so these rows cannot tell
+      a real reference from a coincidence.
+
+  - from: [store_returns.sr_item_sk, store_returns.sr_ticket_number]
+    to:   [store_sales.ss_item_sk, store_sales.ss_ticket_number]
+    note: >-
+      Not in tpcds_ri.sql, and not declarable as a constraint here: no fact
+      table has a primary key. Rests on the data: the pair (ss_item_sk,
+      ss_ticket_number) is unique and never null across 2,880,404 sales,
+      and all 287,867 returns match exactly one sale. Zero violations. The
+      returns-side pair is unique too, so a sale has at most one return.
+
+  - from: [catalog_returns.cr_item_sk, catalog_returns.cr_order_number]
+    to:   [catalog_sales.cs_item_sk, catalog_sales.cs_order_number]
+    note: >-
+      Not in tpcds_ri.sql, and not declarable as a constraint here: no fact
+      table has a primary key. Rests on the data: the pair (cs_item_sk,
+      cs_order_number) is unique and never null across 1,441,548 sales,
+      and all 144,067 returns match exactly one sale. Zero violations. The
+      returns-side pair is unique too, so a sale has at most one return.
+
+  - from: [web_returns.wr_item_sk, web_returns.wr_order_number]
+    to:   [web_sales.ws_item_sk, web_sales.ws_order_number]
+    note: >-
+      Not in tpcds_ri.sql, and not declarable as a constraint here: no fact
+      table has a primary key. Rests on the data: the pair (ws_item_sk,
+      ws_order_number) is unique and never null across 719,384 sales, and
+      all 71,654 returns match exactly one sale. Zero violations. The
+      returns-side pair is unique too, so a sale has at most one return.
 
 naming:
   prefixes:

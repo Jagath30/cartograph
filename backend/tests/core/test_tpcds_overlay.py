@@ -12,10 +12,10 @@ green on an edgeless graph.
 
 import pytest
 import yaml
-from tpcds_files import NAMING_SOURCE, OVERLAY, ddl_snapshot
+from tpcds_files import NAMING_SOURCE, OVERLAY, RELATIONSHIPS_SOURCE, ddl_snapshot
 
 from app.core.graph_builder import build_graph, foreign_key_edges
-from app.core.overlay import apply_overlay, parse_overlay
+from app.core.overlay import Relationship, apply_overlay, parse_overlay
 from warehouse import ri
 
 
@@ -51,11 +51,43 @@ def test_the_overlays_naming_is_the_naming_source_and_the_source_exists() -> Non
     assert yaml.safe_load(generated)["naming"] == yaml.safe_load(source)["naming"]
 
 
-def test_the_generated_file_says_where_naming_is_edited() -> None:
+def test_the_overlays_hand_declared_relationships_are_their_source_and_the_source_exists() -> None:
+    """The same drift test, for the relationships a person declared. Not
+    skipped when the source is absent: without it the five edges in the
+    overlay are text nobody can safely edit, and the next regeneration
+    cannot run."""
+    assert RELATIONSHIPS_SOURCE.exists(), (
+        f"{RELATIONSHIPS_SOURCE.name} is missing. It is the only place hand-declared relationships "
+        "are edited; restore it from git."
+    )
+    source = RELATIONSHIPS_SOURCE.read_text()
+    generated = OVERLAY.read_text()
+
+    assert ri.hand_relationships(source) in generated, (
+        f"{OVERLAY.name} does not carry the current {RELATIONSHIPS_SOURCE.name}. "
+        "Run: python3 backend/warehouse/ri.py write-overlay"
+    )
+    declared = yaml.safe_load(source)["relationships"]
+    assert yaml.safe_load(generated)["relationships"][-len(declared) :] == declared
+
+
+def test_the_relationships_source_holds_nothing_but_relationships() -> None:
+    assert list(yaml.safe_load(RELATIONSHIPS_SOURCE.read_text())) == ["relationships"]
+
+    with pytest.raises(ValueError, match="only the relationships section belongs here"):
+        ri.hand_relationships("relationships:\n  - from: a.x\n    to: b.y\nnaming: {}\n")
+    with pytest.raises(ValueError, match="no `relationships:` line"):
+        ri.hand_relationships("# nothing here\n")
+    with pytest.raises(ValueError, match="no relationships found"):
+        ri.hand_relationships("relationships:\n  # all commented out\n")
+
+
+def test_the_generated_file_says_where_each_hand_written_part_is_edited() -> None:
     header = OVERLAY.read_text().split("relationships:")[0]
 
     assert "GENERATED" in header
     assert f"NAMING EDITS BELONG IN {NAMING_SOURCE.name}" in header
+    assert f"HAND-DECLARED RELATIONSHIPS BELONG IN {RELATIONSHIPS_SOURCE.name}" in header
     assert all(line.startswith("#") or not line for line in header.splitlines())
 
 
@@ -73,17 +105,93 @@ def test_the_naming_source_holds_nothing_but_naming() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_from_the_overlay_alone_the_graph_has_all_102_edges(snapshot) -> None:
+def test_from_the_overlay_alone_the_graph_has_every_edge(snapshot) -> None:
     """No catalog keys went in, so every edge came from the overlay and says
-    so. The mirror image of the live warehouse, where every edge says
-    `catalog` -- and the one arrangement CI can check."""
+    so -- the one arrangement CI can check. 107 relationships: 102 generated
+    from tpcds_ri.sql and 5 declared by hand, three of which are two-column
+    keys and so two edges each."""
     graph = build_graph(snapshot)
     edges = foreign_key_edges(graph)
 
     assert len(snapshot.tables) == 24
     assert len(snapshot.columns) == 425
-    assert len(edges) == 102
+    assert len(snapshot.foreign_keys) == 102 + 5
+    assert len(edges) == 102 + 2 + 3 * 2
+    assert len({data["foreign_key"] for _, _, data in edges}) == 107
     assert {data["source"] for _, _, data in edges} == {"overlay"}
+
+
+def test_the_generated_and_the_hand_declared_are_counted_apart(overlay) -> None:
+    """Told apart by where they come from, not by position: a generated
+    relationship is one tpcds_ri.sql states, in one column, with no note."""
+    by_hand = [r for r in overlay.relationships if r.note]
+    generated = [r for r in overlay.relationships if not r.note]
+
+    assert len(generated) == 102
+    assert len(by_hand) == 5
+    assert all(len(r.from_columns) == 1 for r in generated)
+    assert overlay.relationships[:102] == tuple(generated)
+
+
+def test_the_five_hand_declared_relationships_are_exactly_these(overlay) -> None:
+    by_hand = {r.identity for r in overlay.relationships if r.note}
+
+    assert by_hand == {
+        ("customer", ("c_last_review_date_sk",), "date_dim", ("d_date_sk",)),
+        ("web_page", ("wp_customer_sk",), "customer", ("c_customer_sk",)),
+        ("store_returns", ("sr_item_sk", "sr_ticket_number"), "store_sales", ("ss_item_sk", "ss_ticket_number")),
+        ("catalog_returns", ("cr_item_sk", "cr_order_number"), "catalog_sales", ("cs_item_sk", "cs_order_number")),
+        ("web_returns", ("wr_item_sk", "wr_order_number"), "web_sales", ("ws_item_sk", "ws_order_number")),
+    }
+
+
+def test_each_hand_declared_edge_is_in_the_graph_with_its_note(snapshot) -> None:
+    graph = build_graph(snapshot)
+
+    for start, end in [
+        ("customer.c_last_review_date_sk", "date_dim.d_date_sk"),
+        ("web_page.wp_customer_sk", "customer.c_customer_sk"),
+        ("store_returns.sr_item_sk", "store_sales.ss_item_sk"),
+        ("store_returns.sr_ticket_number", "store_sales.ss_ticket_number"),
+        ("catalog_returns.cr_item_sk", "catalog_sales.cs_item_sk"),
+        ("catalog_returns.cr_order_number", "catalog_sales.cs_order_number"),
+        ("web_returns.wr_item_sk", "web_sales.ws_item_sk"),
+        ("web_returns.wr_order_number", "web_sales.ws_order_number"),
+    ]:
+        edge = graph.edges[start, end]
+        assert edge["source"] == "overlay"
+        assert edge["note"].startswith("Not in tpcds_ri.sql")
+
+    pair = graph.edges["store_returns.sr_item_sk", "store_sales.ss_item_sk"]
+    other = graph.edges["store_returns.sr_ticket_number", "store_sales.ss_ticket_number"]
+    assert pair["foreign_key"] == other["foreign_key"]
+
+
+def test_the_notes_say_what_each_edge_rests_on_and_do_not_all_say_the_same(overlay) -> None:
+    """The evidence differs, so the notes must. The one that rests on a
+    name and the specification says so in as many words; a note claiming
+    data for it would be the confident wrongness this file exists to avoid."""
+    notes = {r.from_columns[0]: r.note for r in overlay.relationships if r.note}
+
+    assert "Rests on the data" in notes["c_last_review_date_sk"]
+    assert "96,516" in notes["c_last_review_date_sk"]
+    assert "NOT on the data" in notes["wp_customer_sk"]
+    assert "cannot tell a real reference from a coincidence" in notes["wp_customer_sk"]
+    assert "Rests on the data" not in notes["wp_customer_sk"]
+    for column, sales, returns in [
+        ("sr_item_sk", "2,880,404", "287,867"),
+        ("cr_item_sk", "1,441,548", "144,067"),
+        ("wr_item_sk", "719,384", "71,654"),
+    ]:
+        assert sales in notes[column] and returns in notes[column]
+        assert "a sale has at most one return" in notes[column]
+
+
+def test_a_generated_relationship_was_not_also_declared_by_hand(overlay) -> None:
+    identities = [r.identity for r in overlay.relationships]
+
+    assert len(set(identities)) == len(identities) == 107
+    assert Relationship("store_sales", ("ss_store_sk",), "store", ("s_store_sk",)) in overlay.relationships
 
 
 # --------------------------------------------------------------------------

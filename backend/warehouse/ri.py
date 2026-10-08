@@ -5,10 +5,11 @@ D-10). They are read from the toolkit's published constraint file, and
 everything else -- the overlay, the primary keys, the expected edge count --
 is derived from that one reading.
 
-The overlay has a second section, `naming`, which is the opposite kind of
-thing: written by hand, in overlays/tpcds.naming.yaml. The overlay file is
-generated from both sources and is never edited itself, so a rebuild cannot
-overwrite anything a person wrote.
+The overlay also holds what a person wrote, which is the opposite kind of
+thing: the `naming` section, from overlays/tpcds.naming.yaml, and the few
+relationships the TPC's file omits, from overlays/tpcds.relationships.yaml.
+The overlay file is generated from all three sources and is never edited
+itself, so a rebuild cannot overwrite anything a person wrote.
 
 The file itself is the TPC's and is not committed. scripts/warehouse.sh
 fetches it beside this module from the URL below and refuses any content
@@ -35,6 +36,7 @@ RI_FILE = Path(__file__).with_name("tpcds_ri.sql")
 # What is generated, and the hand-written half it is generated from.
 OVERLAY_FILE = Path(__file__).parent.parent / "overlays" / "tpcds.yaml"
 NAMING_FILE = OVERLAY_FILE.with_name("tpcds.naming.yaml")
+RELATIONSHIPS_FILE = OVERLAY_FILE.with_name("tpcds.relationships.yaml")
 
 # A public mirror of the TPC-DS toolkit, pinned to a commit rather than a
 # branch, and to a hash rather than to trust. If either changes, that is a
@@ -111,36 +113,53 @@ def primary_keys(keys: list[ForeignKey]) -> dict[str, str]:
     return dict(sorted(targets.items()))
 
 
-def naming_section(source: str) -> str:
-    """The `naming:` block of the hand-written source, from that line to the
+def _section(source: str, name: str, file: Path) -> list[str]:
+    """One section of a hand-written source, from its `name:` line to the
     end, exactly as written. The comment header above it stays behind: it
     says "edit here", which would be false in the generated file.
 
     Strict in the same way as the parser. The source may hold comments, then
-    `naming:`, then only lines indented beneath it. A second top-level
-    section would be copied into the overlay unseen, so it raises.
+    `name:`, then only lines indented beneath it. A second top-level section
+    would be copied into the overlay unseen, so it raises.
     """
     lines = source.splitlines()
-    if "naming:" not in lines:
-        raise ValueError(f"{NAMING_FILE.name}: no `naming:` line at the left margin")
-    start = lines.index("naming:")
+    if f"{name}:" not in lines:
+        raise ValueError(f"{file.name}: no `{name}:` line at the left margin")
+    start = lines.index(f"{name}:")
     for number, line in enumerate(lines, start=1):
         comment_or_blank = not line.strip() or line.lstrip().startswith("#")
         before = number - 1 < start
         indented = line.startswith(" ")
         if number - 1 != start and not comment_or_blank and (before or not indented):
-            raise ValueError(f"{NAMING_FILE.name} line {number}: only the naming section belongs here: {line!r}")
-    return "\n".join(lines[start:]).rstrip() + "\n"
+            raise ValueError(f"{file.name} line {number}: only the {name} section belongs here: {line!r}")
+    return lines[start:]
 
 
-def render_overlay(keys: list[ForeignKey], naming_source: str) -> str:
+def naming_section(source: str) -> str:
+    """The `naming:` block of its hand-written source, header line included."""
+    return "\n".join(_section(source, "naming", NAMING_FILE)).rstrip() + "\n"
+
+
+def hand_relationships(source: str) -> str:
+    """The entries under `relationships:` in the hand-written source,
+    without that line itself: they are appended to the generated list, which
+    already has one."""
+    entries = "\n".join(_section(source, "relationships", RELATIONSHIPS_FILE)[1:]).strip("\n")
+    if "  - from:" not in entries:
+        raise ValueError(f"{RELATIONSHIPS_FILE.name}: no relationships found under `relationships:`")
+    return entries + "\n"
+
+
+def render_overlay(keys: list[ForeignKey], relationships_source: str, naming_source: str) -> str:
     """The overlay file (DD-16): relationships generated from the keys, then
-    the naming section copied from its hand-written source.
+    the hand-declared relationships and the naming section, each copied from
+    its own source.
 
     Written by hand rather than through a YAML library so the host needs
-    nothing installed; every relationship value is a bare identifier, so
-    there is nothing to quote. The tests read it back with a real YAML parser.
+    nothing installed; every generated value is a bare identifier, so there
+    is nothing to quote. The tests read it back with a real YAML parser.
     """
+    by_hand = hand_relationships(relationships_source)
     lines = [
         "# Cartograph overlay for the TPC-DS warehouse (DD-16).",
         "#",
@@ -148,22 +167,27 @@ def render_overlay(keys: list[ForeignKey], naming_source: str) -> str:
         "#",
         "#   relationships  from backend/warehouse/tpcds_ri.sql, whose sha256 is",
         f"#                  {RI_SHA256}",
+        f"#                  and then from backend/overlays/{RELATIONSHIPS_FILE.name}",
+        f"#                  HAND-DECLARED RELATIONSHIPS BELONG IN {RELATIONSHIPS_FILE.name}, not here.",
         f"#   naming         from backend/overlays/{NAMING_FILE.name}",
         f"#                  NAMING EDITS BELONG IN {NAMING_FILE.name}, not here.",
         "#",
-        "# To regenerate after editing the naming source:",
+        "# To regenerate after editing either source:",
         "#     python3 backend/warehouse/ri.py write-overlay",
         "# (./scripts/warehouse.sh also regenerates it, and rebuilds the warehouse.)",
         "#",
-        f"# {len(keys)} foreign keys the generated warehouse does not declare (FR-43).",
-        "# The preferences section arrives at build step 4 (DD-12).",
+        f"# {len(keys)} relationships from tpcds_ri.sql, which the generated warehouse does not",
+        f"# declare by itself (FR-43), then {by_hand.count('  - from:')} declared by hand that tpcds_ri.sql omits.",
+        "# The preferences section is absent on purpose (DD-12).",
         "",
         "relationships:",
     ]
     for key in keys:
         lines.append(f"  - from: {key.from_table}.{key.from_column}")
         lines.append(f"    to:   {key.to_table}.{key.to_column}")
-    return "\n".join(lines) + "\n\n" + naming_section(naming_source)
+    lines.append("")
+    lines.append(f"  # Declared by hand in {RELATIONSHIPS_FILE.name}. Not in tpcds_ri.sql, not in the catalog.")
+    return "\n".join(lines) + "\n" + by_hand + "\n" + naming_section(naming_source)
 
 
 def render_primary_keys(keys: list[ForeignKey]) -> str:
@@ -181,7 +205,11 @@ def load() -> list[ForeignKey]:
 
 
 def render_current_overlay() -> str:
-    return render_overlay(load(), NAMING_FILE.read_text(encoding="utf-8"))
+    return render_overlay(
+        load(),
+        RELATIONSHIPS_FILE.read_text(encoding="utf-8"),
+        NAMING_FILE.read_text(encoding="utf-8"),
+    )
 
 
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ def main() -> None:
     )
     print(
         f"graph     {graph.number_of_nodes()} nodes, {graph.number_of_edges()} edges, "
-        f"of which {len(foreign_key_edges(graph))} foreign key edges"
+        f"of which {len(foreign_key_edges(graph))} foreign key edges for {len(snapshot.foreign_keys)} foreign keys"
     )
     if snapshot.columns:
         widest = max(snapshot.columns, key=lambda column: len(column.name))

@@ -50,12 +50,18 @@ Once a warehouse is loaded, this prints what the application makes of it:
 It connects as the SELECT-only role, reads tables, columns and keys from
 `pg_catalog`, merges the overlay (catalog first, with the source recorded
 on every edge), and builds the schema graph: 24 tables and 425 columns as
-nodes, 102 foreign keys as edges.
+nodes, 107 foreign keys as edges. 102 of those the database declares. The
+other 5 are relationships the TPC's constraint file omits, including the
+two-column keys that tie a return to its sale; they are asserted in the
+overlay, marked `source: overlay`, and each carries a note saying what
+evidence it rests on.
 
 Column names such as `ss_ext_sales_price` are given readable names from the
 overlay's `naming` section. That section is written by hand in
-`backend/overlays/tpcds.naming.yaml`; `backend/overlays/tpcds.yaml` is
-generated and never edited. After changing the naming file:
+`backend/overlays/tpcds.naming.yaml`, and the hand-declared relationships
+in `backend/overlays/tpcds.relationships.yaml`;
+`backend/overlays/tpcds.yaml` is generated from them and never edited.
+After changing either file:
 
     python3 backend/warehouse/ri.py write-overlay
 

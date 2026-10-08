@@ -29,6 +29,7 @@ from warehouse import ri
 
 BACKEND = Path(__file__).resolve().parents[1]
 OVERLAY = BACKEND / "overlays" / "tpcds.yaml"
+BY_HAND = BACKEND / "overlays" / "tpcds.relationships.yaml"
 SCHEMA = BACKEND / "warehouse" / "tpcds_schema.sql"
 
 # The number this step exists to pin. Not "roughly eighty" (Charter D-10,
@@ -79,11 +80,20 @@ needs_source = pytest.mark.skipif(
 
 
 def overlay_edges() -> list[Edge]:
-    """The edges as the application will meet them: read back from the YAML
-    with a real parser, split on the dot."""
+    """The 102 edges generated from tpcds_ri.sql, as the application will
+    meet them: read back from the YAML with a real parser, split on the dot.
+
+    The overlay also carries a few relationships declared by hand, which
+    tpcds_ri.sql omits and the catalog does not declare. This file is about
+    what the TPC's file says and what the database declares, so those are
+    left out here; tests/core/test_tpcds_overlay.py is where they are checked.
+    """
     document = yaml.safe_load(OVERLAY.read_text())
+    by_hand = yaml.safe_load(BY_HAND.read_text())["relationships"]
     edges = []
     for relationship in document["relationships"]:
+        if relationship in by_hand:
+            continue
         from_table, from_column = relationship["from"].split(".")
         to_table, to_column = relationship["to"].split(".")
         edges.append((from_table, from_column, to_table, to_column))
@@ -167,10 +177,13 @@ def test_the_two_statements_left_out_are_the_ones_the_tpc_commented_out() -> Non
 def test_the_overlay_on_disk_is_exactly_what_the_file_says() -> None:
     """The overlay is generated, never edited (DD-16). If the two disagree,
     one of them was touched by hand. Whole file, byte for byte: the
-    relationships from tpcds_ri.sql and the naming from its own source."""
+    relationships from tpcds_ri.sql, then the hand-declared ones and the
+    naming, each from its own source."""
     keys = ri.load()
 
-    assert OVERLAY.read_text() == ri.render_overlay(keys, ri.NAMING_FILE.read_text())
+    assert OVERLAY.read_text() == ri.render_overlay(
+        keys, ri.RELATIONSHIPS_FILE.read_text(), ri.NAMING_FILE.read_text()
+    )
     assert overlay_edges() == [(k.from_table, k.from_column, k.to_table, k.to_column) for k in keys]
 
 
@@ -335,10 +348,10 @@ def test_the_catalog_declares_the_seventeen_primary_keys(warehouse) -> None:
 
 
 def test_the_catalog_declares_the_same_foreign_keys_as_the_overlay(warehouse) -> None:
-    """FR-02's source against FR-43's. Every constraint applied on this
-    warehouse, so the two must be the same set -- which is what keeps the
-    founding claim literally true: the graph can be read from what the
-    database itself declares."""
+    """FR-02's source against FR-43's. Every constraint of tpcds_ri.sql
+    applied on this warehouse, so the catalog and the generated part of the
+    overlay must be the same set. The hand-declared relationships are in
+    neither: the database declares 102 edges, and the overlay adds the rest."""
     declared = catalog_keys(warehouse, "f")
 
     assert all(len(columns) == 1 and len(referenced) == 1 for _, columns, _, referenced in declared)

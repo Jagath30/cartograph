@@ -96,17 +96,24 @@ refuse "read-only role cannot reach the app database" \
 
 # A clean clone starts with an empty warehouse, and loading one takes minutes
 # and the duckdb CLI -- so an empty warehouse is a SKIP, and a loaded one is
-# held to the overlay generated from tpcds_ri.sql.
+# held to the overlay.
+#
+# The overlay holds two kinds of relationship. Those generated from
+# tpcds_ri.sql are applied as real constraints, so the catalog must declare
+# exactly that many. Those declared by hand are in no catalog; the
+# application must report exactly that many as coming from the overlay.
 stage "Warehouse (DR-01, DR-02)"
 wh_tables="$(wh_ro "select count(*) from pg_tables where schemaname = 'public'" 2>/dev/null || true)"
 if [[ "$wh_tables" == "0" ]]; then
   pending "warehouse is empty -- ./scripts/warehouse.sh loads it"
 else
   overlay_fks="$(grep -c '^  - from:' backend/overlays/tpcds.yaml)"
+  hand_fks="$(grep -c '^  - from:' backend/overlays/tpcds.relationships.yaml)"
+  generated_fks=$((overlay_fks - hand_fks))
   equal "24 tables" "24" "$wh_tables"
   equal "17 primary keys in the catalog" "17" \
     "$(wh_ro "select count(*) from pg_constraint where contype = 'p' and connamespace = 'public'::regnamespace" 2>/dev/null || true)"
-  equal "catalog declares the overlay's $overlay_fks foreign keys" "$overlay_fks" \
+  equal "catalog declares the $generated_fks foreign keys generated from tpcds_ri.sql" "$generated_fks" \
     "$(wh_ro "select count(*) from pg_constraint where contype = 'f' and connamespace = 'public'::regnamespace" 2>/dev/null || true)"
 fi
 
@@ -125,18 +132,18 @@ else
 fi
 
 # The application's own reading of the warehouse: SchemaIngestor as the
-# SELECT-only role, then GraphBuilder. "N catalog, 0 overlay" is the check
-# that matters -- an ingestor that saw no constraints would still report N
-# foreign keys, every one of them supplied by the overlay.
+# SELECT-only role, then GraphBuilder. The split by source is the check that
+# matters -- an ingestor that saw no constraints would still report the same
+# total, every one of them supplied by the overlay.
 stage "Schema ingestion (FR-02, FR-03, FR-43, DD-08)"
 if [[ "$wh_tables" == "0" ]]; then
   pending "warehouse is empty -- nothing to ingest"
 else
   ingested="$(docker compose exec -T backend python -m app.show_schema 2>/dev/null || true)"
-  contains "snapshot read from the catalog, keys included" \
-    "24 tables, 425 columns, 17 primary keys, $overlay_fks foreign keys ($overlay_fks catalog, 0 overlay)" "$ingested"
-  contains "graph built with $overlay_fks foreign key edges" \
-    "of which $overlay_fks foreign key edges" "$ingested"
+  contains "snapshot: $generated_fks keys from the catalog, $hand_fks from the overlay" \
+    "24 tables, 425 columns, 17 primary keys, $overlay_fks foreign keys ($generated_fks catalog, $hand_fks overlay)" "$ingested"
+  contains "graph built with edges for all $overlay_fks foreign keys" \
+    "foreign key edges for $overlay_fks foreign keys" "$ingested"
   contains "naming overlay applied to the descriptions" \
     " — " "$(grep '^naming' <<<"$ingested" || true)"
 fi
@@ -159,6 +166,16 @@ else
     bad "a strictly shorter route does not warn -- it did"
   else
     ok "a strictly shorter route does not warn"
+  fi
+  # A relationship no database declares: two columns, asserted in the overlay.
+  returned="$(docker compose exec -T backend python -m app.show_paths store_returns store_sales 2>/dev/null || true)"
+  contains "a return reaches its sale in one join, by an overlay edge" \
+    "store_returns.sr_ticket_number = store_sales.ss_ticket_number   source: overlay" \
+    "$(sed -n '/^chosen/,/^reason/p' <<<"$returned")"
+  if [[ "$returned" == *"WARNING"* ]]; then
+    bad "a return reaching its sale does not warn -- it did"
+  else
+    ok "a return reaching its sale does not warn"
   fi
 fi
 
