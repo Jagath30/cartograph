@@ -1,0 +1,87 @@
+# Readable names for the TPC-DS warehouse (DD-08, threat T-03).
+#
+# WRITTEN BY HAND, and the only place naming is edited. The generator copies
+# the block below, unchanged, into tpcds.yaml -- which is what the
+# application reads. After any edit here:
+#
+#     python3 backend/warehouse/ri.py write-overlay
+#
+# and a test fails until you do.
+#
+# prefixes   what a column prefix stands for. One per table: every column of
+#            store_sales begins ss_, every column of date_dim begins d_.
+# words      what one underscore-separated fragment stands for. A fragment
+#            with no entry is kept as it is, so nothing here has to be
+#            complete -- but every entry has to be true.
+#
+# Left out on purpose: `demo`. cd_demo_sk is a demographics key and
+# p_channel_demo is a promotion channel, and one entry cannot be right for
+# both.
+#
+# YAML reads a bare on, no, yes or off as a boolean. Quote such a key.
+
+naming:
+  prefixes:
+    cc_:  call center
+    cp_:  catalog page
+    cr_:  catalog returns
+    cs_:  catalog sales
+    c_:   customer
+    ca_:  customer address
+    cd_:  customer demographics
+    d_:   date
+    hd_:  household demographics
+    ib_:  income band
+    inv_: inventory
+    i_:   item
+    p_:   promotion
+    r_:   reason
+    sm_:  ship mode
+    s_:   store
+    sr_:  store returns
+    ss_:  store sales
+    t_:   time
+    w_:   warehouse
+    wp_:  web page
+    wr_:  web returns
+    ws_:  web sales
+    web_: web site
+
+  words:
+    # keys
+    sk:       key
+    id:       identifier
+    addr:     address
+    cdemo:    customer demographics
+    hdemo:    household demographics
+    promo:    promotion
+    cust:     customer
+    # money and measures
+    ext:      extended
+    amt:      amount
+    inc:      including
+    sq:       square
+    ft:       feet
+    # the calendar
+    moy:      month of year
+    qoy:      quarter of year
+    dom:      day of month
+    dow:      day of week
+    fy:       fiscal
+    ly:       last year
+    lq:       last quarter
+    seq:      sequence
+    gmt:      GMT
+    # everything else
+    rec:      record
+    desc:     description
+    mkt:      market
+    dep:      dependent
+    manufact: manufacturer
+    dmail:    direct mail
+    tv:       television
+    ad:       advertisement
+    char:     character
+    autogen:  automatically generated
+    shipto:   ship-to
+    dim:      dimension
