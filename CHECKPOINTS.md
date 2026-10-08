@@ -671,6 +671,329 @@ understood well enough to defend under questioning:
 scoring, anchors, expansion, both bounds — tuned against this set and
 never the other way round. The freeze binds from its first commit.
 
+## Step 6 in progress: retrieval — opened 8 October 2026
+
+No tag yet. This section is the step's working record: where it stands,
+what was decided before any code, and every tuning run. It becomes
+`checkpoint-06-retrieval` when the step closes.
+
+**Where the work stands.** Piece 0 of 11, this entry. No retrieval code
+exists. Nothing has been embedded. No evaluation question has been scored
+by anything.
+
+    0  this record                                     done
+    1  the step 6 judgement                            next; OWNER REVIEW after it
+    2  Retriever (pure)
+    3  evidence tie rule in the PathFinder
+    4  join tree for N anchors, subgraph bound
+    5  Alembic and the first migration
+    6  snapshot store
+    7  embedding adapter
+    8  SemanticIndex
+    9  runner, step 6 baseline at Design defaults      OWNER REVIEW after it
+    10 tuning runs, each logged below
+    11 close: smoke, suite, runner, tag
+
+The pure core (2 to 4) is written before anything that can produce a real
+score (5 to 8), so no rule or threshold is written after seeing a result.
+
+**The freeze is binding from this commit.** Two things are frozen:
+`backend/eval/questions.yaml`, no byte of which changes (sha256
+`a92f27c2...1100440`, pinned in `tests/core/test_eval_set.py`), and how a
+result is judged: `judge` and `judge_question` in `app/core/eval_set.py`.
+The runner may be extended to report retrieval. A judging rule may not be
+loosened, narrowed or reinterpreted. A disagreement with an expectation or
+a rule is reported to the owner and the work stops there.
+
+**Decisions made by the owner before the step began.** Not reopened.
+
+1. **Alembic starts now, not at step 8.** The first migration creates only
+   the three schema tables of Design section 06: `schema_snapshots`,
+   `schema_elements` (pgvector column, Postgres full-text search) and
+   `schema_edges`. `users`, `queries` and `traces` still arrive at step 8,
+   with `user_id` from the moment `queries` exists. Reason: step 6 tunes
+   alpha against Postgres full-text search itself; tuning against an
+   in-memory stand-in and swapping it at step 8 would invalidate the
+   tuning (T-04). DR-14 holds: no table is created or altered by hand.
+2. **Embeddings: OpenAI `text-embedding-3-small`**, through the IR-14
+   adapter. The SQL model is chosen at step 7, also OpenAI, through IR-13.
+   Price, confirmed by the owner: $0.02 per million input tokens.
+3. **The key is `OPENAI_API_KEY` in `.env`, which git ignores.** It never
+   appears in any output, log, trace, test, commit or message. It is never
+   printed, `.env` is never displayed or opened with a file-reading tool,
+   and no command that reveals environment values as a side effect is run
+   (`docker compose config`, `docker inspect`, `env`, `printenv`, `set`).
+   Whether the key reached the container is checked by presence only. The
+   key expires **9 October 2027**.
+4. **A clean clone without a key still starts** (criterion 7). Anything
+   that needs the key fails loudly with a clear message when it is absent;
+   nothing else breaks.
+
+**Cost and network rules.** CI never calls OpenAI; tests use a fake
+embedding adapter. A test that calls the real API is skipped unless the
+key is present and `RUN_PAID_TESTS=1`. Embeddings are computed once per
+schema snapshot and stored; re-running the evaluation never embeds the
+schema again. Every embedding call logs its token count and cost. All
+installs go into the backend image through `requirements.txt` and
+`docker compose build`; tests run inside the container; nothing is
+installed on the host.
+
+**Tuning rules.** Every tuning run is recorded below: what changed, the
+parameter values, the full runner result. No rule, weight, keyword,
+synonym or special case exists only to make one question pass. No naming
+entry is derived from the wording of the evaluation questions; a change to
+the naming overlay is justified from the TPC-DS schema and the
+justification recorded. No overlay relationship is removed, weakened or
+reordered to change a result. The Design's defaults stand unless the log
+shows a clear, general improvement. With sixteen questions, a difference
+of one is noise, and every report says so.
+
+**A finding made while planning, before any ruling.** Under the frozen
+step 5 judging, at most 11 of the 16 questions can ever read MATCH,
+whatever step 6 builds. Questions 8, 13 and 15 are not `checkable` at step
+5, and `judge_question` returns "not evaluable" for them unconditionally.
+Questions 9 and 14 carry a warning whose category is `no_mechanism` in the
+frozen file, so the best they can reach is "expected failure unexpectedly
+passed". The set says all five are `evaluable_from: 6` and no rule said
+how. Ruling g below is the answer.
+
+### The owner's rulings on what the Design does not settle
+
+Given 8 October 2026 on the plan's nine open questions, before any code.
+
+**Two corrections to the plan.** Piece 5: `alembic upgrade head` runs in
+the backend container's command, before uvicorn starts (`alembic upgrade
+head && exec uvicorn ...`), never inside the application's startup event:
+one process, in sequence, and nothing migrates as a side effect of
+importing the app. Piece 6: the expected node and edge counts are
+measured, not quoted. The plan said 527 edges, a figure that predates the
+five overlay relationships; with their eight column pairs the owner
+expects 535. The test compares the graph rebuilt from rows against what
+live ingestion produces, element for element.
+
+**Two review stops.** After piece 1, before any retrieval code: the step 6
+judgement is the instrument, and the owner reviews it before anything is
+measured with it. After piece 9, with the step 6 baseline at Design
+defaults, before any tuning run.
+
+**a. Question evidence may break a path tie. AMENDMENT TO DD-12.** DD-12's
+rule, restated in its own terms with the new part:
+
+1. Shortest path wins. Fewest edges.
+2. Among tied shortest paths, an operator's declared preference wins, if
+   it names exactly one of them.
+3. **New.** Otherwise, if the question's own wording scores one tied path
+   above every other by more than the margin, that path wins. The rule is
+   recorded as `question_evidence`.
+4. Otherwise the tie breaks alphabetically, by table names and then column
+   names, and the trace says the choice was arbitrary.
+
+Conditions the owner set. It applies only among tied shortest routes and
+never promotes a longer one. When evidence decides, no `arbitrary_choice`
+fires (DD-21: the selection had a basis), and the reason names the scores
+and the routes not taken. The margin's method is fixed here, below; its
+value is computed from schema-only statistics once the schema embeddings
+exist and before any evaluation question is embedded; it is not in the
+tuning grid and is never adjusted to make question 2 pass or question 3
+warn.
+
+Why this stays clear of what Charter D-06 rejects. D-06 rejects
+cardinality scoring and heuristics favouring fact tables: assumptions
+about a business compiled into the tool. This rule uses nothing about the
+kind of table, its size or its position in the schema. Its only input is
+what the person asking wrote. It applies only where rule 1 and rule 2 had
+nothing to say, and it reports its scores and the routes not taken, so the
+reader can still say "no, I meant the other one". The cost D-06 names is
+real and accepted: a selector that looks cleverer is checked less.
+
+**b. N anchors become one tree by nearest attachment.** Start from a seed;
+repeatedly attach the remaining anchor that is fewest joins from any table
+already in the tree; ties among attachment routes go to rule 2, 3, then 4
+above. The seed is deterministic: the highest-scoring anchor, ties broken
+alphabetically. The order in which anchors were attached is recorded in
+the result. `multi_anchor` fires only when an anchor could attach at two
+different places equally well and only the alphabet chose. Protected set:
+the anchors and the tables on the selected tree. Tables on tied
+alternatives are kept while the subgraph bound allows and are the first
+cut, the cut recorded. Rejected: connecting every pair of anchors (adds
+joins no correct answer makes), a fact table as hub, and ranking by fewest
+pivots (both D-06). **Accepted risk:** question 1 matches today and may
+not afterwards. `date_dim` attaches to `store_sales` or to `store` (by
+`s_closed_date_sk`) in one join each. If that materialises it is reported
+plainly. Question 16 has the same shape three ways.
+
+**c. Anchor ambiguity.** The Retriever's choice between two candidates in
+different tables is ambiguous when their scores differ by less than a's
+margin **and** choosing the rival would change the tree. It picks one,
+warns `anchor_ambiguity`, and names the rival. It never makes both
+anchors.
+
+**d. Decline (FR-42), approved in part.** Two conditions, both grounded in
+the Design: no element scores above the floor; or the anchors cannot be
+connected within the hop limit (DD-10). The floor's method is fixed here,
+below, and its value computed from schema-only statistics like a's margin,
+on raw similarity and never on normalised scores. **Refused:** a per-term
+coverage rule as a decline trigger. Generic verbs such as "increase" and
+"compare" match nothing adequately and would decline answerable questions,
+and it is the rule most tempting to tune. Unmatched terms are recorded in
+the result as information instead. If question 15 stays red at step 6 it
+is reported; step 7's generation stage can still decline through IR-05's
+question-not-answerable code.
+
+**e. `schema_edges`.** One row per column pair, with a key number and a
+position grouping the pairs of one foreign key. The constraint name and
+the note repeat on each row of a key; the duplication on the three
+two-column keys is accepted. Preferences stay in the overlay file and are
+not stored (carried forward, item 51).
+
+**f. Tables are embedded.** A table's description is derived from the
+schema alone and is never hand-written: anything written by hand now would
+be written knowing the questions. A table's score is the better of its own
+row and its best column. The bias this gives wide tables is watched in the
+tuning log.
+
+**g. An additive step 6 judgement.** Written and committed in piece 1,
+before any retrieval exists, leaving `questions.yaml` and the step 5
+judging untouched. Two precisions. The tables compared are those of the
+selected join tree after expansion, not the anchors: bridging tables such
+as `store_sales` may score badly and arrive only through expansion (DD-10).
+Tables kept on tied alternatives inside the subgraph bound do not count. A
+pair check at step 6 is judged on the path between its two tables within
+the selected tree. The step 5 report stays exactly as it is, pairwise, and
+the two are shown side by side.
+
+**h. Terms.** The question's content words, plus bigrams of adjacent
+content words, so that "income band" and "web pages" survive. The stopword
+list is a standard published one, used unmodified, and may not be edited
+with the evaluation questions in view.
+
+**i. Normalisation.** Min-max per query, for ranking. If every score of
+one kind is equal, as when no keyword matches at all, that signal
+normalises to 0 for every candidate, never to 1 and never to NaN; this is
+tested explicitly, being the silent failure DD-09 names. Absolute
+decisions, such as the decline floor, use raw scores. Both kinds are
+recorded in the result.
+
+**Obvious decisions, taken and told; all stand.**
+- **Exact vector search, no approximate index.** At a few hundred rows a
+  sequential scan is exact and instant, and an approximate index could
+  change a ranking between two runs of the same question. This departs
+  from figure 4 of the Design, which shows a pgvector index.
+- Vectors cross to Postgres as text literals cast to `vector`. No
+  `pgvector` or `numpy` Python package.
+- Question and term vectors are cached in a gitignored file keyed by model
+  and text, so an alpha sweep costs nothing and repeats exactly.
+- No change to the naming overlay is planned. `demo` stays unexpanded.
+- `alembic` and `sqlalchemy` are added to `requirements.txt`; both are on
+  the stack sheet (Charter C-01).
+
+### Methods fixed in advance
+
+Written on 8 October 2026, before any embedding exists and before any
+evaluation question has been scored. The values these methods produce are
+computed mechanically and recorded below when the schema embeddings exist
+(piece 8). Neither method reads the evaluation set. Neither value is
+adjusted afterwards, for any reason; if a value turns out to be a bad one,
+that is reported and it stays.
+
+**Pseudo-questions.** Both methods need text that stands in for a question
+without being one. It is the schema's own readable names (DD-08): the
+`readable` string of every table and every column, such as "store sales —
+extended sales price". A pseudo-question is scored exactly as a question
+is scored, by the same code, with one exception: the elements of the
+pseudo-question's own table are left out of the candidates, so it is never
+compared with itself.
+
+**The margin (rulings a and c).** *What it must mean:* a difference in
+score between two rival candidates that is too small to act on.
+*Method:* take every pair of sibling keys, that is, two foreign keys from
+the same table to the same table (`cs_bill_addr_sk` and `cs_ship_addr_sk`
+are one pair). For each pair, and for every pseudo-question drawn from a
+table that is neither end of that pair, take the absolute difference
+between the two key columns' combined scores. Those pseudo-questions are
+about something else, so whatever difference they produce between the two
+siblings is noise. **The margin is the 95th percentile of those
+differences.** Evidence decides a tie only by more than that. The combined
+score depends on alpha, so the margin is computed by this same method at
+every alpha in the grid below, all of them before any evaluation question
+is embedded, and each run uses the value belonging to its alpha. 95 is the
+conventional level for "unlikely to be chance" and was chosen before any
+number was seen.
+
+**The floor (ruling d).** *What it must mean:* a raw similarity no better
+than what two unrelated things score. *Method:* take every pseudo-question
+and every element in a table that has no foreign key, in either direction,
+to the pseudo-question's own table; take the raw cosine similarity of each
+such pair. **The floor is the median of those similarities.** A question
+is declined when its best raw similarity to any element is at or below it.
+The same floor marks a term as unmatched, which is information only. The
+median, not a high percentile, because the two errors are not alike: a
+false decline refuses a question the warehouse can answer, and the claim
+"the best match is no better than a typical unrelated pair" is the weakest
+one that still means something.
+
+*Known weakness of both, stated now.* Schema names are not phrased like
+questions. Similarities between two formulaic names may run higher or
+lower than between a question and a name, in which case the floor is
+miscalibrated in a direction nobody can know before measuring. If the
+floor declines answerable questions, that is a result and is reported.
+
+**Terms (ruling h), made exact.** A content word is a word of the question
+that the stopword list does not hold. A bigram is two content words with
+nothing between them in the question: "income band" is one, and two
+content words separated by a stopword are not. The stopword list is the
+Snowball English list as PostgreSQL ships it (`english.stop`, the list its
+`english` text-search configuration uses), read through the database's
+own configuration and never copied into this repository, so there is no
+copy here to edit. Using Postgres's list also means the words the keyword
+search ignores and the words the term list ignores are the same words.
+
+**The tuning protocol.** The baseline is run first, at the defaults, and
+reviewed by the owner before anything else is run.
+
+    alpha            0.5     grid 0, 0.25, 0.5, 0.75, 1        (DD-09)
+    subgraph bound   10      changed only if the log shows it binding (DD-11)
+    max joins        3       unchanged from step 4
+    anchor cap       5       see the open question below
+    anchor cut       0.5     see the open question below
+    margin           by the method above; not in the grid
+    floor            by the method above; not in the grid
+
+A setting replaces a default only if it improves at least two questions,
+worsens none, and its neighbours in the grid move the same way; an
+isolated peak is noise. Every run is logged whether or not it is kept.
+
+**Open, awaiting a ruling: how many anchors.** DD-11 says the anchor bound
+is "how many scored tables are proposed as anchors" and no ruling covers
+how that number is reached for one question. A fixed count would propose
+five anchors for a two-table question, and ruling g compares the tree's
+tables with the expected ones, so every such question would disagree.
+Proposed, not yet approved: a table is an anchor when its normalised
+combined score is at least the cut, 0.5 by default as the midpoint of the
+normalised range, up to a cap of five, the number of anchors in the
+Design's own worked example; the cut in the grid at 0.3, 0.4, 0.5, 0.6 and
+0.7. It is the knob most able to move the result and is raised at the
+first review stop. Nothing depends on it before piece 2.
+
+### Tuning log
+
+Empty. No run has been made.
+
+### To dissect (running, step 6)
+
+- why the step 6 judgement is committed before the Retriever exists, and
+  what the history can prove that one commit holding both could not
+- the 11-of-16 ceiling: read `judge_question` and find the two lines that
+  cause it
+- the DD-12 amendment: which of its four rules can fire `arbitrary_choice`
+  and which cannot, and why evidence sits below a declared preference
+- why the margin is measured between *sibling* keys under *unrelated*
+  pseudo-questions, and what each of those two words excludes
+- why the margin is a 95th percentile and the floor a median
+- why a pseudo-question leaves its own table out of the candidates
+- min-max normalisation, and what it does to a signal that is the same for
+  every candidate
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
@@ -871,3 +1194,12 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     not what it reported. A PathFinder regression that turned matches into
     mismatches would pass smoke; it is caught only by reading the report
     against the step 5 baseline above.
+51. Preferences are not stored with a schema snapshot (ruling e, step 6).
+    The three schema tables hold tables, columns, keys and edges; a
+    declared preference is re-read from the overlay file whenever the
+    graph is built from stored rows. The TPC-DS overlay declares none, so
+    nothing is lost today. A stored snapshot whose overlay later changes
+    its preferences would be rebuilt with the new ones.
+52. Exact vector search, no pgvector index (step 6). Figure 4 of the
+    Design shows one. Revisit only if a schema of thousands of elements
+    appears; NFR-05's fifty tables and five hundred columns do not need it.
