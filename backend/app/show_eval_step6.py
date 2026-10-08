@@ -195,10 +195,10 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
         matched = [term.term.text for term in retrieval.terms if term.matched]
         _line("terms", f"{', '.join(matched) or 'none'}; at or below the floor: "
                        f"{', '.join(retrieval.unmatched_terms) or 'none'}")  # fmt: skip
-        _line("top tables", ", ".join(
+        _line("tables", ", ".join(
             f"{entry.table} {entry.score:.3f} (by {entry.best.split('.')[-1]})" for entry in retrieval.tables[:6]
         ))  # fmt: skip
-        _line("top columns", ", ".join(
+        _line("columns", ", ".join(
             f"{c.element} {c.combined:.3f} [sem {c.semantic_raw:.3f}, key {c.keyword_raw:.3f}]"
             for c in [candidate for candidate in retrieval.candidates if candidate.column][:4]
         ))  # fmt: skip
@@ -216,7 +216,7 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
             _line("anchors", f"{len(retrieval.anchors)}: "
                              + (", ".join(f"{a} {retrieval.score_of(a):.3f}" for a in retrieval.anchors) or "none"))  # fmt: skip
             _line("set aside", aside or "none")
-            _line("cap left out", ", ".join(bound.excluded_by_cap) or "none")
+            _line("cap cut", ", ".join(bound.excluded_by_cap) or "none")
 
         tree = located.tree
         if tree is not None and located.declined:
@@ -271,7 +271,7 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
                 _line("", f"{warning.code}: {warning.text}")
 
         if verdict.checks:
-            _line("pair checks", "; ".join(
+            _line("checks", "; ".join(
                 f"{_LABEL[check_verdict.status]} {check.between[0]} to {check.between[1]}"
                 for check, check_verdict in zip(question.checks, verdict.checks)
             ) + "  (information only)")  # fmt: skip

@@ -518,7 +518,7 @@ to the owner before any file was written. His rulings at that gate:
         MATCH  store_sales to household_demographics
         question: EXPECTED FAILURE CONFIRMED (nothing raised anchor_ambiguity)
 
-    10  Which web site sells most, and by which shipping method?
+    10  Which web site sells most, and by which shipping method? next
         expects warning: none; fully evaluable from step 5
         MATCH  web_sales to web_site
         MATCH  web_sales to ship_mode
@@ -677,12 +677,11 @@ No tag yet. This section is the step's working record: where it stands,
 what was decided before any code, and every tuning run. It becomes
 `checkpoint-06-retrieval` when the step closes.
 
-**Where the work stands.** Pieces 0 to 8 are committed. The schema is
-stored and embedded once. The margin and the floor are computed and
-committed (`backend/eval/calibration.json`). THE STEP 6 JUDGEMENT IS
-FROZEN like the step 5 one: `app/core/eval_step6.py` changes only on the
-owner's ruling. No evaluation question has been embedded or scored by
-anything.
+**Where the work stands.** Pieces 0 to 9 are committed and the work is
+STOPPED FOR THE OWNER'S REVIEW of the step 6 baseline, before any tuning
+run. The baseline, at the Design's defaults: all sixteen questions are
+declined by the floor; 1 agrees, 15 disagree. See piece 9 and run 0 of
+the tuning log. THE STEP 6 JUDGEMENT IS FROZEN like the step 5 one.
 
     0  this record                                  done
     1  the step 6 judgement                         done; reviewed; frozen
@@ -693,8 +692,8 @@ anything.
     6  snapshot store                               done
     7  embedding adapter                            done
     8  SemanticIndex                                done
-    9  runner, step 6 baseline at Design defaults   next; OWNER REVIEW after it
-    10 tuning runs, each logged below
+    9  runner, step 6 baseline at Design defaults   done; OWNER REVIEW
+    10 tuning runs, each logged below               next
     11 close: smoke, suite, runner, tag
 
 The pure core (2 to 4) is written before anything that can produce a real
@@ -1587,9 +1586,439 @@ returned the first time. **One survived:** with the snapshot filter gone
 from the scoring query every test passed, because no test had two
 snapshots. One now does. Nine against the calibration, all caught at once.
 
+### Piece 9: the runner, and the step 6 baseline — 8 October 2026
+
+**What exists.** `python -m app.show_eval --step6` prints the step 5
+report, unchanged by a byte, and then the step 6 report: every question
+scored, located and judged by the frozen step 6 judgement.
+`app/core/locate.py`, pure, runs the Retriever, the JoinTree and the
+Explainer in order (9 tests). The margin and the floor are read from the
+committed calibration and are not arguments; the report refuses to run
+unless the live warehouse, the stored snapshot and the calibration are one
+schema, and refuses an alpha the margin was not computed for. The runner
+was committed (`e3a69d1`) before it was first run. 423 tests in the
+container (422 pass, the paid one skips); 371 pass and 52 skip with both
+database URLs and the key unset.
+
+**STOPPED HERE FOR THE OWNER'S REVIEW. No tuning run has been made.**
+
+**Not built, and said so.** The plan promised a `show_retrieval "question"`
+command at this piece, for putting one question of one's own through
+retrieval. It is not written: the step 6 report prints the same detail for
+each question of the set, and the per-question block has to be lifted out
+of the report before a second command can share it. Deferred to after the
+review, not dropped.
+
+**The baseline, in one line.** At the Design's defaults every one of the
+sixteen questions is declined by the floor. One agrees, question 15, and
+it agrees for no reason worth having: it is declined because everything
+is. Fifteen disagree, all on "decline". No anchor was chosen, no tree was
+built, and the Retriever's ranking, the evidence rule, the join tree and
+both new warnings were not exercised on a single question.
+
+**This is the concern recorded at piece 8, before any question was
+embedded, and it materialised in full.** The floor is 0.5726. The best
+raw similarity of the sixteen questions to any element runs from 0.336 to
+0.533. Schema names score higher against one another than an English
+question scores against any of them, so a floor measured between schema
+names sits above every question. The method was fixed in advance and
+corrected once by the owner, also in advance; neither version could have
+known this, and the value has not been touched.
+
+**What must NOT be done with what the baseline shows, said plainly.** The
+sixteen best raw similarities are now on the page. Question 15, the one
+that should be declined, has the lowest of them, 0.336; the fifteen
+answerable ones start at 0.399. A floor placed between those two numbers
+would decline exactly question 15 and nothing else, and it would be a
+number chosen because I know the questions: the definition of what the
+tuning rules forbid. A gap of 0.06 between one question and the next,
+out of sixteen, is also well inside what chance produces. I have not run
+it and do not recommend it.
+
+**What the owner has to decide.** The decline floor as built cannot stay
+and be useful, and every replacement is now chosen with these sixteen
+numbers in view. The options as I see them:
+
+1. **Keep the floor as it is.** Honest and useless: step 6 measures
+   nothing.
+2. **Withdraw the floor condition at step 6.** Decline then rests on the
+   one remaining condition the Design grounds, anchors that cannot be
+   connected (DD-10), and on step 7's question-not-answerable code. No
+   threshold is fitted. Question 15 will very probably not be declined,
+   and is reported red. The rest of the pipeline becomes measurable. This
+   is what I recommend.
+3. **A new floor method justified without the sixteen numbers**, for
+   example from a second, separate set of probe questions, answerable and
+   not, written by the owner and never used for anything else. Principled,
+   and it costs a new artefact and a new freeze.
+4. A floor from a lower percentile of the same schema-only bests (the 5th
+   is 0.332). It is one line to change, and it is the option that only
+   looks principled: the percentile would be picked knowing where question
+   15 sits.
+
+**What the baseline does show, as information and not as results.** For
+each question the report lists the tables and columns that scored highest
+before the decline. Nothing was built from them, so nothing below is a
+measurement of retrieval:
+- The keyword half is nearly flat within a table. Every column of
+  `store_sales` has the same small text rank for a question containing
+  "store", because every description ends "in table store_sales" and
+  begins "store sales". That text is DD-08's, and the effect is that the
+  keyword score mostly says which table, not which column.
+- Key columns rank high. `ss_promo_sk`, `ws_item_sk`, `sr_reason_sk` lead
+  several questions. DD-11 expected the opposite ("they score terribly").
+  The readable names from step 3 ("promotion surrogate key") are why.
+- Timing, all vectors cached: scoring a question and its terms, median
+  173 ms, largest 264 ms; retrieval and the tree, median 32 ms, largest
+  63 ms. On the first run, with 110 texts embedded through the API, the
+  median was 881 ms and the largest 1,481 ms. NFR-02 allows one second
+  for retrieval and path finding "excluding the model call"; whether the
+  embedding call is the model call is for the owner to say.
+
+**Things decided while building pieces 2 to 9 that this review should
+see**, each recorded under its piece above:
+- ruling c located at the term: nominee, rival, set aside (piece 2);
+- no table at the anchor cut means no anchors and is not a decline
+  (piece 2);
+- a tied path is scored by the mean of its telling columns (piece 3);
+- `arbitrary_choice` against `multi_anchor` by where the tied candidates
+  attach; `many_to_many` read off the tree; `anchor_ambiguity` only for a
+  table actually set aside and absent from the tree (piece 4);
+- key columns left out of a table's search text (piece 6);
+- `ts_rank` with default normalisation; words joined by OR (piece 8).
+
+**Paid calls, all of step 6 to date.**
+
+    the paid adapter test          2 texts      9 tokens   $0.00000018
+    the schema, once             449 texts  6,617 tokens   $0.00013234
+    the readable names, once     449 texts  2,253 tokens   $0.00004506
+    the questions and terms      110 texts    330 tokens   $0.00000660
+    total                                   9,209 tokens   $0.00018418
+
+A second run of the baseline embedded nothing and printed the same report,
+the timing and cost lines apart.
+
 ### Tuning log
 
-Empty. No run has been made.
+Every run of `python -m app.show_eval --step6`, with what changed, the
+parameter values and the step 6 report in full. The step 5 report printed
+above it is the baseline recorded at checkpoint-05 on every run, byte for
+byte, and is not repeated here.
+
+**Run 0: the baseline. 8 October 2026. Nothing changed: the Design's
+defaults.** alpha 0.5; anchor cut 0.5; anchor cap 5; subgraph bound 10;
+max joins 3; margin 0.107051 and floor 0.572581 by calibration. Kept in
+`backend/eval/baseline_step6.txt`. Result: 1 agree, 15 disagree; all
+sixteen declined by the floor; anchors per question 0 for all. NOT A
+TUNING RUN. Reviewed by the owner before any is made.
+
+
+    ====================================================================================================
+    STEP 6: retrieval and the join tree, judged on the tree as a whole
+    ====================================================================================================
+    settings    alpha 0.5; anchor cut 0.5, cap 5; subgraph bound 10; routes of up to 3 joins
+    fixed       margin 0.107051 (for this alpha); floor 0.572581. From eval/calibration.json, computed 2026-10-08
+                from the schema alone, before any question was embedded. Not tuned.
+    snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4302547; embedded with text-embedding-3-small
+
+     1  How much did each store sell last year?
+        step 5: MATCH    |    step 6: DISAGREES  -- differs in: decline
+        best raw   0.4616 (store_sales.ss_quantity); floor 0.5726: AT OR BELOW THE FLOOR
+        terms      none; at or below the floor: much, store, sell, last, year, store sell, sell last, last year
+        tables     store_sales 0.719 (by ss_quantity), store_returns 0.634 (by store_returns), store 0.617 (by
+                     store), date_dim 0.607 (by date_dim), catalog_returns 0.502 (by catalog_returns), customer
+                     0.491 (by customer)
+        columns    store_sales.ss_quantity 0.719 [sem 0.462, key 0.015], store_sales.ss_net_profit 0.714 [sem
+                     0.457, key 0.015], store_sales.ss_sales_price 0.706 [sem 0.451, key 0.015],
+                     store_sales.ss_wholesale_cost 0.700 [sem 0.446, key 0.015]
+        DECLINED   no element of the schema scores above the floor (FR-42). No anchors, no tree.
+        expected   store_sales, store, date_dim
+                   missing: date_dim, store, store_sales; extra: none
+        exp. joins store_sales.ss_store_sk = store.s_store_sk
+                   store_sales.ss_sold_date_sk = date_dim.d_date_sk
+        warnings   none; expected: none
+
+     2  Which states are our catalog customers billed in?
+        step 5: MISMATCH    |    step 6: DISAGREES  -- differs in: decline
+        best raw   0.4785 (catalog_sales.cs_net_paid_inc_ship_tax); floor 0.5726: AT OR BELOW THE FLOOR
+        terms      catalog; at or below the floor: states, customers, billed, catalog customers, customers billed
+        tables     catalog_sales 0.889 (by cs_bill_cdemo_sk), customer_address 0.788 (by ca_state), catalog_returns
+                     0.699 (by cr_refunded_cdemo_sk), web_sales 0.586 (by ws_bill_cdemo_sk), catalog_page 0.560 (by
+                     cp_catalog_number), customer 0.514 (by c_birth_country)
+        columns    catalog_sales.cs_bill_cdemo_sk 0.889 [sem 0.393, key 0.049], catalog_sales.cs_bill_customer_sk
+                     0.888 [sem 0.393, key 0.049], customer_address.ca_state 0.788 [sem 0.434, key 0.034],
+                     catalog_sales.cs_bill_addr_sk 0.768 [sem 0.419, key 0.034]
+        DECLINED   no element of the schema scores above the floor (FR-42). No anchors, no tree.
+        expected   catalog_sales, customer_address
+                   missing: catalog_sales, customer_address; extra: none
+        exp. joins catalog_sales.cs_bill_addr_sk = customer_address.ca_address_sk
+        warnings   none; expected: none
+
+     3  Where are our catalog customers located?
+        step 5: MATCH    |    step 6: DISAGREES  -- differs in: decline
+        best raw   0.4559 (catalog_sales.cs_ship_cdemo_sk); floor 0.5726: AT OR BELOW THE FLOOR
+        terms      catalog; at or below the floor: customers, located, catalog customers, customers located
+        tables     catalog_sales 1.000 (by cs_ship_cdemo_sk), catalog_returns 0.991 (by cr_returning_cdemo_sk),
+                     customer_address 0.953 (by customer_address), catalog_page 0.802 (by catalog_page), customer
+                     0.700 (by customer), customer_demographics 0.637 (by customer_demographics)
+        columns    catalog_sales.cs_ship_cdemo_sk 1.000 [sem 0.456, key 0.046],
+                     catalog_returns.cr_returning_cdemo_sk 0.991 [sem 0.449, key 0.046],
+                     catalog_sales.cs_ship_customer_sk 0.972 [sem 0.434, key 0.046], catalog_sales.cs_bill_cdemo_sk
+                     0.964 [sem 0.427, key 0.046]
+        DECLINED   no element of the schema scores above the floor (FR-42). No anchors, no tree.
+        expected   catalog_sales, customer_address
+                   missing: catalog_sales, customer_address; extra: none
+        exp. joins one of: catalog_sales.cs_bill_addr_sk = customer_address.ca_address_sk  |
+                     catalog_sales.cs_ship_addr_sk = customer_address.ca_address_sk
+        warnings   none; expected: arbitrary_choice
+
+     4  What were the top-selling item categories on the web in Q4 2002?
+        step 5: MISMATCH    |    step 6: DISAGREES  -- differs in: decline
+        best raw   0.4186 (web_sales); floor 0.5726: AT OR BELOW THE FLOOR
+        terms      none; at or below the floor: top, selling, item, categories, web, q4, 2002, top selling, selling
+                     item, item categories, q4 2002
+        tables     web_sales 0.840 (by ws_item_sk), item 0.804 (by item), web_returns 0.749 (by wr_item_sk),
+                     web_site 0.586 (by web_mkt_class), web_page 0.544 (by web_page), catalog_sales 0.510 (by
+                     cs_item_sk)
+        columns    web_sales.ws_item_sk 0.840 [sem 0.356, key 0.017], web_returns.wr_item_sk 0.749 [sem 0.285, key
+                     0.017], web_sales.ws_list_price 0.722 [sem 0.409, key 0.009], web_sales.ws_net_profit 0.719
+                     [sem 0.407, key 0.009]
+        DECLINED   no element of the schema scores above the floor (FR-42). No anchors, no tree.
+        expected   web_sales, item, date_dim
+                   missing: date_dim, item, web_sales; extra: none
+        exp. joins web_sales.ws_item_sk = item.i_item_sk
+                   web_sales.ws_sold_date_sk = date_dim.d_date_sk
+        warnings   none; expected: none
+
+     5  What reasons do customers give when returning items to stores?
+        step 5: MATCH    |    step 6: DISAGREES  -- differs in: decline
+        best raw   0.4831 (store_returns); floor 0.5726: AT OR BELOW THE FLOOR
+        terms      none; at or below the floor: reasons, customers, give, returning, items, stores, customers give,
+                     returning items
+        tables     store_returns 0.913 (by sr_reason_sk), catalog_returns 0.796 (by catalog_returns), web_returns
+                     0.620 (by wr_refunded_cdemo_sk), store_sales 0.607 (by ss_item_sk), reason 0.545 (by reason),
+                     store 0.469 (by store)
+        columns    store_returns.sr_reason_sk 0.913 [sem 0.397, key 0.035], store_returns.sr_customer_sk 0.884 [sem
+                     0.369, key 0.035], store_returns.sr_cdemo_sk 0.877 [sem 0.361, key 0.035],
+                     store_returns.sr_item_sk 0.865 [sem 0.350, key 0.035]
+        DECLINED   no element of the schema scores above the floor (FR-42). No anchors, no tree.
+        expected   store_returns, reason
+                   missing: reason, store_returns; extra: none
+        exp. joins store_returns.sr_reason_sk = reason.r_reason_sk
+        warnings   none; expected: none
+
+     6  How does store revenue compare with catalog revenue for the same items?
+        step 5: MISMATCH    |    step 6: DISAGREES  -- differs in: decline
+        best raw   0.5330 (catalog_sales.cs_net_profit); floor 0.5726: AT OR BELOW THE FLOOR
+        terms      catalog; at or below the floor: store, revenue, compare, items, store revenue, revenue compare,
+                     catalog revenue
+        tables     catalog_returns 0.961 (by cr_store_credit), catalog_sales 0.925 (by cs_item_sk), store_sales
+                     0.895 (by ss_item_sk), store_returns 0.826 (by sr_item_sk), catalog_page 0.684 (by
+                     catalog_page), store 0.609 (by s_tax_percentage)
+        columns    catalog_returns.cr_store_credit 0.961 [sem 0.495, key 0.027], catalog_sales.cs_item_sk 0.925
+                     [sem 0.461, key 0.027], catalog_returns.cr_item_sk 0.902 [sem 0.438, key 0.027],
+                     store_sales.ss_item_sk 0.895 [sem 0.431, key 0.027]
+        DECLINED   no element of the schema scores above the floor (FR-42). No anchors, no tree.
+        expected   store_sales, catalog_sales, item
+                   missing: catalog_sales, item, store_sales; extra: none
+        exp. joins store_sales.ss_item_sk = item.i_item_sk
+                   catalog_sales.cs_item_sk = item.i_item_sk
+        warnings   none; expected: many_to_many
+
+     7  Which warehouses held the least stock of each item at the latest inventory date?
+        step 5: MATCH    |    step 6: DISAGREES  -- differs in: decline
+        best raw   0.4484 (inventory); floor 0.5726: AT OR BELOW THE FLOOR
+        terms      warehouses, inventory, inventory date; at or below the floor: held, least, stock, item, latest,
+                     date, warehouses held, least stock, latest inventory
+        tables     inventory 0.875 (by inv_warehouse_sk), item 0.854 (by item), warehouse 0.769 (by warehouse),
+                     store 0.577 (by store), web_sales 0.576 (by ws_warehouse_sk), catalog_sales 0.570 (by
+                     cs_warehouse_sk)
+        columns    inventory.inv_warehouse_sk 0.875 [sem 0.414, key 0.017], inventory.inv_date_sk 0.825 [sem 0.377,
+                     key 0.017], inventory.inv_item_sk 0.810 [sem 0.366, key 0.017], warehouse.w_warehouse_id 0.738
+                     [sem 0.436, key 0.010]
+        DECLINED   no element of the schema scores above the floor (FR-42). No anchors, no tree.
+        expected   inventory, warehouse, item, date_dim
+                   missing: date_dim, inventory, item, warehouse; extra: none
+        exp. joins inventory.inv_warehouse_sk = warehouse.w_warehouse_sk
+                   inventory.inv_item_sk = item.i_item_sk
+                   inventory.inv_date_sk = date_dim.d_date_sk
+        warnings   none; expected: none
+
+     8  Did our promotions increase sales?
+        step 5: NOT EVALUABLE AT STEP 5    |    step 6: DISAGREES  -- differs in: decline
+        best raw   0.4086 (promotion); floor 0.5726: AT OR BELOW THE FLOOR
+        terms      none; at or below the floor: promotions, increase, sales, promotions increase, increase sales
+        tables     store_sales 0.970 (by ss_promo_sk), web_sales 0.922 (by ws_promo_sk), catalog_sales 0.919 (by
+                     cs_promo_sk), promotion 0.816 (by promotion), customer 0.493 (by c_first_sales_date_sk),
+                     customer_demographics 0.275 (by cd_purchase_estimate)
+        columns    store_sales.ss_promo_sk 0.970 [sem 0.385, key 0.046], web_sales.ws_promo_sk 0.922 [sem 0.346,
+                     key 0.046], catalog_sales.cs_promo_sk 0.919 [sem 0.344, key 0.046], promotion.p_channel_dmail
+                     0.767 [sem 0.400, key 0.025]
+        DECLINED   no element of the schema scores above the floor (FR-42). No anchors, no tree.
+        expected   promotion + one of store_sales, catalog_sales, web_sales
+                   missing: promotion, one of store_sales/catalog_sales/web_sales; extra: none
+        exp. joins one of: store_sales.ss_promo_sk = promotion.p_promo_sk  |  catalog_sales.cs_promo_sk =
+                     promotion.p_promo_sk  |  web_sales.ws_promo_sk = promotion.p_promo_sk
+        warnings   none; expected: anchor_ambiguity
+
+     9  What is the average number of dependents in households that shop at our stores?
+        step 5: EXPECTED FAILURE CONFIRMED    |    step 6: DISAGREES  -- differs in: decline
+        best raw   0.5088 (household_demographics.hd_dep_count); floor 0.5726: AT OR BELOW THE FLOOR
+        terms      households; at or below the floor: average, number, dependents, shop, stores, average number
+        tables     household_demographics 0.904 (by hd_dep_count), store_sales 0.841 (by ss_hdemo_sk),
+                     store_returns 0.804 (by sr_hdemo_sk), store 0.796 (by s_number_employees),
+                     customer_demographics 0.697 (by customer_demographics), catalog_sales 0.570 (by
+                     cs_ship_hdemo_sk)
+        columns    household_demographics.hd_dep_count 0.904 [sem 0.509, key 0.023], store_sales.ss_hdemo_sk 0.841
+                     [sem 0.443, key 0.023], store_returns.sr_hdemo_sk 0.804 [sem 0.404, key 0.023],
+                     store.s_number_employees 0.796 [sem 0.396, key 0.023]
+        DECLINED   no element of the schema scores above the floor (FR-42). No anchors, no tree.
+        expected   store_sales, household_demographics
+                   missing: household_demographics, store_sales; extra: none
+        exp. joins store_sales.ss_hdemo_sk = household_demographics.hd_demo_sk
+        warnings   none; expected: anchor_ambiguity
+
+    10  Which web site sells most, and by which shipping method? next
+        step 5: MATCH    |    step 6: DISAGREES  -- differs in: decline
+        best raw   0.4475 (web_sales.ws_ext_ship_cost); floor 0.5726: AT OR BELOW THE FLOOR
+        terms      none; at or below the floor: web, site, sells, shipping, method, web site, site sells, shipping
+                     method
+        tables     web_sales 0.969 (by web_sales), web_returns 0.895 (by wr_return_ship_cost), web_site 0.804 (by
+                     web_mkt_class), catalog_sales 0.619 (by catalog_sales), catalog_returns 0.575 (by
+                     cr_return_ship_cost), ship_mode 0.573 (by ship_mode)
+        columns    web_sales.ws_ext_ship_cost 0.931 [sem 0.448, key 0.027], web_sales.ws_net_paid_inc_ship_tax
+                     0.931 [sem 0.447, key 0.027], web_sales.ws_net_paid_inc_ship 0.928 [sem 0.445, key 0.027],
+                     web_returns.wr_return_ship_cost 0.895 [sem 0.416, key 0.027]
+        DECLINED   no element of the schema scores above the floor (FR-42). No anchors, no tree.
+        expected   web_sales, web_site, ship_mode
+                   missing: ship_mode, web_sales, web_site; extra: none
+        exp. joins web_sales.ws_web_site_sk = web_site.web_site_sk
+                   web_sales.ws_ship_mode_sk = ship_mode.sm_ship_mode_sk
+        warnings   none; expected: none
+
+    11  How do store sales break down by fiscal quarter?
+        step 5: MATCH    |    step 6: DISAGREES  -- differs in: decline
+        best raw   0.4849 (store_sales.ss_net_profit); floor 0.5726: AT OR BELOW THE FLOOR
+        terms      store sales, fiscal quarter; at or below the floor: store, sales, break, fiscal, quarter, sales
+                     break
+        tables     store_sales 0.938 (by ss_net_profit), date_dim 0.824 (by d_fy_quarter_seq), catalog_sales 0.636
+                     (by cs_ext_tax), store 0.625 (by s_tax_percentage), web_sales 0.621 (by ws_net_profit),
+                     store_returns 0.590 (by sr_store_credit)
+        columns    store_sales.ss_net_profit 0.938 [sem 0.485, key 0.030], store_sales.ss_ext_tax 0.938 [sem 0.484,
+                     key 0.030], store_sales.ss_sales_price 0.923 [sem 0.454, key 0.032],
+                     store_sales.ss_ext_sales_price 0.923 [sem 0.454, key 0.032]
+        DECLINED   no element of the schema scores above the floor (FR-42). No anchors, no tree.
+        expected   store_sales, date_dim
+                   missing: date_dim, store_sales; extra: none
+        exp. joins store_sales.ss_sold_date_sk = date_dim.d_date_sk
+        warnings   none; expected: none
+
+    12  Which call centres handle the most catalog returns?
+        step 5: MATCH    |    step 6: DISAGREES  -- differs in: decline
+        best raw   0.5091 (catalog_returns); floor 0.5726: AT OR BELOW THE FLOOR
+        terms      catalog, catalog returns; at or below the floor: call, centres, handle, returns, call centres,
+                     centres handle
+        tables     catalog_returns 0.989 (by cr_call_center_sk), catalog_sales 0.767 (by cs_call_center_sk),
+                     call_center 0.600 (by call_center), store_returns 0.591 (by store_returns), web_returns 0.584
+                     (by web_returns), catalog_page 0.553 (by catalog_page)
+        columns    catalog_returns.cr_call_center_sk 0.989 [sem 0.499, key 0.043], catalog_returns.cr_store_credit
+                     0.836 [sem 0.489, key 0.030], catalog_returns.cr_refunded_cash 0.827 [sem 0.479, key 0.030],
+                     catalog_returns.cr_return_ship_cost 0.808 [sem 0.445, key 0.032]
+        DECLINED   no element of the schema scores above the floor (FR-42). No anchors, no tree.
+        expected   catalog_returns, call_center
+                   missing: call_center, catalog_returns; extra: none
+        exp. joins catalog_returns.cr_call_center_sk = call_center.cc_call_center_sk
+        warnings   none; expected: none
+
+    13  What do customers in the highest income band spend most on?
+        step 5: NOT EVALUABLE AT STEP 5    |    step 6: DISAGREES  -- differs in: decline
+        best raw   0.4113 (income_band.ib_upper_bound); floor 0.5726: AT OR BELOW THE FLOOR
+        terms      income band; at or below the floor: customers, highest, income, band, spend, highest income,
+                     band spend
+        tables     income_band 0.959 (by ib_upper_bound), household_demographics 0.825 (by hd_income_band_sk),
+                     customer_demographics 0.647 (by cd_purchase_estimate), customer 0.570 (by c_current_hdemo_sk),
+                     web_sales 0.504 (by ws_bill_cdemo_sk), store_sales 0.476 (by ss_cdemo_sk)
+        columns    income_band.ib_upper_bound 0.959 [sem 0.411, key 0.030], income_band.ib_lower_bound 0.920 [sem
+                     0.381, key 0.030], income_band.ib_income_band_sk 0.911 [sem 0.343, key 0.033],
+                     household_demographics.hd_income_band_sk 0.825 [sem 0.379, key 0.024]
+        DECLINED   no element of the schema scores above the floor (FR-42). No anchors, no tree.
+        expected   income_band, household_demographics, item + one of store_sales, catalog_sales, web_sales
+                   missing: household_demographics, income_band, item, one of store_sales/catalog_sales/web_sales;
+                     extra: none
+        exp. joins household_demographics.hd_income_band_sk = income_band.ib_income_band_sk
+                   one of: store_sales.ss_hdemo_sk = household_demographics.hd_demo_sk  |
+                     catalog_sales.cs_bill_hdemo_sk = household_demographics.hd_demo_sk  |
+                     web_sales.ws_bill_hdemo_sk = household_demographics.hd_demo_sk
+                   one of: store_sales.ss_item_sk = item.i_item_sk  |  catalog_sales.cs_item_sk = item.i_item_sk  |
+                     web_sales.ws_item_sk = item.i_item_sk
+        warnings   none; expected: anchor_ambiguity
+
+    14  Are the items returned most often also the ones that were on promotion?
+        step 5: EXPECTED FAILURE CONFIRMED    |    step 6: DISAGREES  -- differs in: decline
+        best raw   0.3992 (promotion); floor 0.5726: AT OR BELOW THE FLOOR
+        terms      none; at or below the floor: items, returned, often, also, ones, promotion, items returned,
+                     often also
+        tables     promotion 0.974 (by p_item_sk), store_returns 0.883 (by sr_item_sk), catalog_returns 0.830 (by
+                     cr_item_sk), web_returns 0.818 (by wr_item_sk), store_sales 0.659 (by ss_promo_sk),
+                     catalog_sales 0.634 (by cs_promo_sk)
+        columns    promotion.p_item_sk 0.974 [sem 0.380, key 0.023], store_returns.sr_item_sk 0.883 [sem 0.312, key
+                     0.023], catalog_returns.cr_item_sk 0.830 [sem 0.272, key 0.023], web_returns.wr_item_sk 0.818
+                     [sem 0.264, key 0.023]
+        DECLINED   no element of the schema scores above the floor (FR-42). No anchors, no tree.
+        expected   store_returns, store_sales, promotion, item
+                   missing: item, promotion, store_returns, store_sales; extra: none
+        exp. joins store_returns.sr_item_sk = store_sales.ss_item_sk and store_returns.sr_ticket_number =
+                     store_sales.ss_ticket_number
+                   store_sales.ss_promo_sk = promotion.p_promo_sk
+                   one of: store_returns.sr_item_sk = item.i_item_sk  |  store_sales.ss_item_sk = item.i_item_sk
+        warnings   none; expected: multi_anchor
+
+    15  Which customers abandoned their carts?
+        step 5: NOT EVALUABLE AT STEP 5    |    step 6: AGREES
+        best raw   0.3356 (customer_demographics); floor 0.5726: AT OR BELOW THE FLOOR
+        terms      none; at or below the floor: customers, abandoned, carts, customers abandoned
+        tables     customer_demographics 0.939 (by customer_demographics), customer 0.908 (by
+                     c_preferred_cust_flag), customer_address 0.859 (by ca_zip), web_returns 0.804 (by
+                     wr_refunded_cdemo_sk), web_sales 0.801 (by ws_ship_cdemo_sk), catalog_returns 0.801 (by
+                     cr_refunded_cdemo_sk)
+        columns    customer_demographics.cd_purchase_estimate 0.913 [sem 0.320, key 0.025],
+                     customer_demographics.cd_dep_college_count 0.910 [sem 0.317, key 0.025],
+                     customer.c_preferred_cust_flag 0.908 [sem 0.292, key 0.028],
+                     customer_demographics.cd_dep_count 0.902 [sem 0.312, key 0.025]
+        DECLINED   no element of the schema scores above the floor (FR-42). No anchors, no tree.
+        expected   DECLINE: the warehouse cannot answer this
+        warnings   none; expected: decline
+
+    16  Which customers buy through which of our web pages?
+        step 5: MISMATCH    |    step 6: DISAGREES  -- differs in: decline
+        best raw   0.4054 (web_sales.ws_bill_cdemo_sk); floor 0.5726: AT OR BELOW THE FLOOR
+        terms      none; at or below the floor: customers, buy, web, pages, customers buy, web pages
+        tables     web_page 0.962 (by wp_customer_sk), web_sales 0.821 (by ws_bill_cdemo_sk), web_returns 0.774 (by
+                     wr_returning_cdemo_sk), customer_demographics 0.601 (by customer_demographics), catalog_page
+                     0.591 (by catalog_page), customer 0.584 (by customer)
+        columns    web_page.wp_customer_sk 0.962 [sem 0.375, key 0.053], web_sales.ws_bill_cdemo_sk 0.821 [sem
+                     0.405, key 0.034], web_sales.ws_web_page_sk 0.820 [sem 0.391, key 0.036],
+                     web_sales.ws_ship_cdemo_sk 0.813 [sem 0.399, key 0.034]
+        DECLINED   no element of the schema scores above the floor (FR-42). No anchors, no tree.
+        expected   web_sales, web_page, customer
+                   missing: customer, web_page, web_sales; extra: none
+        exp. joins web_sales.ws_web_page_sk = web_page.wp_web_page_sk
+                   web_sales.ws_bill_customer_sk = customer.c_customer_sk
+        warnings   none; expected: not judged (see_note)
+
+    ----------------------------------------------------------------------------------------------------
+    step 5      16 questions: 7 match  (pairwise PathFinder, handed the expected tables; unchanged, see above)
+    step 6      16 questions: 1 agree, 15 disagree  (retrieval and the tree, judged whole)
+                These are different instruments. The two counts are not added and not compared as a score.
+    part        declined or not, as expected   1 of 16 judged
+    part        tables as expected             0 of 0 judged
+    part        joins as expected              0 of 0 judged
+    part        warnings as expected           0 of 0 judged
+    diagnostic  every expected table in the tree: 0 of 15; no table beyond the expected: 15 of 15
+    anchors     per question: 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0, 10:0, 11:0, 12:0, 13:0, 14:0, 15:0, 16:0
+    timing      scoring (embedding lookups and both searches) median 173 ms, largest 264 ms; retrieval and tree median 32 ms, largest 63 ms
+    cost        embedded now: 0 texts, 0 tokens, $0.00000000; everything else came from the cache
+    note        With 16 questions a difference of one is noise.
 
 ### To dissect (running, step 6)
 
@@ -1693,6 +2122,18 @@ Empty. No run has been made.
   from
 - why the code was committed before the values, and the values before any
   question
+- why every question fell below a floor measured between schema names:
+  what "a best compared with bests" got right and what it still assumed
+- why a floor between 0.336 and 0.399 is forbidden although it "works"
+- `locate`: three calls in order, and which two of its outcomes are a
+  decline and which one is not
+- `produced` in the runner: what the judgement is handed, and that
+  nothing is computed there
+- why `--step6` imports its module inside `main`, and what the step 5
+  report therefore never needs
+- `argparse` with `argv or []`: why the step 5 test can call `main()`
+  under pytest
+- the three hashes the step 6 report compares before it runs
 
 ### Carried forward
 
