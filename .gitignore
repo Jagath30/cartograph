@@ -33,3 +33,4 @@ __pycache__/
 
 # The TPC's constraint file: fetched by scripts/warehouse.sh, never committed.
 backend/warehouse/tpcds_ri.sql
+docs/superseded/
