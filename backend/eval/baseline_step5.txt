@@ -1,0 +1,138 @@
+set         backend/eval/questions.yaml
+sha256      a92f27c2f3fee9c1d178e21504eadc87aa9ec6a622e896561064e798d1100440
+provenance  Drafted by Claude in a separate Cowork session with no access to
+            any retrieval code (none exists yet); reviewed by Jagath
+            Manjunath, revised at his request after an adversarial second
+            review, and approved by him, 8-9 October 2026.
+derivation  The joins, checks, evaluable_from, at_step_5 and ambiguity_seen
+            fields were derived by Claude in the step 5 build session on 8
+            October 2026, by reasoning from the committed DDL, the committed
+            overlay and what each question means. No expectation was computed
+            by running the PathFinder. All sixteen were shown to Jagath
+            Manjunath and approved by him before this file was written, and it
+            was committed before any runner existed.
+graph       107 foreign keys (102 catalog, 5 overlay); routes of up to 3 joins
+
+ 1  How much did each store sell last year?
+    expects warning: none; fully evaluable from step 5
+    MATCH  store_sales to store
+    MATCH  store_sales to date_dim
+    question: MATCH
+
+ 2  Which states are our catalog customers billed in?
+    expects warning: none; fully evaluable from step 5
+    MISMATCH  catalog_sales to customer_address
+         differs in  warnings
+           expected  catalog_sales.cs_bill_addr_sk = customer_address.ca_address_sk
+                     warnings: none
+           selected  catalog_sales.cs_bill_addr_sk = customer_address.ca_address_sk
+                     warnings: arbitrary_choice; rule: alphabetical
+    question: MISMATCH
+
+ 3  Where are our catalog customers located?
+    expects warning: arbitrary_choice; fully evaluable from step 5
+    MATCH  catalog_sales to customer_address
+    question: MATCH
+
+ 4  What were the top-selling item categories on the web in Q4 2002?
+    expects warning: none; fully evaluable from step 5
+    MATCH  web_sales to item
+    MISMATCH  web_sales to date_dim
+         differs in  path and warnings
+           expected  web_sales.ws_sold_date_sk = date_dim.d_date_sk
+                     warnings: none
+           selected  web_sales.ws_ship_date_sk = date_dim.d_date_sk
+                     warnings: arbitrary_choice; rule: alphabetical
+    question: MISMATCH
+
+ 5  What reasons do customers give when returning items to stores?
+    expects warning: none; fully evaluable from step 5
+    MATCH  store_returns to reason
+    question: MATCH
+
+ 6  How does store revenue compare with catalog revenue for the same items?
+    expects warning: many_to_many; fully evaluable from step 5
+    MATCH  store_sales to item
+    MATCH  catalog_sales to item
+    MISMATCH  store_sales to catalog_sales
+         differs in  path and warnings
+           expected  catalog_sales.cs_item_sk = item.i_item_sk
+                     store_sales.ss_item_sk = item.i_item_sk
+                     warnings: many_to_many
+           selected  catalog_sales.cs_bill_customer_sk = customer.c_customer_sk
+                     store_sales.ss_customer_sk = customer.c_customer_sk
+                     warnings: arbitrary_choice, many_to_many; rule: alphabetical
+    question: MISMATCH
+
+ 7  Which warehouses held the least stock of each item at the latest inventory date?
+    expects warning: none; fully evaluable from step 5
+    MATCH  inventory to warehouse
+    MATCH  inventory to item
+    MATCH  inventory to date_dim
+    question: MATCH
+
+ 8  Did our promotions increase sales?
+    expects warning: anchor_ambiguity (no mechanism yet); fully evaluable from step 6
+    question: NOT EVALUABLE AT THIS STEP (no concrete pair of tables)
+
+ 9  What is the average number of dependents in households that shop at our stores?
+    expects warning: anchor_ambiguity (no mechanism yet); fully evaluable from step 6
+    MATCH  store_sales to household_demographics
+    question: EXPECTED FAILURE CONFIRMED (nothing raised anchor_ambiguity)
+
+10  Which web site sells most, and by which shipping method?
+    expects warning: none; fully evaluable from step 5
+    MATCH  web_sales to web_site
+    MATCH  web_sales to ship_mode
+    question: MATCH
+
+11  How do store sales break down by fiscal quarter?
+    expects warning: none; fully evaluable from step 5
+    MATCH  store_sales to date_dim
+    question: MATCH
+
+12  Which call centres handle the most catalog returns?
+    expects warning: none; fully evaluable from step 5
+    MATCH  catalog_returns to call_center
+    question: MATCH
+
+13  What do customers in the highest income band spend most on?
+    expects warning: anchor_ambiguity (no mechanism yet); fully evaluable from step 6
+    MATCH  household_demographics to income_band
+    question: NOT EVALUABLE AT THIS STEP
+              partial check only: 1 of 1 fixed pairs match, which says nothing of the question
+
+14  Are the items returned most often also the ones that were on promotion?
+    expects warning: multi_anchor (no mechanism yet); fully evaluable from step 6
+    MATCH  store_returns to store_sales
+    MATCH  store_sales to promotion
+    MATCH  store_returns to item
+    MATCH  store_sales to item
+    question: EXPECTED FAILURE CONFIRMED (nothing raised multi_anchor)
+
+15  Which customers abandoned their carts?
+    expects warning: decline (no mechanism yet); fully evaluable from step 6
+    question: NOT EVALUABLE AT THIS STEP (no concrete pair of tables)
+
+16  Which customers buy through which of our web pages?
+    expects warning: see_note; fully evaluable from step 5
+    MATCH  web_sales to web_page
+    MISMATCH  web_sales to customer
+         differs in  warnings
+           expected  web_sales.ws_bill_customer_sk = customer.c_customer_sk
+                     warnings: none
+           selected  web_sales.ws_bill_customer_sk = customer.c_customer_sk
+                     warnings: arbitrary_choice; rule: alphabetical
+    EXPECTED FAILURE CONFIRMED  web_page to customer
+         differs in  path
+           expected  web_sales.ws_bill_customer_sk = customer.c_customer_sk
+                     web_sales.ws_web_page_sk = web_page.wp_web_page_sk
+                     warnings: none
+           selected  web_page.wp_customer_sk = customer.c_customer_sk
+                     warnings: none; rule: shortest
+          predicted  web_page.wp_customer_sk = customer.c_customer_sk
+                     warnings: none; prediction CONFIRMED
+    question: MISMATCH
+
+checks      26: 21 match, 4 mismatch, 1 expected failure confirmed
+questions   16: 7 match, 4 mismatch, 2 expected failure confirmed, 3 not evaluable at this step

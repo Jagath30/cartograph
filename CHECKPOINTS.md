@@ -677,13 +677,14 @@ No tag yet. This section is the step's working record: where it stands,
 what was decided before any code, and every tuning run. It becomes
 `checkpoint-06-retrieval` when the step closes.
 
-**Where the work stands.** Piece 0 of 11, this entry. No retrieval code
+**Where the work stands.** Piece 1 of 11 is committed and the work is
+STOPPED FOR THE OWNER'S REVIEW of the step 6 judgement. No retrieval code
 exists. Nothing has been embedded. No evaluation question has been scored
 by anything.
 
     0  this record                                     done
-    1  the step 6 judgement                            next; OWNER REVIEW after it
-    2  Retriever (pure)
+    1  the step 6 judgement                            done; AWAITING REVIEW
+    2  Retriever (pure)                                next, after the review
     3  evidence tie rule in the PathFinder
     4  join tree for N anchors, subgraph bound
     5  Alembic and the first migration
@@ -975,6 +976,83 @@ Design's own worked example; the cut in the grid at 0.3, 0.4, 0.5, 0.6 and
 0.7. It is the knob most able to move the result and is raised at the
 first review stop. Nothing depends on it before piece 2.
 
+### Piece 1: the step 6 judgement — 8 October 2026
+
+**What exists.** `backend/app/core/eval_step6.py`, pure, 35 tests in
+`tests/core/test_eval_step6.py`, all from the committed set and running in
+CI. It was committed before any retrieval code, so the rule could not be
+shaped by a result. `eval_set.py` and `questions.yaml` are untouched.
+`backend/eval/baseline_step5.txt` is the step 5 report, captured at this
+commit and compared with the baseline recorded above: identical. A test
+runs `show_eval` on the live warehouse and compares it with that file byte
+for byte, so extending the runner cannot move a line of step 5's report.
+238 tests in the container; 223 pass and 15 skip with both database URLs
+unset.
+
+**The rule, in full.** The system hands over, for one question: whether it
+declined; the tables of its selected tree after expansion; every warning
+code it raised about the answer as a whole; and, for each pair check of
+the question, its path between those two tables within the tree and the
+warning codes it raises about that path. A question AGREES only if every
+part that applies holds:
+
+- **decline.** The question's warning is `decline` if and only if the
+  system declined. When either side says decline, nothing else is judged.
+- **tables.** The tree's tables are exactly `tables`, plus exactly one of
+  `tables_one_of` where the question has any. One too many disagrees just
+  as one too few does.
+- **warnings.** The codes raised about the answer are exactly the one
+  expected: none for `none`, that code and no other otherwise. `see_note`
+  (question 16) states no warning of its own and this part is not judged
+  for it; its checks carry its expectation.
+- **checks.** Every pair check, by step 5's own `judge`, unchanged, on the
+  path within the tree. A table the tree does not hold has no path.
+
+The statuses are `agrees`, `disagrees` and `not_evaluable_at_step_6`, never
+match and mismatch, and are never added to step 5's counts.
+
+**Decided while writing it, for the review.**
+- A check the set marks `expected_to_fail` keeps the status step 5 gives
+  it, and that is reported. The question agrees only if the check holds in
+  substance. A wrong path that was predicted is a wrong path.
+- The question-level warning must be exact, as pair warnings are at step
+  5. A question expecting `anchor_ambiguity` that also raises
+  `multi_anchor` disagrees.
+- What warnings a path within the tree carries is the system's to say, not
+  the judge's: the judge receives codes. The contract piece 4 must meet:
+  a sub-path carries the warnings the tree raised about any join on it,
+  and `many_to_many` when the sub-path itself pivots.
+- Input that contradicts itself raises: an unknown code, a decline that
+  comes with a tree, a check with no path reported.
+
+**Findings.**
+- **Question 14 cannot agree under this rule, whatever retrieval does.**
+  The set gives it a check between `store_returns` and `item` and another
+  between `store_sales` and `item`, each accepting only the direct key,
+  because "either item key answers the question". Pairwise, both match. In
+  one tree `item` hangs off one table, and the other check's path is then
+  two joins and not the one accepted. With the best possible tree and the
+  right warning it still disagrees, on exactly one check
+  (`test_recorded_question_14_cannot_agree_...`). This follows from ruling
+  g's second precision applied to the frozen checks. Not worked around.
+  The set's own `joins` field, with its `one_of`, does express what
+  question 14 means; comparing the tree's joins with `joins` would be a
+  different rule, and whether to have it is the owner's decision.
+- **Every other question can agree.** For each of the other fifteen, a
+  tree made of the question's own expected joins, with the expected
+  warning, agrees. So no other disagreement at step 6 can be blamed on the
+  instrument.
+- **Question 13's "same sales table" needs no rule.** The set says it in a
+  comment. It follows from the tables: of the nine ways to take one
+  alternative from each `one_of`, only the three that use one sales table
+  for both joins agree.
+- **A mutation survived.** With "every check holds in substance" softened
+  to "no check is a plain mismatch", all 34 tests passed: the test meant
+  to catch it disagreed for a second reason. A 35th isolates the rule.
+  Four other mutations were each caught: tables as a superset, warnings as
+  "at least", a decline accepted where none was expected, and any number
+  of `tables_one_of`.
+
 ### Tuning log
 
 Empty. No run has been made.
@@ -993,6 +1071,17 @@ Empty. No run has been made.
 - why a pseudo-question leaves its own table out of the candidates
 - min-max normalisation, and what it does to a signal that is the same for
   every candidate
+- `judge_step6`, part by part: which parts are None after a decline, and
+  why a decline on either side ends the judgement
+- why the judge is handed warning codes for a path within the tree and
+  does not work them out, and what "imports nothing it judges" protects
+- `_route_within` in the test file: a path through a tree, written apart
+  from the application on purpose
+- why question 14 can match pairwise and cannot agree within one tree
+- `itertools.product` over a question's `joins`: every tree its own
+  expectations allow
+- the mutation that survived, and what the 35th test does that the 34th
+  could not
 
 ### Carried forward
 
