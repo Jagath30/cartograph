@@ -1,4 +1,4 @@
-# Pinned from the first successful build. Intent: fastapi, uvicorn[standard], pydantic-settings, psycopg[binary], redis, pytest, httpx
+# Pinned from the first successful build. Intent: fastapi, uvicorn[standard], pydantic-settings, psycopg[binary], redis, pytest, httpx, pyyaml, networkx
 annotated-doc==0.0.5
 annotated-types==0.8.0
 anyio==4.15.1
@@ -11,6 +11,7 @@ httptools==0.8.0
 httpx==0.28.1
 idna==3.19
 iniconfig==2.3.0
+networkx==3.7
 packaging==26.3
 pluggy==1.6.0
 psycopg==3.3.5
