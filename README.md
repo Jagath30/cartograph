@@ -40,3 +40,21 @@ checks its sha256; a failed download or a different file stops the build
 before anything is changed. The overlay generated from it is committed.
 
 At scale factor 1 the loaded warehouse measures 2.2 GB.
+
+## Reading the schema
+
+Once a warehouse is loaded, this prints what the application makes of it:
+
+    docker compose exec backend python -m app.show_schema
+
+It connects as the SELECT-only role, reads tables, columns and keys from
+`pg_catalog`, merges the overlay (catalog first, with the source recorded
+on every edge), and builds the schema graph: 24 tables and 425 columns as
+nodes, 102 foreign keys as edges.
+
+Column names such as `ss_ext_sales_price` are given readable names from the
+overlay's `naming` section. That section is written by hand in
+`backend/overlays/tpcds.naming.yaml`; `backend/overlays/tpcds.yaml` is
+generated and never edited. After changing the naming file:
+
+    python3 backend/warehouse/ri.py write-overlay

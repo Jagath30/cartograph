@@ -61,6 +61,17 @@ equal() {
   fi
 }
 
+# A string already in hand must contain the wanted one. For several checks
+# against the output of one command, where expect would run it each time.
+contains() {
+  local name="$1" want="$2" got="$3"
+  if [[ "$got" == *"$want"* ]]; then
+    ok "$name"
+  else
+    bad "$name -- wanted '$want', got '${got:-<nothing>}'"
+  fi
+}
+
 stage "Environment"
 ./scripts/bootstrap.sh >/dev/null
 if [[ -f .env ]]; then ok ".env present"; else bad ".env missing"; fi
@@ -113,8 +124,24 @@ else
   bad "backend suite"
 fi
 
+# The application's own reading of the warehouse: SchemaIngestor as the
+# SELECT-only role, then GraphBuilder. "N catalog, 0 overlay" is the check
+# that matters -- an ingestor that saw no constraints would still report N
+# foreign keys, every one of them supplied by the overlay.
+stage "Schema ingestion (FR-02, FR-03, FR-43, DD-08)"
+if [[ "$wh_tables" == "0" ]]; then
+  pending "warehouse is empty -- nothing to ingest"
+else
+  ingested="$(docker compose exec -T backend python -m app.show_schema 2>/dev/null || true)"
+  contains "snapshot read from the catalog, keys included" \
+    "24 tables, 425 columns, 17 primary keys, $overlay_fks foreign keys ($overlay_fks catalog, 0 overlay)" "$ingested"
+  contains "graph built with $overlay_fks foreign key edges" \
+    "of which $overlay_fks foreign key edges" "$ingested"
+  contains "naming overlay applied to the descriptions" \
+    " — " "$(grep '^naming' <<<"$ingested" || true)"
+fi
+
 stage "Not yet verified"
-pending "schema ingestion produces the expected graph (arrives at step 3)"
 pending "one known question runs the full pipeline (arrives at step 7)"
 pending "generated SQL joins along the reported path (arrives at step 7)"
 

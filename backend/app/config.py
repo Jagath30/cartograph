@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     warehouse_database_url: str
     redis_url: str
 
+    # The overlay file for the warehouse behind warehouse_database_url
+    # (DD-16). Optional: a warehouse whose catalog declares everything, and
+    # whose names read like English, needs none.
+    warehouse_overlay_path: str | None = None
+
     # Comma-separated rather than a list: pydantic-settings expects JSON for
     # complex types, and a plain string with an explicit split is one less
     # thing to get wrong in a deployment environment variable.
