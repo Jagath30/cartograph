@@ -690,8 +690,8 @@ by anything.
     3  evidence tie rule in the PathFinder          done
     4  join tree for N anchors, subgraph bound      done
     5  Alembic and the first migration              done
-    6  snapshot store                               next
-    7  embedding adapter
+    6  snapshot store                               done
+    7  embedding adapter                            next
     8  SemanticIndex
     9  runner, step 6 baseline at Design defaults      OWNER REVIEW after it
     10 tuning runs, each logged below
@@ -1348,6 +1348,75 @@ the three tables present.
   embedding call at piece 7. No OpenAI package is added: the endpoint is
   one POST, and the adapter stays small enough to read.
 
+### Piece 6: the snapshot store — 8 October 2026
+
+**What exists.** `backend/app/shell/snapshot_store.py` writes a schema
+snapshot to the three tables and reads it back; `backend/app/core/
+search_text.py`, pure, derives the text each element is embedded and
+searched by. Ten tests in `tests/test_snapshot_store.py`, each in a
+scratch database. 356 tests in the container; 323 pass and 33 skip with
+both database URLs unset.
+
+**The numbers, measured.** Live ingestion saved and read back, counted on
+the rebuilt graph and on the rows and compared with each other:
+
+    tables               24
+    columns             425
+    foreign keys        107     (102 catalog, 5 overlay)
+    column pairs        110     three of the overlay's five keys have two
+    graph nodes         449     = 24 + 425 = rows in schema_elements
+    graph edges         535     = 425 has_column + 110 pairs
+    rows in schema_edges 110
+
+**The plan's 527 was wrong and the owner's 535 is right.** 527 was
+checkpoint-03's figure, 425 + 102, from before the overlay's five
+relationships and their eight column pairs. The snapshot read back equals
+the live snapshot as a value, and the two graphs are equal element for
+element: every node with every attribute, in the same order; every edge
+with every attribute, the foreign key numbers included; and the graph's
+own attributes.
+
+**A table's search text (ruling f), as derived.** Its description, then
+"Holds:" and the readable names of its columns that are not keys, without
+the table's name in front of each. A key column is one in a primary key or
+on either side of a foreign key. Three as they come out of the live schema:
+
+    store sales. Table store_sales. Holds: quantity, wholesale cost, list
+    price, sales price, extended discount amount, extended sales price,
+    extended wholesale cost, extended list price, extended tax, coupon
+    amount, net paid, net paid including tax, net profit.
+
+    inventory. Table inventory. Holds: quantity on hand.
+
+    date dimension. Table date_dim. Holds: date identifier, date, month
+    sequence, week sequence, quarter sequence, year, day of week, ...
+
+The longest is 451 characters. Nothing in any of them was written by hand.
+
+**Decided while building, and told.**
+- **Keys are left out of a table's text.** A sales table would otherwise
+  read as a list of every dimension in the warehouse, and say what it
+  joins to instead of what it is about. Key columns keep their own rows
+  and are searched there.
+- The hash covers everything stored, the derived search text included, so
+  that a change to how the text is derived stores the same warehouse again
+  and embeds it again. It does not cover preferences, which are not
+  stored (ruling e).
+- Saving a snapshot the store already holds writes nothing and makes that
+  one current. Going back to an earlier schema makes the old rows current
+  again.
+- An empty store raises `NoCurrentSnapshot` with a sentence, not a
+  `None`.
+
+**Mutations.** Eight, then two more. Seven caught at once: the hash
+ignoring foreign keys; a two-column primary key read back in column order;
+edge rows read back out of position; the note dropped; a known snapshot
+not made current; keys listed in a table's text; nullability lost. **One
+survived:** the hash ignoring the search text. A test was added, and its
+first version let half of the mutation through (the table's text dropped
+from the hash, the columns' kept), because it changed every text at once.
+It now changes one table's text and then one column's.
+
 ### Tuning log
 
 Empty. No run has been made.
@@ -1418,6 +1487,17 @@ Empty. No run has been made.
   database ... with (force)`, and why `yield` sits inside `try/finally`
 - why `postgresql://` had to become `postgresql+psycopg://` for SQLAlchemy
 - `vector(1536)` and what Postgres says to a vector of three numbers
+- 535 = 425 + 110: which edges are which, and why three keys account for
+  six of the 110 pairs
+- `snapshot_hash`: `asdict`, `json.dumps(sort_keys=True)`, and why the
+  hash must not depend on dictionary order
+- how a two-column key becomes two rows and one key again: `key_number`,
+  `position`, `setdefault`
+- `assert_same_graph`: what "element for element" compares, and why node
+  order is asserted separately
+- `monkeypatch.setattr` on the name the module looked up, not on the
+  module that defines it; and the `changed=changed` default in the lambda
+- why a test that changes everything at once can pass half a mutation
 
 ### Carried forward
 
