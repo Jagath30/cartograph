@@ -297,6 +297,89 @@ understood well enough to defend under questioning:
 questions with expected tables and expected paths, authored and frozen
 before any retrieval exists (DR-16, T-04).
 
+### After checkpoint-04: the overlay declares what tpcds_ri.sql omits — 8 October 2026
+
+No new tag: this closes a gap in step 4, found while preparing step 5.
+
+**What works now that did not before.** The overlay contributes real
+relationships for the first time. Five that `tpcds_ri.sql` omits are
+declared by hand in `backend/overlays/tpcds.relationships.yaml`: two of one
+column, and the three returns-to-sales keys of two columns each. A
+relationship's `from` and `to` are now one `table.column` or a list of
+them, and it may carry a `note` saying what it rests on, which travels
+with the edge into every explanation. The live graph holds 107 foreign
+keys, **102 from the catalog and 5 from the overlay**, so the catalog-wins
+merge is exercised on real data at last. A return reaches its sale in one
+join with no warning, where before it took an arbitrary many-to-many route
+through a shared dimension. `./scripts/warehouse.sh` was run for real with
+the new source in place: 24 tables, 19,557,579 rows, 17 primary keys, 102
+of 102 constraints, 298 seconds. 186 tests locally.
+
+**To dissect.**
+- why a two-column overlay key needed the graph to change: edges were
+  grouped into joins by constraint name, an overlay edge has none, and the
+  key would have appeared as two alternative one-column routes. What the
+  `foreign_key` number on each edge is, and why a name would not do
+- "catalog wins" on real data: the overlay restates 102 edges that stay
+  `catalog` and adds 5 that are `overlay`. Which test would fail if the
+  overlay won instead
+- the three sources of one generated file, and why step 2's tests now
+  compare the catalog against the generated 102 and not the whole overlay
+- YAML's `>-` folded text in the notes, and why the parser collapses
+  whitespace
+- why a preference naming a two-column key must name it whole, and counts
+  as one hop
+
+**Findings.**
+- **Only two `_sk` columns had no edge**, not the several date keys
+  expected: `customer.c_last_review_date_sk` and `web_page.wp_customer_sk`.
+  Of 121 columns ending `_sk`, 102 had an outgoing edge and 17 were
+  referenced primary keys.
+- **The five rest on different evidence, and their notes say so.**
+  `c_last_review_date_sk`: 96,516 non-null values over one contiguous
+  year, zero violations. The three returns keys: the sales-side pair
+  unique and never null, every return matching one sale, zero violations.
+  `wp_customer_sk`: the column name and the TPC-DS specification only. Its
+  21 non-null rows all match, and could not have failed to, since every
+  integer from 1 to 100,000 is a valid customer key.
+- **Measured across all 276 table pairs, before and after:**
+
+      paths found              11,453 -> 13,576
+      pairs tied               203 -> 194
+      selecting many-to-many   86 -> 75
+      unreachable at 3 joins   income_band / inventory, both times
+
+  19 pairs changed their selected path. No pair kept its path and changed
+  its warnings, and no pair gained a warning. Nine of the 19 involve
+  `web_page` and now route through `wp_customer_sk`.
+- **No pair warns many-to-many where it should not.** Four selected routes
+  use a hand-declared edge and warn, each pivoting at `customer` between a
+  fact table and `web_page`: genuine fan-outs. No selected route pivots on
+  a sales table.
+- **Step 2's "a fact table is one nothing references" no longer holds for
+  the whole graph.** The three sales tables are now referenced by their
+  returns. It still holds for the 102 generated relationships, which is
+  what step 2's test checks.
+- At four joins `income_band` to `inventory` now has 33 routes, not 32.
+  `reason`/`ship_mode` and `reason`/`warehouse` no longer have a single
+  route at three joins; each has three.
+- **The 256 MB `shm_size` is a safeguard, not a fix.** At Postgres's
+  default `work_mem` of 4 MB the 64 MB Docker default does not fail: the
+  same joins run in about a second. It failed only because `work_mem` had
+  been raised to 512 MB by hand while chasing a timeout, which makes the
+  planner hold a large parallel hash table in shared memory. The
+  application runs at the role's defaults and would not have hit it at
+  step 7. 256 MB is the smallest size tried that runs every case that
+  failed; it guards against whoever tunes `work_mem` next.
+- **The first real run of the edited `warehouse.sh` failed, and not
+  because of the edit.** It died during the load on a `500 Internal Server
+  Error` from the Docker API. An interrupted load leaves 24 recreated
+  tables, partly filled, and no constraints at all; the script is not
+  transactional. Running it again from the top is the recovery, and did
+  recover.
+
+**Next single deliverable.** Unchanged: step 5, the evaluation set.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
@@ -347,6 +430,9 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     step 3 whether that is the demonstration wanted.
     **Decided 8 October**: yes. Catalog-wins stands and every edge reads
     `source: catalog`. The `overlay` marking is exercised by tests only.
+    **Superseded the same day**: five relationships the catalog cannot
+    declare are now asserted in the overlay, so the live graph reads 102
+    `catalog` and 5 `overlay`.
 17. All 12 stores at scale factor 1 are in one state, `TN`. The three
     routes do give different answers, but any regional question answered
     through `store` returns nothing outside Tennessee. The headline
@@ -429,3 +515,51 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     0.2 seconds. Fine for a command; the stored snapshot of step 8 ends it.
 38. Path finding is fast enough to leave alone: all 276 pairs in 1.9
     seconds, the slowest single pair 29 ms, against NFR-02's one second.
+39. **Cardinality: the graph cannot say "at most one".** It knows which
+    side of a key holds the foreign key and reads that side as "many". On
+    this warehouse the returns-side pair is unique, so a sale has zero or
+    one return, yet walking from a sale to its return reads "each store
+    sales row has many store returns rows". Untrue, and pinned as it is in
+    `test_recorded_a_sale_is_said_to_have_many_returns_and_has_at_most_one`.
+    It causes no false many-to-many warning today, because nothing else
+    references a sales table (`test_no_selected_route_pivots_on_a_sales_table`
+    fails the day that changes). Fixing it means the snapshot learning
+    about uniqueness on the referencing side.
+40. `wp_customer_sk` is the weakest-evidenced edge in the graph and is on
+    the selected path of nine pairs, every one involving `web_page`,
+    because "customer" sorts before "web_returns". If an evaluation
+    question touches `web_page`, its expected path leans on an edge
+    asserted from a name.
+41. The five hand-declared relationships were measured at scale factor 1
+    only, twice (before and after a rebuild). They are never applied as
+    database constraints, so nothing re-checks them when the warehouse is
+    rebuilt at another scale factor. Step 12's reduced warehouse needs the
+    measurement repeated before the notes can be believed there.
+42. The two-column joins come out of the PathFinder with their column
+    pairs in column-declaration order, not the order the key lists them.
+    The pairing is right; only the order differs.
+43. `statement_timeout = 30s` (items 2 and 21) has two more data points,
+    both from measurement queries, not from questions: an aggregate with
+    three correlated sub-selects over `store_sales`, and
+    `count(distinct (a, b))` over 2.9 million rows. The same facts
+    computed with `group by` took under 11 seconds.
+44. **Environment, recorded 8 October 2026.** The hostel Wi-Fi hands out
+    IPv6 addresses that route nowhere, so anything trying IPv6 first hangs.
+    The owner added `precedence ::ffff:0:0/96 100` to `/etc/gai.conf` to
+    prefer IPv4, and reports `curl` to pypi.org working without `-4`.
+    Observed afterwards from the build session's shell: the line is
+    present (twice), plain `curl` still got no answer in 20 seconds, and
+    `curl -4` answered in 0.3 seconds. So treat it as not fully solved:
+    use `-4`, or an offline cache (`uv run --offline`), when a download
+    hangs. The warehouse rebuild needs no outside network once
+    `tpcds_ri.sql` and DuckDB's `tpcds` extension are cached.
+45. **Environment.** When WSL loses Docker Desktop, `docker` calls hang or
+    return `500 Internal Server Error`, the published ports refuse
+    connections, and Postgres cannot be reached from Ubuntu by any route.
+    `wsl --shutdown` and restarting Docker Desktop recovers it. For about
+    40 seconds afterwards `docker` is "command not found": the symlink in
+    `/usr/bin` is restored only once the integration has attached.
+46. `scripts/warehouse.sh` now takes the number of constraints to expect
+    from `tpcds_ri.sql` and not from the overlay, which also holds the
+    hand-declared relationships. Run for real on 8 October: "102 of 102
+    applied".
