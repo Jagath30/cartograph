@@ -129,15 +129,25 @@ def test_the_designs_own_examples_read_as_the_design_says(snapshot) -> None:
 def test_some_of_the_harder_names(snapshot) -> None:
     described = {f"{column.table}.{column.name}": column.readable for column in snapshot.columns}
 
-    assert described["store_sales.ss_cdemo_sk"] == "store sales — customer demographics key"
+    assert described["store_sales.ss_cdemo_sk"] == "store sales — customer demographics surrogate key"
     assert described["store_sales.ss_net_paid_inc_tax"] == "store sales — net paid including tax"
     assert described["date_dim.d_same_day_ly"] == "date — same day last year"
     assert described["date_dim.d_fy_quarter_seq"] == "date — fiscal quarter sequence"
     assert described["call_center.cc_sq_ft"] == "call center — square feet"
     assert described["web_site.web_mkt_desc"] == "web site — market description"
     assert described["inventory.inv_quantity_on_hand"] == "inventory — quantity on hand"
-    assert described["customer.c_customer_sk"] == "customer — customer key"
-    assert described["customer_address.ca_address_sk"] == "customer address — address key"
+    assert described["customer_address.ca_address_sk"] == "customer address — address surrogate key"
+
+
+def test_the_joinable_key_reads_differently_from_the_business_identifier(snapshot) -> None:
+    """Every TPC-DS table has both an _sk and an _id, and only the _sk
+    joins. "customer key" against "customer identifier" does not say which;
+    "surrogate key" does."""
+    described = {f"{column.table}.{column.name}": column.readable for column in snapshot.columns}
+
+    assert described["customer.c_customer_sk"] == "customer — customer surrogate key"
+    assert described["customer.c_customer_id"] == "customer — customer identifier"
+    assert all(readable.endswith("surrogate key") for name, readable in described.items() if name.endswith("_sk"))
 
 
 def test_every_table_has_exactly_one_prefix_and_every_column_uses_it(overlay, snapshot) -> None:

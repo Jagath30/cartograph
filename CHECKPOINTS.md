@@ -150,7 +150,8 @@ understood well enough to defend under questioning:
   `description`
 - every line of `tpcds.naming.yaml` is a claim somebody made. `demo` was
   left out because it means two things; `inc` is read as "including",
-  `fy` as "fiscal". Check them against the TPC-DS specification
+  `fy` as "fiscal". Checked by the owner against the TPC-DS specification
+  on 8 October, all 57 entries: one error, `sk` (see Findings)
 - generated against hand-written: why naming has its own source file, what
   `naming_section` refuses, and why `write-overlay` exists when
   `overlay > tpcds.yaml` looks equivalent (the shell empties the file
@@ -163,6 +164,23 @@ understood well enough to defend under questioning:
   `async` — harmless from a command, a question at step 8
 - `app/show_schema.py` is the first place shell and core meet. It is
   standing in for the orchestrator, and should not grow
+
+**Findings.** Recorded as found, not fixed:
+- **`naming.words` is one global dictionary, so an abbreviation that means
+  two things cannot be expanded at all.** `demo` is demographics in
+  `cd_demo_sk` and `hd_demo_sk` and demonstration in `p_channel_demo`. One
+  entry cannot be right for both, so it is deliberately absent and those
+  columns read "demo". Whether expansion should be scoped to a table is a
+  step 6 question, to be answered against the evaluation set.
+- **`sk` was expanded as "key" and is now "surrogate key"** (follow-up
+  commit after the tag). Every TPC-DS table carries both an `_sk` and an
+  `_id`, and only the `_sk` columns join. "customer key" against "customer
+  identifier" does not tell a model which is joinable. It was the only
+  error among the 57 entries.
+- CI ran `pytest -q` on top of the `-q` already in `pyproject.toml`, and
+  two quiet flags suppress the summary line. The step 3 count in CI (74
+  passed, 14 skipped) was therefore read by counting progress dots. The
+  workflow now runs plain `pytest` and prints its own counts.
 
 **Next single deliverable.** Step 4: path finding, selection and
 explanation over this graph (FR-11 to FR-14, FR-40), the overlay's

@@ -249,7 +249,7 @@ naming:
 
   words:
     # keys
-    sk:       key
+    sk:       surrogate key
     id:       identifier
     addr:     address
     cdemo:    customer demographics

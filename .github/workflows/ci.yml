@@ -21,7 +21,7 @@ jobs:
       - run: pip install -r requirements.txt
       # No database, no Redis, no Docker: the application factory means the
       # tests supply their own settings and never open a connection (DD-01).
-      - run: pytest -q
+      - run: pytest
 
   frontend-build:
     name: frontend production build
