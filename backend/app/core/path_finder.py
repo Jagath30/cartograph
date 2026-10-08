@@ -17,12 +17,27 @@ and which the primary key, and which way this path walked it.
     one_to_many   walked from the primary key to the foreign key
                   (each store has many sales)
 
-THE RULE (DD-12), in order:
+THE RULE (DD-12, as amended at step 6), in order:
   1. Shortest wins: fewest joins.
   2. Among tied shortest paths, a preference declared in the overlay wins --
      if it names exactly one of them. Otherwise it is not applied.
-  3. Otherwise the tie is broken alphabetically, by table names and then by
+  3. Otherwise, if the caller supplies what the question's wording says
+     about each column, and that scores one tied path above every other by
+     more than the margin, that path wins: `question_evidence`. It is a
+     reasoned choice, not an arbitrary one, and the scores are kept.
+  4. Otherwise the tie is broken alphabetically, by table names and then by
      column names. That choice is ARBITRARY and the result says so.
+
+Rule 3 uses nothing about the kind of table, its size or its place in the
+schema (Charter D-06 rejects those). Its only input is what the person
+asking wrote. It applies only among tied shortest paths: it can never
+promote a longer route. Handed no evidence, this component behaves exactly
+as it did before the rule existed.
+
+HOW A TIED PATH IS SCORED. By the columns that tell it apart: every column
+on its joins that is not on every tied path. cs_bill_addr_sk against
+cs_ship_addr_sk: both reach ca_address_sk, so each path is scored by its
+own one key. The score is the mean of those columns' scores.
 
 Nothing is ever dropped to make that choice look cleaner. Every path found
 within the limit is in `discovered`, and the ones tied with the selected
@@ -57,7 +72,7 @@ MANY_TO_ONE = "many_to_one"
 ONE_TO_MANY = "one_to_many"
 
 Walked = Literal["many_to_one", "one_to_many"]
-Rule = Literal["only_path", "shortest", "preference", "alphabetical"]
+Rule = Literal["only_path", "shortest", "preference", "question_evidence", "alphabetical"]
 
 
 @dataclass(frozen=True)
@@ -141,6 +156,12 @@ class PathResult:
     # Declared for this pair, but it did not name exactly one of the paths
     # it could have chosen between. Reported, never silently dropped.
     preference_not_applied: Preference | None = None
+    # What the question's wording said about each tied path, best first:
+    # (path id, score). Empty when no evidence was supplied or nothing
+    # tied. Present whether or not it decided.
+    evidence: tuple[tuple[str, float], ...] = ()
+    # The difference in score evidence had to exceed to decide.
+    margin: float | None = None
 
     @property
     def arbitrary(self) -> bool:
@@ -148,7 +169,64 @@ class PathResult:
         return self.rule == "alphabetical"
 
 
-def find_paths(graph: nx.DiGraph, start: str, end: str, max_joins: int = DEFAULT_MAX_JOINS) -> PathResult:
+@dataclass(frozen=True)
+class Choice:
+    """One path chosen among several equally short ones, and on what basis."""
+
+    selected: Path
+    rule: Rule
+    evidence: tuple[tuple[str, float], ...] = ()
+
+
+def score_tied(tied: tuple[Path, ...], evidence: dict[str, float]) -> dict[str, float]:
+    """Path id -> the mean score of the columns that tell that path apart
+    from the others it is tied with."""
+    columns = [frozenset(column for edge in path.edges for column in edge) for path in tied]
+    shared = frozenset.intersection(*columns)
+    scores = {}
+    for path, on_path in zip(tied, columns):
+        telling = sorted(on_path - shared)
+        missing = [column for column in telling if column not in evidence]
+        if missing:
+            raise ValueError(f"no score was supplied for {missing}")
+        scores[path.id] = sum(evidence[column] for column in telling) / len(telling) if telling else 0.0
+    return scores
+
+
+def choose(
+    tied: tuple[Path, ...],
+    preferred: tuple[Path, ...] = (),
+    evidence: dict[str, float] | None = None,
+    margin: float = 0.0,
+) -> Choice:
+    """Rules 2 to 4, among paths already known to be equally short. `tied`
+    is in alphabetical order; `preferred` is those of them a declared
+    preference names."""
+    if len(preferred) == 1:
+        return Choice(preferred[0], "preference")
+
+    scored: tuple[tuple[str, float], ...] = ()
+    if evidence is not None:
+        scores = score_tied(tied, evidence)
+        ranked = sorted(tied, key=lambda path: -scores[path.id])  # stable: ties stay alphabetical
+        scored = tuple((path.id, scores[path.id]) for path in ranked)
+        if scored[0][1] - scored[1][1] > margin:
+            return Choice(ranked[0], "question_evidence", scored)
+
+    return Choice(tied[0], "alphabetical", scored)
+
+
+def find_paths(
+    graph: nx.DiGraph,
+    start: str,
+    end: str,
+    max_joins: int = DEFAULT_MAX_JOINS,
+    evidence: dict[str, float] | None = None,
+    margin: float = 0.0,
+) -> PathResult:
+    """`evidence` is table.column -> what the question's wording says about
+    that column, and `margin` the difference it must exceed to decide a
+    tie (rule 3). Without evidence, rule 3 is skipped."""
     for table in (start, end):
         if table not in graph or graph.nodes[table]["kind"] != TABLE:
             raise ValueError(f"{table} is not a table in this graph")
@@ -189,15 +267,14 @@ def find_paths(graph: nx.DiGraph, start: str, end: str, max_joins: int = DEFAULT
             preference_not_applied=None if preferred or declared is None else declared,
         )  # fmt: skip
 
-    if len(preferred) == 1:
-        return PathResult(
-            start, end, max_joins, tuple(discovered),
-            selected=preferred[0], rule="preference", tied=shortest, preference_applied=declared,
-        )  # fmt: skip
-
+    choice = choose(shortest, tuple(preferred), evidence, margin)
     return PathResult(
         start, end, max_joins, tuple(discovered),
-        selected=shortest[0], rule="alphabetical", tied=shortest, preference_not_applied=declared,
+        selected=choice.selected, rule=choice.rule, tied=shortest,
+        preference_applied=declared if choice.rule == "preference" else None,
+        preference_not_applied=None if choice.rule == "preference" else declared,
+        evidence=choice.evidence,
+        margin=margin if choice.evidence else None,
     )  # fmt: skip
 
 

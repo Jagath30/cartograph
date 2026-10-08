@@ -312,6 +312,16 @@ def test_a_table_outside_the_margin_is_not_a_rival() -> None:
     assert term.rivals == ()
 
 
+def test_a_table_exactly_the_margin_behind_is_not_a_rival() -> None:
+    """A rival differs by LESS than the margin. Binary fractions, so the
+    difference is exactly 0.25 and the boundary is really tested."""
+    term = (Term("amount", "word"), _scores(("sales.amount", 1.0, 0.0), ("returns.amount", 0.75, 0.0), ("shop", 0.0, 0.0)))
+    at = retrieve("q", QUESTION, (term,), _settings(alpha=1.0, margin=0.25)).terms[0]
+    assert at.rivals == ()
+    inside = retrieve("q", QUESTION, (term,), _settings(alpha=1.0, margin=0.26)).terms[0]
+    assert [rival.rival for rival in inside.rivals] == ["returns"]
+
+
 def test_a_rival_is_not_made_an_anchor_beside_the_table_that_beat_it() -> None:
     """Both tables reach the cut on the whole question. One term, "amount",
     is why, and it could mean either. One is chosen; the other is set aside

@@ -27,6 +27,10 @@ WHEN A WARNING FIRES (DD-21):
   no_path                 nothing connects the two tables within the limit.
                           Reported, not repaired (DD-10).
 
+A tie the question's own wording decided (DD-12 as amended) does not warn
+either: that selection had a basis. Its reason gives the scores and names
+the routes not taken, so a reader can still say "no, I meant the other".
+
 Alternatives that merely exist do not warn. If the shortest path stood
 alone, the reason says how many routes there were and that is all.
 """
@@ -137,8 +141,21 @@ def explain(result: PathResult, graph: nx.DiGraph) -> Explanation:
         reason = (
             f"{tie}. The overlay declares which is meant, because: {result.preference_applied.because}."
         )
+    elif result.rule == "question_evidence":
+        (_, best), (_, next_best) = result.evidence[:2]
+        others = " ".join(f"Not taken: {path.description}" for path in tied_alternatives)
+        reason = (
+            f"{tie}. The wording of the question points to this one: it scores {best:.3f} against "
+            f"{next_best:.3f} for the next, more than the {result.margin:.3f} that could be chance. {others}"
+        )
     else:
         reason = f"{tie}. The tie was broken alphabetically, so the choice is arbitrary."
+        if result.evidence:
+            (_, best), (_, next_best) = result.evidence[:2]
+            reason += (
+                f" The wording of the question did not separate them: {best:.3f} against {next_best:.3f}, "
+                f"within the {result.margin:.3f} that could be chance."
+            )
         others = " ".join(f"Equally valid: {path.description}" for path in tied_alternatives)
         warnings.append(
             PathWarning(

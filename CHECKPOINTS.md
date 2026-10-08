@@ -687,8 +687,8 @@ by anything.
     0  this record                                  done
     1  the step 6 judgement                         done; reviewed; frozen
     2  Retriever (pure)                             done
-    3  evidence tie rule in the PathFinder          next
-    4  join tree for N anchors, subgraph bound
+    3  evidence tie rule in the PathFinder          done
+    4  join tree for N anchors, subgraph bound      next
     5  Alembic and the first migration
     6  snapshot store
     7  embedding adapter
@@ -1162,6 +1162,54 @@ aside although its chooser is out of the running; alpha ignored; the
 keyword rank left raw; rivals never set aside; the cap before the rivals;
 the term floor ignored; bigrams across a stopword; the cut as `>`.
 
+### Piece 3: the evidence tie rule — 8 October 2026
+
+**What exists.** Rule 3 of DD-12 as amended, in `app/core/path_finder.py`,
+with 17 tests in `tests/core/test_path_evidence.py` from the hand-written
+fixture and scores typed in the test. `find_paths` takes two optional
+arguments, `evidence` (table.column to score) and `margin`. Handed
+neither, it is the PathFinder of step 4: every earlier test passes
+unchanged and the step 5 report is still byte for byte its baseline. The
+selection among tied paths is now one function, `choose`, so that piece 4
+can apply the same rules 2 to 4 where an anchor could attach at more than
+one place.
+
+**How a tied path is scored.** By the columns that tell it apart: every
+column on its joins that is not on every tied path. `cs_bill_addr_sk`
+against `cs_ship_addr_sk` both reach `ca_address_sk`, which therefore says
+nothing and is not looked up. A path's score is the mean of its telling
+columns' scores. Evidence decides only when the best path beats the second
+best by MORE than the margin; at the margin exactly, it does not.
+
+**What is said.** When evidence decides, the rule is `question_evidence`,
+`arbitrary_choice` does not fire, and the reason gives both scores and the
+margin and names each route not taken. When it does not decide, the
+result is alphabetical, arbitrary and warned exactly as before, and the
+reason adds the two scores that failed to separate. A declared preference
+that singles out one tied route still comes first; one that singles out
+nothing is reported as not applied whichever rule then decides.
+
+**Decided while building, and told.**
+- A path's score is the **mean** of its telling columns, not the best of
+  them. A two-join route through a bridging table differs in two keys, and
+  one well-matched key should not carry a route whose other key the
+  question says nothing about.
+- Both sides of a join count as telling columns, not only the foreign key
+  side: two routes through different dimensions differ in the primary key
+  they pass through as well.
+- A telling column with no score raises. Read as 0 it would decide ties
+  silently.
+
+**Mutations.** Seven. Six were caught at once: best against last instead
+of against second; evidence ahead of a preference; shared columns scored;
+the best column instead of the mean; a missing score read as 0; the lowest
+score winning. **One survived:** "more than the margin" rewritten as "at
+least the margin" passed, because the test at the boundary used 0.30, 0.20
+and 0.10, and in floating point 0.30 - 0.20 is 0.0999..., which is not at
+least 0.10 either. The test now uses 0.5, 0.25 and 0.25, which are exact,
+and catches it. The same fault was then looked for in piece 2 and found:
+no test stood exactly at the margin for a rival. One was added there.
+
 ### Tuning log
 
 Empty. No run has been made.
@@ -1200,6 +1248,13 @@ Empty. No run has been made.
   `test_a_rival_is_not_made_an_anchor_beside_the_table_that_beat_it`
 - `dict.fromkeys` in `make_terms`: order kept, repeats dropped
 - `# fmt: skip` and why a frozen dataclass still allows `@property`
+- `score_tied`: `frozenset.intersection(*columns)`, and why the shared
+  columns are left out before anything is averaged
+- why 0.30 - 0.20 is not 0.10 in floating point, which fractions are exact,
+  and what that did to a boundary test
+- `choose` as its own function: the three rules after "shortest", usable
+  where the tied paths do not share both ends
+- the stable sort in `choose`: equal scores stay in alphabetical order
 
 ### Carried forward
 
