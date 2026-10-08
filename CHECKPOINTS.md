@@ -677,14 +677,16 @@ No tag yet. This section is the step's working record: where it stands,
 what was decided before any code, and every tuning run. It becomes
 `checkpoint-06-retrieval` when the step closes.
 
-**Where the work stands.** Piece 1 of 11 is committed and the work is
-STOPPED FOR THE OWNER'S REVIEW of the step 6 judgement. No retrieval code
-exists. Nothing has been embedded. No evaluation question has been scored
-by anything.
+**Where the work stands.** Pieces 0 and 1 are committed and were reviewed
+by the owner; his rulings at that stop are recorded below and the step 6
+judgement was corrected to them. THE STEP 6 JUDGEMENT IS NOW FROZEN like
+the step 5 one: from piece 2 onwards `app/core/eval_step6.py` changes only
+on the owner's ruling. No retrieval code exists yet. Nothing has been
+embedded. No evaluation question has been scored by anything.
 
     0  this record                                     done
-    1  the step 6 judgement                            done; AWAITING REVIEW
-    2  Retriever (pure)                                next, after the review
+    1  the step 6 judgement                            done; reviewed; frozen
+    2  Retriever (pure)                                next
     3  evidence tie rule in the PathFinder
     4  join tree for N anchors, subgraph bound
     5  Alembic and the first migration
@@ -921,17 +923,28 @@ is embedded, and each run uses the value belonging to its alpha. 95 is the
 conventional level for "unlikely to be chance" and was chosen before any
 number was seen.
 
-**The floor (ruling d).** *What it must mean:* a raw similarity no better
-than what two unrelated things score. *Method:* take every pseudo-question
-and every element in a table that has no foreign key, in either direction,
-to the pseudo-question's own table; take the raw cosine similarity of each
-such pair. **The floor is the median of those similarities.** A question
-is declined when its best raw similarity to any element is at or below it.
-The same floor marks a term as unmatched, which is information only. The
-median, not a high percentile, because the two errors are not alike: a
-false decline refuses a question the warehouse can answer, and the claim
-"the best match is no better than a typical unrelated pair" is the weakest
-one that still means something.
+**The floor (ruling d). CORRECTED by the owner at the first review stop,
+before any number existed.** *What it must mean:* a best raw similarity no
+better than what something the schema does not hold would score.
+*Method:* for each pseudo-question, take its **best** raw cosine
+similarity over the elements of every table that has no foreign key, in
+either direction, to the pseudo-question's own table. **The floor is the
+median of those bests.** A question is declined when its best raw
+similarity over all elements is at or below the floor. A term is unmatched
+by the same test, which is information only.
+
+*What was wrong with the first version.* As first written the floor was
+the median of single unrelated pairs. That compares unlike things: a
+question's best over hundreds of elements against the median of single
+pairs. A maximum over hundreds will almost always exceed a median of
+singles, so the floor would almost never fire, and the decline mechanism
+would exist without being able to act, which is the failure this project
+is about. The corrected method compares a best with bests.
+
+*Known bias, recorded.* A pseudo-question's best is taken over fewer
+elements than a real question's, since its own table and that table's
+neighbours are left out. That pushes the floor down and makes declines
+rarer. It is the safer direction.
 
 *Known weakness of both, stated now.* Schema names are not phrased like
 questions. Similarities between two formulaic names may run higher or
@@ -955,8 +968,8 @@ reviewed by the owner before anything else is run.
     alpha            0.5     grid 0, 0.25, 0.5, 0.75, 1        (DD-09)
     subgraph bound   10      changed only if the log shows it binding (DD-11)
     max joins        3       unchanged from step 4
-    anchor cap       5       see the open question below
-    anchor cut       0.5     see the open question below
+    anchor cap       5       fixed
+    anchor cut       0.5     grid 0.3, 0.4, 0.5, 0.6, 0.7
     margin           by the method above; not in the grid
     floor            by the method above; not in the grid
 
@@ -964,21 +977,22 @@ A setting replaces a default only if it improves at least two questions,
 worsens none, and its neighbours in the grid move the same way; an
 isolated peak is noise. Every run is logged whether or not it is kept.
 
-**Open, awaiting a ruling: how many anchors.** DD-11 says the anchor bound
-is "how many scored tables are proposed as anchors" and no ruling covers
-how that number is reached for one question. A fixed count would propose
-five anchors for a two-table question, and ruling g compares the tree's
-tables with the expected ones, so every such question would disagree.
-Proposed, not yet approved: a table is an anchor when its normalised
-combined score is at least the cut, 0.5 by default as the midpoint of the
-normalised range, up to a cap of five, the number of anchors in the
-Design's own worked example; the cut in the grid at 0.3, 0.4, 0.5, 0.6 and
-0.7. It is the knob most able to move the result and is raised at the
-first review stop. Nothing depends on it before piece 2.
+**How many anchors. Approved by the owner at the first review stop.**
+DD-11 says the anchor bound is "how many scored tables are proposed as
+anchors" and does not say how that number is reached for one question. A
+fixed count would propose five anchors for a two-table question, and the
+step 6 judgement compares the tree's tables with the expected ones, so
+every such question would disagree. The rule: a table is an anchor when
+its normalised combined score is at least the cut, 0.5 by default as the
+midpoint of the normalised range, up to a cap of five, the number of
+anchors in the Design's own worked example. The cut is in the grid at 0.3,
+0.4, 0.5, 0.6 and 0.7, under the same keep-rule as everything else. Every
+logged run records how many anchors each question received, so the cut's
+effect is visible. It is the knob most able to move the result.
 
 ### Piece 1: the step 6 judgement — 8 October 2026
 
-**What exists.** `backend/app/core/eval_step6.py`, pure, 35 tests in
+**What exists.** `backend/app/core/eval_step6.py`, pure, 39 tests in
 `tests/core/test_eval_step6.py`, all from the committed set and running in
 CI. It was committed before any retrieval code, so the rule could not be
 shaped by a result. `eval_set.py` and `questions.yaml` are untouched.
@@ -986,35 +1000,47 @@ shaped by a result. `eval_set.py` and `questions.yaml` are untouched.
 commit and compared with the baseline recorded above: identical. A test
 runs `show_eval` on the live warehouse and compares it with that file byte
 for byte, so extending the runner cannot move a line of step 5's report.
-238 tests in the container; 223 pass and 15 skip with both database URLs
+243 tests in the container; 228 pass and 15 skip with both database URLs
 unset.
 
-**The rule, in full.** The system hands over, for one question: whether it
-declined; the tables of its selected tree after expansion; every warning
-code it raised about the answer as a whole; and, for each pair check of
-the question, its path between those two tables within the tree and the
-warning codes it raises about that path. A question AGREES only if every
-part that applies holds:
+**The rule, in full, as corrected at the first review stop.** The system
+hands over, for one question: whether it declined; the tables of its
+selected tree after expansion; the joins of that tree; every warning code
+it raised about the answer as a whole; and, for each pair check of the
+question, its path between those two tables within the tree with the
+warning codes it raises about that path. The question is judged on the
+tree as a whole. It AGREES only if every part that applies holds:
 
 - **decline.** The question's warning is `decline` if and only if the
   system declined. When either side says decline, nothing else is judged.
 - **tables.** The tree's tables are exactly `tables`, plus exactly one of
   `tables_one_of` where the question has any. One too many disagrees just
   as one too few does.
+- **joins.** The tree's joins are exactly the set's `joins` field: every
+  entry used, by exactly one of its `one_of` alternatives where it has
+  any, and no join besides.
 - **warnings.** The codes raised about the answer are exactly the one
   expected: none for `none`, that code and no other otherwise. `see_note`
   (question 16) states no warning of its own and this part is not judged
-  for it; its checks carry its expectation.
-- **checks.** Every pair check, by step 5's own `judge`, unchanged, on the
-  path within the tree. A table the tree does not hold has no path.
+  for it.
 
-The statuses are `agrees`, `disagrees` and `not_evaluable_at_step_6`, never
-match and mismatch, and are never added to step 5's counts.
+Pair checks are still put to step 5's own `judge`, unchanged, on the path
+within the tree, and are reported. They decide nothing. The statuses are
+`agrees`, `disagrees` and `not_evaluable_at_step_6`, never match and
+mismatch, and are never added to step 5's counts.
 
-**Decided while writing it, for the review.**
-- A check the set marks `expected_to_fail` keeps the status step 5 gives
-  it, and that is reported. The question agrees only if the check holds in
-  substance. A wrong path that was predicted is a wrong path.
+**What the first version was, and the finding that changed it.** As first
+committed (`e6b1194`) the rule had no joins part and required every pair
+check to hold on its path within the tree. A test written with it showed
+that question 14 could then never agree, whatever retrieval did: the set
+gives it a check between `store_returns` and `item` and another between
+`store_sales` and `item`, each accepting only the direct key, because
+"either item key answers the question". Pairwise, both match. In one tree
+`item` hangs off one table, and the other check's path is two joins and
+not the one accepted. This was reported at the first review stop and not
+worked around.
+
+**Still as decided while writing it.**
 - The question-level warning must be exact, as pair warnings are at step
   5. A question expecting `anchor_ambiguity` that also raises
   `multi_anchor` disagrees.
@@ -1023,35 +1049,68 @@ match and mismatch, and are never added to step 5's counts.
   a sub-path carries the warnings the tree raised about any join on it,
   and `many_to_many` when the sub-path itself pivots.
 - Input that contradicts itself raises: an unknown code, a decline that
-  comes with a tree, a check with no path reported.
+  comes with a tree, a check with no path reported, and a question whose
+  `joins` names the same join in two entries.
 
 **Findings.**
-- **Question 14 cannot agree under this rule, whatever retrieval does.**
-  The set gives it a check between `store_returns` and `item` and another
-  between `store_sales` and `item`, each accepting only the direct key,
-  because "either item key answers the question". Pairwise, both match. In
-  one tree `item` hangs off one table, and the other check's path is then
-  two joins and not the one accepted. With the best possible tree and the
-  right warning it still disagrees, on exactly one check
-  (`test_recorded_question_14_cannot_agree_...`). This follows from ruling
-  g's second precision applied to the frozen checks. Not worked around.
-  The set's own `joins` field, with its `one_of`, does express what
-  question 14 means; comparing the tree's joins with `joins` would be a
-  different rule, and whether to have it is the owner's decision.
-- **Every other question can agree.** For each of the other fifteen, a
-  tree made of the question's own expected joins, with the expected
-  warning, agrees. So no other disagreement at step 6 can be blamed on the
-  instrument.
+- **Every answerable question can agree, question 14 included.** For each
+  of the fifteen, a tree made of the question's own expected joins, with
+  the expected warning, agrees; question 15 agrees when declined. So no
+  disagreement at step 6 can be blamed on the instrument.
+- **Question 14 agrees with either item key and with no other tree.** Both
+  keys at once, neither, or `item` hung off `promotion` by `p_item_sk`
+  each disagree on joins with the right four tables. One of its two item
+  checks still fails within any one tree; that is now reported and
+  decides nothing.
 - **Question 13's "same sales table" needs no rule.** The set says it in a
   comment. It follows from the tables: of the nine ways to take one
   alternative from each `one_of`, only the three that use one sales table
   for both joins agree.
-- **A mutation survived.** With "every check holds in substance" softened
-  to "no check is a plain mismatch", all 34 tests passed: the test meant
-  to catch it disagreed for a second reason. A 35th isolates the rule.
-  Four other mutations were each caught: tables as a superset, warnings as
-  "at least", a decline accepted where none was expected, and any number
-  of `tables_one_of`.
+- **Mutations.** Against the first version, "every check holds" softened
+  to "no check is a plain mismatch" survived 34 tests, and a 35th was
+  added for it. Against the corrected version, 39 tests, nine mutations
+  were each caught: tables as a superset; warnings as "at least"; joins
+  allowing extras, allowing two alternatives of one entry, allowing a
+  missing entry, and ignored altogether; a decline accepted where none
+  was expected; any number of `tables_one_of`; and pair checks deciding
+  again.
+
+### The owner's rulings at the first review stop — 8 October 2026
+
+Given on pieces 0 and 1, before any retrieval code and before any
+embedding existed. Pieces 0 and 1 approved with these.
+
+1. **The step 6 judgement judges the selected tree as a whole, not pair by
+   pair. A CORRECTION TO RULING g, made before any result exists.** A
+   question agrees when all of these hold: the tree's tables equal the
+   expected tables, with exactly one from any `one_of`; the tree's joins
+   equal the set's `joins` field, honouring its `one_of` alternatives; the
+   question-level warning is exactly as expected (for `see_note`, not
+   judged); for question 15, the question is declined. Pair checks are
+   still computed on the tree and reported as information, but no longer
+   decide a question. Reason: the `joins` field is the set's own statement
+   of the joins a correct answer uses, and it already says question 14 may
+   use either item key; the pair checks were a step 5 device for a
+   pairwise PathFinder. The demonstrating test is kept, rewritten to show
+   that the new rule accepts either item key and rejects a tree that uses
+   both or neither.
+2. **Anchors.** The proposal is approved as the default: a table is an
+   anchor when its normalised combined score is at least the cut, 0.5,
+   with at most five. The cut is in the grid at 0.3 to 0.7 under the same
+   keep-rule as everything else. Every logged run records how many anchors
+   each question received.
+3. **Methods.** The margin method stands. The floor method is corrected,
+   as written above under "Methods fixed in advance", with its known bias
+   recorded.
+4. **The choices inside the judgement stand:** exact question-level
+   warnings, `see_note` unjudged at question level, bigrams as defined,
+   and Postgres's own `english.stop` read through the database. Term
+   extraction therefore needs the database: it lives in the shell, terms
+   are passed into the pure Retriever, and tests use a fake.
+5. **From here the step 6 judgement is frozen like the step 5 one.** From
+   piece 2 onwards it changes only on the owner's ruling.
+6. On the test added because a mutation survived: "exactly the right
+   habit. Keep doing it."
 
 ### Tuning log
 
@@ -1077,11 +1136,13 @@ Empty. No run has been made.
   does not work them out, and what "imports nothing it judges" protects
 - `_route_within` in the test file: a path through a tree, written apart
   from the application on purpose
-- why question 14 can match pairwise and cannot agree within one tree
+- why question 14 can match pairwise and could not agree within one tree,
+  and what judging the tree's joins against `joins` changed
+- why the floor is a median of bests and not of single pairs
 - `itertools.product` over a question's `joins`: every tree its own
   expectations allow
-- the mutation that survived, and what the 35th test does that the 34th
-  could not
+- the mutation that survived the first version's 34 tests, and why
+  mutating a rule is a better test of its tests than reading them
 
 ### Carried forward
 

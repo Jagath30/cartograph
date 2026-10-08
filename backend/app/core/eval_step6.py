@@ -16,8 +16,8 @@ out. It imports no component it is used to judge. What the system did
 arrives as plain data, and how that data is obtained is the runner's
 business.
 
-WHAT IS JUDGED, in four parts. A question AGREES only if every part that
-applies to it holds.
+WHAT IS JUDGED: THE SELECTED TREE AS A WHOLE, not pair by pair. A question
+AGREES only if every part that applies to it holds.
 
   decline   The question's warning is `decline` if and only if the system
             declined it. When either side says decline, nothing else is
@@ -30,24 +30,29 @@ applies to it holds.
             (DD-10). Tables kept on tied alternatives do not count. One
             table too many disagrees just as one too few does.
 
+  joins     The joins of the selected tree are exactly the question's
+            `joins`: every entry of that field is used, by exactly one of
+            its `one_of` alternatives where it has any, and the tree holds
+            no join besides. `joins` is the set's own statement of the
+            joins a correct answer uses.
+
   warnings  The warning codes raised about the answer as a whole are
             exactly the one the question expects: none at all for `none`,
             that one code and no other for the rest. Exactly, for the
             reason step 5 gives: "at least the expected warning" would let
             a wrong answer pass on a warning about something else.
-            `see_note` (question 16) states no warning of its own; its
-            expectation lives in its checks and this part is not judged.
+            `see_note` (question 16) states no warning of its own and this
+            part is not judged for it.
 
-  checks    Every pair check of the question, judged by step 5's own
-            `judge`, unchanged -- but on the path between the two tables
-            WITHIN THE SELECTED TREE, with the warnings the system raises
-            about that path. A table the tree does not hold has no path.
-
-A PREDICTED FAILURE IS STILL A FAILURE HERE. A check the set marks
-`expected_to_fail` keeps the status step 5's `judge` gives it, and that
-status is reported. But the question agrees only if the check holds in
-substance: the path is one the set accepts and the warnings are the ones it
-expects. A wrong path that was predicted is a wrong path.
+PAIR CHECKS INFORM; THEY DO NOT DECIDE. Each pair check of the question is
+still put to step 5's own `judge`, unchanged, on the path between its two
+tables within the selected tree, and the verdicts are reported. They were a
+step 5 device for a PathFinder that saw two tables at a time. Read within
+one tree they can contradict the set's own `joins`: question 14 accepts
+either item key, and its two item checks can then never both hold. So a
+question is decided by the four parts above and by nothing else. (The
+owner's correction to ruling g, made at the first review stop, before any
+retrieval existed.)
 
 THE TWO STATUSES ARE NOT STEP 5's. `agrees` and `disagrees` say whether the
 whole of what retrieval produced is what the set expects. They are never
@@ -95,9 +100,11 @@ class Produced:
     declined: bool
     # The tables of the selected join tree after expansion.
     tree_tables: frozenset[str]
+    # The joins of that tree, each one the column pairs of one foreign key.
+    tree_joins: frozenset[Edges]
     # Every warning code raised about the answer as a whole.
     warnings: frozenset[str]
-    # One for each pair check of the question.
+    # One for each pair check of the question. Reported, never decisive.
     routes: tuple[TreeRoute, ...]
 
 
@@ -108,10 +115,10 @@ class Step6Verdict:
     # not: after a decline on either side, or for `see_note`.
     decline_as_expected: bool | None = None
     tables_as_expected: bool | None = None
+    joins_as_expected: bool | None = None
     warnings_as_expected: bool | None = None
-    checks_hold: bool | None = None
     # Step 5's verdict on each pair check, in the question's order, judged
-    # on the path within the tree.
+    # on the path within the tree. Information: it decides nothing.
     checks: tuple[Verdict, ...] = ()
 
 
@@ -135,11 +142,24 @@ def tables_as_expected(question: Question, tree_tables: frozenset[str]) -> bool:
     return len(extra) == 1 and extra <= frozenset(question.tables_one_of)
 
 
+def joins_as_expected(question: Question, tree_joins: frozenset[Edges]) -> bool:
+    """Every entry of the question's `joins` is used by exactly one of its
+    alternatives, and the tree holds no other join."""
+    entries = [frozenset(frozenset(join.edges) for join in alternatives) for alternatives in question.joins]
+    for number, entry in enumerate(entries):
+        if any(entry & other for other in entries[number + 1 :]):
+            # Then "which entry does this join answer" has two answers, and
+            # the counting below would be wrong.
+            raise ValueError(f"question {question.id}: the same join appears in two entries of `joins`")
+    named = frozenset().union(*entries) if entries else frozenset()
+    return tree_joins <= named and all(len(entry & tree_joins) == 1 for entry in entries)
+
+
 def judge_step6(question: Question, produced: Produced) -> Step6Verdict:
     unknown = sorted(produced.warnings - STEP6_WARNINGS)
     if unknown:
         raise ValueError(f"question {question.id}: {unknown} are not warning codes; expected {sorted(STEP6_WARNINGS)}")
-    if produced.declined and (produced.tree_tables or produced.warnings or produced.routes):
+    if produced.declined and (produced.tree_tables or produced.tree_joins or produced.warnings or produced.routes):
         raise ValueError(f"question {question.id}: declined, yet a tree, a warning or a route was produced")
 
     if question.evaluable_from > 6:
@@ -159,16 +179,16 @@ def judge_step6(question: Question, produced: Produced) -> Step6Verdict:
         verdicts.append(judge(check, routes[pair].selected, routes[pair].raised))
 
     tables = tables_as_expected(question, produced.tree_tables)
+    joins = joins_as_expected(question, produced.tree_joins)
     expected = expected_warnings(question)
     warnings = None if expected is None else produced.warnings == expected
-    checks_hold = all(verdict.path_accepted and verdict.warnings_as_expected for verdict in verdicts)
 
-    agreed = tables and warnings is not False and checks_hold
+    agreed = tables and joins and warnings is not False
     return Step6Verdict(
         AGREES if agreed else DISAGREES,
         decline_as_expected=True,
         tables_as_expected=tables,
+        joins_as_expected=joins,
         warnings_as_expected=warnings,
-        checks_hold=checks_hold,
         checks=tuple(verdicts),
     )
