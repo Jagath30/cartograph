@@ -13,6 +13,19 @@ take it). Each line is one of
                         if it did, UNEXPECTEDLY PASSED if it did not
     NOT EVALUABLE       nothing at this step can speak for the question
 
+WITH --step6 a second report follows the first: each question put through
+retrieval and the join tree, and judged by the step 6 judgement
+(app.core.eval_step6). The first report is not changed by it, by a byte;
+the two are shown side by side and their counts are never added together.
+
+    docker compose exec backend python -m app.show_eval --step6
+    docker compose exec backend python -m app.show_eval --step6 --alpha 0.75 --cut 0.6
+
+The step 6 report needs the schema stored and embedded
+(python -m app.ingest_schema), the margin and floor computed
+(python -m app.calibrate), and OPENAI_API_KEY for any question whose
+vectors are not yet cached.
+
 A REPORT, NOT A TEST. It exits 0 whatever it finds, because disagreement is
 expected and is what the next step is measured against. It changes nothing:
 when the system disagrees with the set, the line says so and both stay as
@@ -22,7 +35,9 @@ No logic lives here: ingest (shell), build, find, explain, judge (core),
 print.
 """
 
+import argparse
 import hashlib
+import sys
 import textwrap
 from collections import Counter
 from pathlib import Path
@@ -87,7 +102,18 @@ def _expected(check: Check) -> None:
     print(f"{'':>19}  warnings: {_codes(check.warnings)}")
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    """With no arguments, the step 5 report and nothing else. `argv` is
+    never read from the process by default, so a caller that passes none
+    gets none."""
+    parser = argparse.ArgumentParser(description="Run the evaluation set and report.")
+    parser.add_argument("--step6", action="store_true", help="add the step 6 report: retrieval and the join tree")
+    parser.add_argument("--alpha", type=float, default=0.5, help="weight of the semantic score (DD-09); default 0.5")
+    parser.add_argument("--cut", type=float, default=0.5, help="anchor cut; default 0.5")
+    parser.add_argument("--cap", type=int, default=5, help="anchor cap; default 5")
+    parser.add_argument("--bound", type=int, default=10, help="subgraph bound (DD-11); default 10")
+    arguments = parser.parse_args(argv or [])
+
     text = EVAL_SET.read_bytes()
     eval_set = parse_eval_set(text.decode())
 
@@ -164,6 +190,13 @@ def main() -> None:
     print(f"\n{'checks':<12}{len(check_statuses)}: {_tally(check_statuses)}")
     print(f"{'questions':<12}{len(question_statuses)}: {_tally(question_statuses)}")
 
+    if arguments.step6:
+        # Imported here so that the step 5 report needs nothing of step 6:
+        # not the application store, not the calibration, not a key.
+        from app.show_eval_step6 import report
+
+        report(eval_set, snapshot, graph, dict(zip((q.id for q in eval_set.questions), question_statuses)), arguments)
+
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

@@ -98,6 +98,25 @@ class FakeEmbedder:
         return tuple(value / length for value in vector)
 
 
+class MeteredEmbedder:
+    """Wraps an Embedder and adds up what passed through it, so that a
+    command can report what a whole run cost (NFR-14)."""
+
+    def __init__(self, inner: Embedder) -> None:
+        self._inner = inner
+        self.model = inner.model
+        self.texts = 0
+        self.tokens = 0
+        self.cost_usd = 0.0
+
+    def embed(self, texts: list[str]) -> Embedded:
+        result = self._inner.embed(texts)
+        self.texts += len(texts)
+        self.tokens += result.tokens
+        self.cost_usd += result.cost_usd
+        return result
+
+
 class OpenAIEmbedder:
     def __init__(
         self,
