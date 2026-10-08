@@ -42,7 +42,6 @@ each raises. A set that is quietly missing an expectation would report a
 better score, and nothing downstream would say so.
 """
 
-from collections import Counter
 from dataclasses import dataclass
 from typing import Literal
 
@@ -320,8 +319,8 @@ def _question(entry: object, categories: dict[str, str]) -> Question:
         raise ValueError(f"evaluation set: {where}: at_step_5 is {question.at_step_5} but it has {len(checks)} checks")
     if question.at_step_5 == CHECKABLE and question.evaluable_from == 5 and categories[question.warning] != EXISTS:
         raise ValueError(f"evaluation set: {where}: evaluable from step 5, yet nothing can raise {question.warning}")
-    pairs = Counter(tuple(sorted(check.between)) for check in question.checks)
-    repeated = sorted(pair for pair, count in pairs.items() if count > 1)
+    pairs = [tuple(sorted(check.between)) for check in question.checks]
+    repeated = sorted({pair for pair in pairs if pairs.count(pair) > 1})
     if repeated:
         raise ValueError(f"evaluation set: {where}: more than one check between {repeated}")
     return question
@@ -370,9 +369,9 @@ def _path(entry: object, between: tuple[str, ...], where: str) -> ExpectedPath:
 
     # A route from one table to the other touches each of them once and
     # every table in between twice.
-    touched = Counter(table for join in path for table in (join.from_table, join.to_table))
-    ends = sorted(table for table, count in touched.items() if count == 1)
-    if ends != sorted(between) or any(count > 2 for count in touched.values()):
+    touched = [table for join in path for table in (join.from_table, join.to_table)]
+    ends = sorted(table for table in set(touched) if touched.count(table) == 1)
+    if ends != sorted(between) or any(touched.count(table) > 2 for table in touched):
         raise ValueError(f"evaluation set: {where}: the path does not run from {between[0]} to {between[1]}")
     return path
 
