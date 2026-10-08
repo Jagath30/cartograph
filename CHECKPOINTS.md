@@ -187,6 +187,116 @@ explanation over this graph (FR-11 to FR-14, FR-40), the overlay's
 `preferences` section (DD-12), and a script that prints every path between
 two named tables.
 
+## checkpoint-04-paths — 8 October 2026
+
+**What works now that did not before.** Given two tables, the application
+says how they join and why. `find_paths` (core, pure) finds every route of
+up to three joins, keeps each join's real direction, selects one by DD-12 —
+shortest, then a declared preference, then alphabetical — and records when
+that last rule was all it had. `explain` (core, pure) turns the result into
+structured data: the chosen path, every alternative, the reason, warnings,
+and the source of every edge, with one plain-English sentence per path
+(FR-40). On the live warehouse `catalog_sales` to `customer_address` is a
+tie between the billing and the shipping key; it is chosen alphabetically,
+called arbitrary, and the warning itself names the route not taken.
+`store_sales` to `customer_address` has 93 routes, one strictly shortest,
+and warns about nothing. The overlay's `preferences` section is parsed and
+checked against the warehouse's keys; a preference that does not name
+exactly one tied route is not applied and cannot silence the warning.
+`docker compose exec backend python -m app.show_paths A B` prints all of
+it. 150 tests locally; 135 pass and 15 skip under CI conditions. Smoke: 21
+passed, 0 failed, 2 skipped.
+
+**To dissect.** Built with assistance and used correctly, but not yet
+understood well enough to defend under questioning:
+- **the table view.** The graph has columns as nodes, so a join is three
+  edges; `_table_view` folds it into a `MultiGraph` where one edge is one
+  join, and the search runs there. Why this one *is* a multigraph when the
+  graph itself did not need to be
+- `nx.all_simple_edge_paths` with `cutoff`: what "simple" rules out, and
+  why edge paths and not node paths (two keys between the same two tables
+  are the same node path)
+- `walked` against the edge's real direction: `many_to_one` and
+  `one_to_many`, and how the same join reads differently from each end
+- **what a many-to-many pivot is, exactly**: arrive at a primary key, leave
+  by the same primary key. Why `store <- store_sales -> customer_address`
+  is not one and `store_sales -> customer <- catalog_sales` is. Work one
+  through with three rows on paper
+- the selection function, branch by branch: one shortest path; several
+  with a preference naming exactly one; several otherwise. Which branches
+  set `preference_not_applied`, and why a preference can never promote a
+  longer route
+- `_alphabetical`: why the path is read from the alphabetically smaller
+  end before comparing
+- **a mutation survived twice.** With the tie-break cut down to table
+  names, every test passed: bill beat ship only because the fixture
+  declares it first. A test reversing the foreign keys still passed,
+  because edge order follows the order *column nodes* were added. Only
+  reversing columns as well caught it. What that says about every other
+  test that passes
+- how a preference is validated at ingestion (`_check_preference`): the
+  walk that uses every named edge once and must end at the other table
+- why warnings are made by the Explainer and facts by the PathFinder, and
+  what `PathResult.arbitrary` is for
+- the sentence templates, and `_column` cutting a readable name at " — ".
+  What it does to a column whose name came from a database comment
+- frozen dataclasses with `@property`: `Path.tables`, `Path.id` and
+  `Path.many_to_many_at` are computed, not stored
+- why `test_tpcds_paths.py` pins numbers measured by a separate script, and
+  what its two `test_recorded_...` tests are for
+- `argparse` in `show_paths.py`
+
+**Findings.** Recorded as found:
+- **The default limit is three joins, inside DD-10's ceiling of four.**
+  DD-10 says routes longer than four edges are not considered: a ceiling,
+  not a mandate. Measured over all 276 table pairs:
+
+  | | three joins | four joins |
+  |---|---|---|
+  | paths found | 11,453 | 99,480 |
+  | median per pair | 32 | 284 |
+  | largest pair | 159 | 1,335 |
+  | pairs with no route | 1 | 0 |
+
+  The limit is a parameter (`max_joins`), so four is reachable.
+- **The one pair out of reach at three joins is `income_band` and
+  `inventory`.** At four it has 32 tied routes, every one many-to-many. No
+  other pair selects a different path at four. Two pairs keep their path
+  and change their reason from "only route" to "shortest of several":
+  `reason`/`ship_mode` and `reason`/`warehouse`. An evaluation question
+  touching `income_band` and `inventory` together is unanswerable at the
+  default.
+- **Design gap, DD-12.** Rule 2 breaks ties "alphabetically by the
+  sequence of table names". `cs_bill_addr_sk` and `cs_ship_addr_sk` give
+  the same sequence, so the rule as written cannot separate the very tie
+  DD-21 was written about. Extended to table names, then column names;
+  bill wins over ship.
+- **Design gap, path shape.** DD-12 fixes the ranking and nothing in the
+  Design considers that a short path can join two "many" sides through
+  one table. Of 275 connected pairs, 86 select such a route, and for 79
+  every shortest route is one. Decided: report and warn, naming the pivot
+  table and what happens to the rows. Ranking by pivot count was rejected
+  because Charter D-06 rejects heuristics that favour one kind of table —
+  and, secondarily, because DD-12 would need amending.
+- **Design gap, DD-16.** Its example preference, `between: [store_sales,
+  customer_address], prefer: via_store`, addresses a tie between two
+  destinations, which the PathFinder cannot see, with a label nothing
+  defines. The implemented shape names the route by its exact edges and
+  requires `because`.
+- **Ties are the common case, not the exception.** 203 of 275 connected
+  pairs tie at their shortest length. Between a fact and a dimension the
+  ties are the 24 parallel-key pairs of step 2. Between two dimensions
+  nearly everything ties, on which fact bridges them.
+- **The Explainer follows the Design, not the step 4 brief.** FR-40 and
+  DD-06 put the sentence in the core, composed once. The result is
+  structured and each path carries its sentence.
+- "One join is three edges" in step 3's notes was misread as "DD-10
+  counts tables". DD-10 counts joins.
+
+**Next single deliverable.** Step 5: the evaluation set, about fifteen
+questions with expected tables and expected paths, authored and frozen
+before any retrieval exists (DR-16, T-04).
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
@@ -286,3 +396,36 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     installed packages.
 30. SDD section 08, stage 0 still narrates the edges as coming from the
     overlay. On this warehouse they come from the catalog (item 16).
+31. **For the step that chooses anchors (step 6): the demonstration tie
+    is not a path tie.** "Region" reaches `store` and `customer_address`,
+    each one join from `store_sales`. Two destinations, not two routes to
+    one, so the PathFinder sees two settled pairs and warns about neither
+    (`test_recorded_the_demonstration_tie_is_invisible_from_here`). The
+    component that proposes both tables for one word must raise it, or the
+    headline ambiguity of SDD figure 3 is never reported.
+32. **For step 6: pairs do not combine by themselves.** Worked example:
+    anchors `store_sales`, `item`, `date_dim`. `item` to `date_dim` has 11
+    tied two-join routes; alphabetical selects the bridge `catalog_returns`
+    by `cr_returned_date_sk`. The bridge that should win is `store_sales`
+    by `ss_sold_date_sk`, eighth of the eleven, because `store_sales` is
+    already an anchor and any other choice drags a second fact table into
+    the query. The Design says enumeration is pairwise (correction 6) and
+    does not say how pairs become one join tree
+    (`test_recorded_two_dimensions_tie_on_which_fact_bridges_them`).
+33. The TPC-DS overlay declares no preferences, on purpose: DD-12 wants
+    the demonstration to say "arbitrary". So the generator was not taught
+    a hand-written preferences source. The first real preference needs
+    one, on the pattern of `tpcds.naming.yaml`; typed into `tpcds.yaml` it
+    would be overwritten.
+34. "Every discovered path stays in the trace and stays drawn" (DD-21)
+    meets 147 routes for one pair. The Explainer returns them all and
+    marks which are tied; what the trace stores and the panel draws is a
+    step 8 and step 9 question.
+35. A table that references itself never appears in a path: a simple path
+    visits no table twice, so self-joins are out of reach.
+36. Composite foreign keys are gathered into one join by constraint name.
+    Tested from a fixture only; TPC-DS has none.
+37. `show_schema` and `show_paths` each ingest the warehouse afresh, about
+    0.2 seconds. Fine for a command; the stored snapshot of step 8 ends it.
+38. Path finding is fast enough to leave alone: all 276 pairs in 1.9
+    seconds, the slowest single pair 29 ms, against NFR-02's one second.
