@@ -3,6 +3,11 @@ name: cartograph
 services:
   postgres:
     image: pgvector/pgvector:pg17
+    # Shared memory for parallel queries. Docker's default is 64 MB, and a
+    # parallel hash join over a fact table needs more as soon as work_mem is
+    # raised above Postgres's 4 MB default: measured 8 October 2026, such a
+    # join fails at 64 MB with "No space left on device" and runs at 256 MB.
+    shm_size: 256mb
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
