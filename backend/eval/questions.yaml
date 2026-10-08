@@ -1,0 +1,513 @@
+# The Cartograph evaluation set (DR-13, DR-16, SRS threat T-04).
+#
+# FROZEN FROM THE MOMENT STEP 6 BEGINS. This file's sha256 is pinned in
+# backend/tests/core/test_eval_set.py, so no byte of it -- these comments
+# included -- changes without that test changing in the same diff.
+#
+# An expectation is never edited to match what the system does. When the
+# system disagrees with a line below, the disagreement is reported. Before
+# the freeze a line that is genuinely wrong may be corrected, on the owner's
+# decision only, with the correction and its reason in CHECKPOINTS.md. After
+# it, a badly posed question is deleted and the deletion stated (DR-16).
+#
+# WHO WROTE WHAT. Each question carries text from two hands, kept apart:
+#
+#   question, tables, tables_one_of, warning, note
+#       the owner's reviewed set, as given. See `provenance`.
+#   joins, checks, evaluable_from, at_step_5, ambiguity_seen
+#       derived for step 5. See `derivation`.
+#
+# HOW TO READ A QUESTION
+#
+#   tables          the tables a correct answer uses.
+#   tables_one_of   exactly one of these as well; the question does not say
+#                   which, and that is its point.
+#   warning         the one thing a correct system must say about its own
+#                   answer. See `warning_categories`.
+#   joins           the joins a correct answer uses. A join is `from` (the
+#                   foreign key side) and `to` (the primary key side), each
+#                   one table.column or a list for a key of several columns,
+#                   as in the overlay. `one_of` lists alternatives of which a
+#                   correct answer uses exactly one.
+#   evaluable_from  the first build step at which every expectation of the
+#                   question can be checked against something the system
+#                   produces: 5 = the PathFinder alone, handed the expected
+#                   tables; 6 = needs retrieval; 7 = needs the pipeline.
+#   at_step_5       what step 5 can say about the question as a whole:
+#                     checkable      every join is covered by a check below
+#                     partial        some checks exist, but they cannot speak
+#                                    for the question; a matching check must
+#                                    never make it look healthy
+#                     not_evaluable  no concrete pair of tables yet
+#   checks          what the PathFinder is asked at step 5. `between` two
+#                   tables, the selected path must be one of the paths in
+#                   `accept` -- each a list of joins, compared as a set of
+#                   column pairs -- and the warning codes it raises must be
+#                   exactly `warnings`, no more and no fewer.
+#                   `expected_to_fail` marks a check the set's authors said
+#                   in advance would fail, and `prediction` is what they said
+#                   the system would select instead. Nothing is marked so
+#                   after the fact.
+#   ambiguity_seen  second meanings noticed while deriving the joins. Not an
+#                   expectation; nothing is checked against it.
+
+provenance: >-
+  Drafted by Claude in a separate Cowork session with no access to any
+  retrieval code (none exists yet); reviewed by Jagath Manjunath, revised at
+  his request after an adversarial second review, and approved by him, 8-9
+  October 2026.
+
+derivation: >-
+  The joins, checks, evaluable_from, at_step_5 and ambiguity_seen fields were
+  derived by Claude in the step 5 build session on 8 October 2026, by
+  reasoning from the committed DDL, the committed overlay and what each
+  question means. No expectation was computed by running the PathFinder. All
+  sixteen were shown to Jagath Manjunath and approved by him before this
+  file was written, and it was committed before any runner existed.
+
+warning_categories:
+  none:             exists
+  arbitrary_choice: exists
+  many_to_many:     exists
+  # No mechanism yet. Questions carrying these are expected to fail today;
+  # they are the regression tests for steps 6 and 7.
+  anchor_ambiguity: no_mechanism
+  multi_anchor:     no_mechanism
+  decline:          no_mechanism
+  # Question 16 only: its expectation is the pre-registered prediction in
+  # its note, carried on its third check.
+  see_note:         exists
+
+questions:
+
+  - id: 1
+    question: How much did each store sell last year?
+    tables: [store_sales, store, date_dim]
+    warning: none
+    note: >-
+      relative time kept deliberately; the dataset has no "now"
+    evaluable_from: 5
+    at_step_5: checkable
+    joins:
+      - from: store_sales.ss_store_sk
+        to:   store.s_store_sk
+      - from: store_sales.ss_sold_date_sk
+        to:   date_dim.d_date_sk
+    checks:
+      - between: [store_sales, store]
+        accept:
+          - - from: store_sales.ss_store_sk
+              to:   store.s_store_sk
+        warnings: []
+      - between: [store_sales, date_dim]
+        accept:
+          - - from: store_sales.ss_sold_date_sk
+              to:   date_dim.d_date_sk
+        warnings: []
+    ambiguity_seen: >-
+      store.s_closed_date_sk references date_dim, a direct edge between two
+      of the three tables. A correct answer never uses it.
+
+  - id: 2
+    question: Which states are our catalog customers billed in?
+    tables: [catalog_sales, customer_address]
+    warning: none
+    note: >-
+      wins by length, not meaning; catalog_sales -> customer ->
+      c_current_addr_sk is a second meaning the system never weighs
+    evaluable_from: 5
+    at_step_5: checkable
+    joins:
+      - from: catalog_sales.cs_bill_addr_sk
+        to:   customer_address.ca_address_sk
+    checks:
+      - between: [catalog_sales, customer_address]
+        accept:
+          - - from: catalog_sales.cs_bill_addr_sk
+              to:   customer_address.ca_address_sk
+        warnings: []
+    ambiguity_seen: >-
+      catalog_sales.cs_ship_addr_sk is a second direct edge to
+      customer_address. "Billed" says which is meant, but only to a reader of
+      the question: questions 2 and 3 name the same two tables.
+
+  - id: 3
+    question: Where are our catalog customers located?
+    tables: [catalog_sales, customer_address]
+    warning: arbitrary_choice
+    note: >-
+      really three-way (bill address, ship address, the customer's own
+      address)
+    evaluable_from: 5
+    at_step_5: checkable
+    joins:
+      - one_of:
+          - from: catalog_sales.cs_bill_addr_sk
+            to:   customer_address.ca_address_sk
+          - from: catalog_sales.cs_ship_addr_sk
+            to:   customer_address.ca_address_sk
+    checks:
+      - between: [catalog_sales, customer_address]
+        accept:
+          - - from: catalog_sales.cs_bill_addr_sk
+              to:   customer_address.ca_address_sk
+          - - from: catalog_sales.cs_ship_addr_sk
+              to:   customer_address.ca_address_sk
+        warnings: [arbitrary_choice]
+    ambiguity_seen: >-
+      The customer's own address is two joins away and has two routes of its
+      own, by cs_bill_customer_sk or by cs_ship_customer_sk, then
+      customer.c_current_addr_sk. Four routes, three meanings.
+
+  - id: 4
+    question: What were the top-selling item categories on the web in Q4 2002?
+    tables: [web_sales, item, date_dim]
+    warning: none
+    evaluable_from: 5
+    at_step_5: checkable
+    joins:
+      - from: web_sales.ws_item_sk
+        to:   item.i_item_sk
+      - from: web_sales.ws_sold_date_sk
+        to:   date_dim.d_date_sk
+    checks:
+      - between: [web_sales, item]
+        accept:
+          - - from: web_sales.ws_item_sk
+              to:   item.i_item_sk
+        warnings: []
+      - between: [web_sales, date_dim]
+        accept:
+          - - from: web_sales.ws_sold_date_sk
+              to:   date_dim.d_date_sk
+        warnings: []
+    ambiguity_seen: >-
+      web_sales.ws_ship_date_sk is a second direct edge to date_dim.
+      "Top-selling in Q4 2002" means the date of sale.
+
+  - id: 5
+    question: What reasons do customers give when returning items to stores?
+    tables: [store_returns, reason]
+    warning: none
+    evaluable_from: 5
+    at_step_5: checkable
+    joins:
+      - from: store_returns.sr_reason_sk
+        to:   reason.r_reason_sk
+    checks:
+      - between: [store_returns, reason]
+        accept:
+          - - from: store_returns.sr_reason_sk
+              to:   reason.r_reason_sk
+        warnings: []
+
+  - id: 6
+    question: How does store revenue compare with catalog revenue for the same items?
+    tables: [store_sales, catalog_sales, item]
+    warning: many_to_many
+    evaluable_from: 5
+    at_step_5: checkable
+    joins:
+      - from: store_sales.ss_item_sk
+        to:   item.i_item_sk
+      - from: catalog_sales.cs_item_sk
+        to:   item.i_item_sk
+    checks:
+      - between: [store_sales, item]
+        accept:
+          - - from: store_sales.ss_item_sk
+              to:   item.i_item_sk
+        warnings: []
+      - between: [catalog_sales, item]
+        accept:
+          - - from: catalog_sales.cs_item_sk
+              to:   item.i_item_sk
+        warnings: []
+      # No single join can be many-to-many, so the question's warning lives
+      # on the pair of sales tables, joined through item.
+      - between: [store_sales, catalog_sales]
+        accept:
+          - - from: store_sales.ss_item_sk
+              to:   item.i_item_sk
+            - from: catalog_sales.cs_item_sk
+              to:   item.i_item_sk
+        warnings: [many_to_many]
+    ambiguity_seen: >-
+      The two sales tables share eight dimensions, each two joins apart:
+      customer, customer_address, customer_demographics, date_dim,
+      household_demographics, item, promotion and time_dim. "The same items"
+      says which.
+
+  - id: 7
+    question: Which warehouses held the least stock of each item at the latest inventory date?
+    tables: [inventory, warehouse, item, date_dim]
+    warning: none
+    evaluable_from: 5
+    at_step_5: checkable
+    joins:
+      - from: inventory.inv_warehouse_sk
+        to:   warehouse.w_warehouse_sk
+      - from: inventory.inv_item_sk
+        to:   item.i_item_sk
+      - from: inventory.inv_date_sk
+        to:   date_dim.d_date_sk
+    checks:
+      - between: [inventory, warehouse]
+        accept:
+          - - from: inventory.inv_warehouse_sk
+              to:   warehouse.w_warehouse_sk
+        warnings: []
+      - between: [inventory, item]
+        accept:
+          - - from: inventory.inv_item_sk
+              to:   item.i_item_sk
+        warnings: []
+      - between: [inventory, date_dim]
+        accept:
+          - - from: inventory.inv_date_sk
+              to:   date_dim.d_date_sk
+        warnings: []
+
+  - id: 8
+    question: Did our promotions increase sales?
+    tables: [promotion]
+    tables_one_of: [store_sales, catalog_sales, web_sales]
+    warning: anchor_ambiguity
+    evaluable_from: 6
+    at_step_5: not_evaluable
+    joins:
+      - one_of:
+          - from: store_sales.ss_promo_sk
+            to:   promotion.p_promo_sk
+          - from: catalog_sales.cs_promo_sk
+            to:   promotion.p_promo_sk
+          - from: web_sales.ws_promo_sk
+            to:   promotion.p_promo_sk
+    checks: []
+    ambiguity_seen: >-
+      "Increase" implies a before and an after, and so date_dim, which the
+      set does not list.
+
+  - id: 9
+    question: What is the average number of dependents in households that shop at our stores?
+    tables: [store_sales, household_demographics]
+    warning: anchor_ambiguity
+    note: >-
+      customer_demographics.cd_dep_count is equally reachable
+    evaluable_from: 6
+    at_step_5: checkable
+    joins:
+      - from: store_sales.ss_hdemo_sk
+        to:   household_demographics.hd_demo_sk
+    checks:
+      - between: [store_sales, household_demographics]
+        accept:
+          - - from: store_sales.ss_hdemo_sk
+              to:   household_demographics.hd_demo_sk
+        warnings: []
+    ambiguity_seen: >-
+      Besides cd_dep_count, the household on the customer's file --
+      store_sales.ss_customer_sk, then customer.c_current_hdemo_sk -- is a
+      third reading, two joins away.
+
+  - id: 10
+    question: Which web site sells most, and by which shipping method?
+    tables: [web_sales, web_site, ship_mode]
+    warning: none
+    evaluable_from: 5
+    at_step_5: checkable
+    joins:
+      - from: web_sales.ws_web_site_sk
+        to:   web_site.web_site_sk
+      - from: web_sales.ws_ship_mode_sk
+        to:   ship_mode.sm_ship_mode_sk
+    checks:
+      - between: [web_sales, web_site]
+        accept:
+          - - from: web_sales.ws_web_site_sk
+              to:   web_site.web_site_sk
+        warnings: []
+      - between: [web_sales, ship_mode]
+        accept:
+          - - from: web_sales.ws_ship_mode_sk
+              to:   ship_mode.sm_ship_mode_sk
+        warnings: []
+
+  - id: 11
+    question: How do store sales break down by fiscal quarter?
+    tables: [store_sales, date_dim]
+    warning: none
+    evaluable_from: 5
+    at_step_5: checkable
+    joins:
+      - from: store_sales.ss_sold_date_sk
+        to:   date_dim.d_date_sk
+    checks:
+      - between: [store_sales, date_dim]
+        accept:
+          - - from: store_sales.ss_sold_date_sk
+              to:   date_dim.d_date_sk
+        warnings: []
+
+  - id: 12
+    question: Which call centres handle the most catalog returns?
+    tables: [catalog_returns, call_center]
+    warning: none
+    evaluable_from: 5
+    at_step_5: checkable
+    joins:
+      - from: catalog_returns.cr_call_center_sk
+        to:   call_center.cc_call_center_sk
+    checks:
+      - between: [catalog_returns, call_center]
+        accept:
+          - - from: catalog_returns.cr_call_center_sk
+              to:   call_center.cc_call_center_sk
+        warnings: []
+    ambiguity_seen: >-
+      The call centre that took the original order -- the return's sale,
+      then catalog_sales.cs_call_center_sk -- is a second meaning, two joins
+      away.
+
+  - id: 13
+    question: What do customers in the highest income band spend most on?
+    tables: [income_band, household_demographics, item]
+    tables_one_of: [store_sales, catalog_sales, web_sales]
+    warning: anchor_ambiguity
+    note: >-
+      no channel named
+    evaluable_from: 6
+    at_step_5: partial
+    joins:
+      - from: household_demographics.hd_income_band_sk
+        to:   income_band.ib_income_band_sk
+      - one_of:
+          - from: store_sales.ss_hdemo_sk
+            to:   household_demographics.hd_demo_sk
+          - from: catalog_sales.cs_bill_hdemo_sk
+            to:   household_demographics.hd_demo_sk
+          - from: web_sales.ws_bill_hdemo_sk
+            to:   household_demographics.hd_demo_sk
+      # The item key of the same sales table as the join above.
+      - one_of:
+          - from: store_sales.ss_item_sk
+            to:   item.i_item_sk
+          - from: catalog_sales.cs_item_sk
+            to:   item.i_item_sk
+          - from: web_sales.ws_item_sk
+            to:   item.i_item_sk
+    checks:
+      # The one join that holds whichever channel is meant.
+      - between: [household_demographics, income_band]
+        accept:
+          - - from: household_demographics.hd_income_band_sk
+              to:   income_band.ib_income_band_sk
+        warnings: []
+    ambiguity_seen: >-
+      catalog_sales and web_sales each hold a ship-side household key as
+      well (cs_ship_hdemo_sk, ws_ship_hdemo_sk), so the choice of channel
+      hides a bill-or-ship choice inside it.
+
+  - id: 14
+    question: Are the items returned most often also the ones that were on promotion?
+    tables: [store_returns, store_sales, promotion, item]
+    warning: multi_anchor
+    note: >-
+      store_returns -> store_sales is now one join on the composite key and
+      must not be many-to-many
+    evaluable_from: 6
+    at_step_5: checkable
+    joins:
+      - from: [store_returns.sr_item_sk, store_returns.sr_ticket_number]
+        to:   [store_sales.ss_item_sk, store_sales.ss_ticket_number]
+      - from: store_sales.ss_promo_sk
+        to:   promotion.p_promo_sk
+      # Either: a return and its sale share the item by construction of the
+      # composite key.
+      - one_of:
+          - from: store_returns.sr_item_sk
+            to:   item.i_item_sk
+          - from: store_sales.ss_item_sk
+            to:   item.i_item_sk
+    checks:
+      - between: [store_returns, store_sales]
+        accept:
+          - - from: [store_returns.sr_item_sk, store_returns.sr_ticket_number]
+              to:   [store_sales.ss_item_sk, store_sales.ss_ticket_number]
+        warnings: []
+      - between: [store_sales, promotion]
+        accept:
+          - - from: store_sales.ss_promo_sk
+              to:   promotion.p_promo_sk
+        warnings: []
+      # Either item key answers the question, so each is checked between
+      # its own two tables.
+      - between: [store_returns, item]
+        accept:
+          - - from: store_returns.sr_item_sk
+              to:   item.i_item_sk
+        warnings: []
+      - between: [store_sales, item]
+        accept:
+          - - from: store_sales.ss_item_sk
+              to:   item.i_item_sk
+        warnings: []
+    ambiguity_seen: >-
+      promotion.p_item_sk references item directly: the item a promotion
+      targets, not the sales made under one. It is a different reading of
+      "on promotion", and the listed tables imply the sales reading.
+
+  - id: 15
+    question: Which customers abandoned their carts?
+    tables: []
+    warning: decline
+    note: >-
+      the warehouse holds no cart data
+    evaluable_from: 6
+    at_step_5: not_evaluable
+    joins: []
+    checks: []
+
+  - id: 16
+    question: Which customers buy through which of our web pages?
+    tables: [web_sales, web_page, customer]
+    warning: see_note
+    note: >-
+      a correct answer goes through web_sales. Pre-registered prediction:
+      since the overlay added web_page.wp_customer_sk, we expect the shortest
+      web_page-to-customer path to use that column instead, with no warning.
+      The runner will confirm or refute this.
+    evaluable_from: 5
+    at_step_5: checkable
+    joins:
+      - from: web_sales.ws_web_page_sk
+        to:   web_page.wp_web_page_sk
+      - from: web_sales.ws_bill_customer_sk
+        to:   customer.c_customer_sk
+    checks:
+      - between: [web_sales, web_page]
+        accept:
+          - - from: web_sales.ws_web_page_sk
+              to:   web_page.wp_web_page_sk
+        warnings: []
+      # "Buy" means the customer billed.
+      - between: [web_sales, customer]
+        accept:
+          - - from: web_sales.ws_bill_customer_sk
+              to:   customer.c_customer_sk
+        warnings: []
+      - between: [web_page, customer]
+        accept:
+          - - from: web_sales.ws_web_page_sk
+              to:   web_page.wp_web_page_sk
+            - from: web_sales.ws_bill_customer_sk
+              to:   customer.c_customer_sk
+        warnings: []
+        expected_to_fail: true
+        prediction:
+          path:
+            - from: web_page.wp_customer_sk
+              to:   customer.c_customer_sk
+          warnings: []
+    ambiguity_seen: >-
+      web_sales.ws_ship_customer_sk is a second direct edge to customer.
