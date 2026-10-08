@@ -179,6 +179,20 @@ else
   fi
 fi
 
+# The evaluation set (DR-16): the frozen file parses and every one of its
+# checks is run on the live graph. Whether the system AGREES with the set is
+# deliberately not asserted -- disagreement is the baseline the next step is
+# measured against, and python -m app.show_eval is where it is read.
+stage "Evaluation set (DR-13, DR-16, FR-37)"
+if [[ "$wh_tables" == "0" ]]; then
+  pending "warehouse is empty -- nothing to run the set against"
+else
+  evaluated="$(docker compose exec -T backend python -m app.show_eval 2>/dev/null || true)"
+  contains "the runner reports on all 16 questions" "questions   16: " "$evaluated"
+  contains "the set the runner read is the one on disk" \
+    "sha256      $(sha256sum backend/eval/questions.yaml | cut -d' ' -f1)" "$evaluated"
+fi
+
 stage "Not yet verified"
 pending "one known question runs the full pipeline (arrives at step 7)"
 pending "generated SQL joins along the reported path (arrives at step 7)"
