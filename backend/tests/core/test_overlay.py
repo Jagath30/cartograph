@@ -12,7 +12,7 @@ import pytest
 from app.core.graph_builder import build_graph, foreign_key_edges
 from app.core.naming import Naming, type_family
 from app.core.overlay import Overlay, Relationship, apply_overlay, parse_overlay
-from app.core.snapshot import Column, Table
+from app.core.snapshot import Column, Preference, Table
 
 NAMING = Naming(
     prefixes={"ss_": "store sales", "ca_": "customer address", "s_": "store", "d_": "date"},
@@ -56,7 +56,7 @@ def test_an_empty_file_and_a_missing_section_are_an_empty_overlay() -> None:
     "text",
     [
         "namng:\n  words: { sk: key }\n",  # a misspelt section must not be skipped
-        "preferences:\n  - between: [a, b]\n",  # DD-12, arrives at step 4
+        "preferences:\n  - between: [a, b]\n",  # a preference with no route and no reason
         "naming:\n  abbreviations: { sk: key }\n",
         "- just\n- a list\n",
     ],
@@ -173,6 +173,129 @@ def test_applying_leaves_the_original_snapshot_as_it_was(small_snapshot) -> None
 
     assert len(before.foreign_keys) == 5
     assert all(column.readable == "" for column in before.columns)
+
+
+# --------------------------------------------------------------------------
+# 2b. Preferences: read strictly, and checked against the warehouse's keys
+# --------------------------------------------------------------------------
+
+PREFERENCE = """
+preferences:
+  - between: [customer_address, catalog_sales]
+    prefer:
+      - from: catalog_sales.cs_bill_addr_sk
+        to:   customer_address.ca_address_sk
+    because: a catalog sale's region is where it was billed
+"""
+
+
+def test_a_preference_is_read_with_its_tables_in_alphabetical_order() -> None:
+    [preference] = parse_overlay(PREFERENCE).preferences
+
+    assert preference == Preference(
+        between=("catalog_sales", "customer_address"),
+        prefer=(("catalog_sales.cs_bill_addr_sk", "customer_address.ca_address_sk"),),
+        because="a catalog sale's region is where it was billed",
+    )
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        "{ between: [a, b], prefer: [{ from: a.x, to: b.y }] }",  # no reason given
+        "{ between: [a, b], prefer: [{ from: a.x, to: b.y }], because: '  ' }",
+        "{ between: [a, b], prefer: via_store, because: r }",  # DD-16's own example: a label, not a route
+        "{ between: [a, b], prefer: [], because: r }",
+        "{ between: [a], prefer: [{ from: a.x, to: b.y }], because: r }",
+        "{ between: [a, a], prefer: [{ from: a.x, to: b.y }], because: r }",
+        "{ between: a, prefer: [{ from: a.x, to: b.y }], because: r }",
+        "{ between: [a, b], prefer: [{ from: a, to: b.y }], because: r }",
+        "{ between: [a, b], prefer: [{ from: a.x, to: b.y }], because: r, weight: 2 }",
+    ],
+)
+def test_a_malformed_preference_is_refused(entry) -> None:
+    with pytest.raises(ValueError):
+        parse_overlay(f"preferences:\n  - {entry}\n")
+
+
+def test_two_preferences_for_the_same_pair_are_refused() -> None:
+    one = "  - { between: [a, b], prefer: [{ from: a.x, to: b.y }], because: r }\n"
+    other = "  - { between: [b, a], prefer: [{ from: a.z, to: b.y }], because: r }\n"
+
+    with pytest.raises(ValueError, match="more than one preference"):
+        parse_overlay("preferences:\n" + one + other)
+
+
+def test_a_valid_preference_travels_with_the_snapshot_and_into_the_graph(small_snapshot) -> None:
+    after = apply_overlay(small_snapshot, parse_overlay(PREFERENCE))
+
+    assert len(after.preferences) == 1
+    assert build_graph(after).graph["preferences"] == after.preferences
+    assert build_graph(small_snapshot).graph["preferences"] == ()
+
+
+def test_a_preference_may_name_an_edge_the_overlay_itself_supplies(small_snapshot) -> None:
+    """Checked against the merged keys, not only the catalog's."""
+    bare = replace(small_snapshot, foreign_keys=())
+    text = "relationships:\n  - { from: catalog_sales.cs_bill_addr_sk, to: customer_address.ca_address_sk }\n" + PREFERENCE
+
+    assert len(apply_overlay(bare, parse_overlay(text)).preferences) == 1
+
+
+def preference_text(between: str, *edges: str) -> str:
+    prefer = ", ".join("{ from: %s, to: %s }" % tuple(edge.split(" -> ")) for edge in edges)
+    return f"preferences:\n  - {{ between: {between}, prefer: [{prefer}], because: r }}\n"
+
+
+@pytest.mark.parametrize(
+    ("text", "complaint"),
+    [
+        # not a foreign key at all
+        (
+            preference_text("[catalog_sales, customer_address]", "catalog_sales.cs_bill_addr_sk -> customer_address.ca_state"),
+            "not a foreign key",
+        ),
+        # a real key written backwards
+        (
+            preference_text("[catalog_sales, customer_address]", "customer_address.ca_address_sk -> catalog_sales.cs_bill_addr_sk"),
+            "not a foreign key",
+        ),
+        # a real key that does not connect the two tables named
+        (
+            preference_text("[catalog_sales, store]", "catalog_sales.cs_bill_addr_sk -> customer_address.ca_address_sk"),
+            "does not describe one route",
+        ),
+        # two real keys that are two routes, not one
+        (
+            preference_text(
+                "[catalog_sales, customer_address]",
+                "catalog_sales.cs_bill_addr_sk -> customer_address.ca_address_sk",
+                "catalog_sales.cs_ship_addr_sk -> customer_address.ca_address_sk",
+            ),
+            "does not describe one route",
+        ),
+        # a route with a stray extra edge
+        (
+            preference_text(
+                "[store_sales, customer_address]",
+                "store_sales.ss_addr_sk -> customer_address.ca_address_sk",
+                "store_sales.ss_store_sk -> store.s_store_sk",
+            ),
+            "does not describe one route",
+        ),
+    ],
+)
+def test_a_preference_the_warehouse_cannot_honour_is_refused_at_ingestion(small_snapshot, text, complaint) -> None:
+    with pytest.raises(ValueError, match=complaint):
+        apply_overlay(small_snapshot, parse_overlay(text))
+
+
+def test_a_two_join_preference_is_accepted_in_either_order_of_its_edges(small_snapshot) -> None:
+    edges = ["store_sales.ss_customer_sk -> customer.c_customer_sk", "customer.c_current_addr_sk -> customer_address.ca_address_sk"]
+
+    for ordering in (edges, edges[::-1]):
+        text = preference_text("[customer_address, store_sales]", *ordering)
+        assert len(apply_overlay(small_snapshot, parse_overlay(text)).preferences) == 1
 
 
 # --------------------------------------------------------------------------

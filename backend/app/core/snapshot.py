@@ -63,8 +63,28 @@ class ForeignKey:
 
 
 @dataclass(frozen=True)
+class Preference:
+    """A declared answer to a known tie (DD-12, rule 3): between these two
+    tables, when several shortest routes exist, this is the one meant.
+
+    The route is named by its exact edges, each a (referencing column,
+    referenced column) pair in the graph's own notation --
+    ("catalog_sales.cs_bill_addr_sk", "customer_address.ca_address_sk").
+    `because` is required: a preference nobody can explain is an assumption
+    compiled into a tool that claims to make none.
+    """
+
+    between: tuple[str, str]  # the two tables, in alphabetical order
+    prefer: tuple[tuple[str, str], ...]
+    because: str
+
+
+@dataclass(frozen=True)
 class SchemaSnapshot:
     tables: tuple[Table, ...]
     columns: tuple[Column, ...]
     primary_keys: tuple[PrimaryKey, ...]
     foreign_keys: tuple[ForeignKey, ...]
+    # Not a fact about the schema, but validated against it and carried with
+    # it, so that whoever holds the graph holds the preferences too.
+    preferences: tuple[Preference, ...] = ()

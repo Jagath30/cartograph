@@ -43,7 +43,8 @@ def column_node(table: str, column: str) -> str:
 
 
 def build_graph(snapshot: SchemaSnapshot) -> nx.DiGraph:
-    graph = nx.DiGraph()
+    # Graph-level attribute, read by the PathFinder when a tie needs breaking.
+    graph = nx.DiGraph(preferences=snapshot.preferences)
 
     for table in snapshot.tables:
         if table.name in graph:
