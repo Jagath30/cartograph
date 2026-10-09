@@ -2411,6 +2411,137 @@ is what the grid is for.
    present, surplus tables, warnings raised). The owner reviews them
    before the close.
 
+### Fourth stop, rulings 1 and 2 carried out — 9 October 2026
+
+**What exists** (`5305abf`).
+
+- **Ruling 1, in `retrieve`.** A table is set aside only for a winner
+  that is an anchor after the cap. The cap and the rivals used to be two
+  steps, rivals first; they are now settled together. Every table at the
+  cut starts as a possible winner; the rivals of the winners are set
+  aside; the cap is applied; a winner the cap cut stops being one, and
+  whatever was set aside for it alone comes back and competes under the
+  cap by its score like any other table. This repeats until nothing
+  changes. It ends because tables only ever come back: a winner once cut
+  stays cut, so the winners only shrink.
+- **Ruling 2, in the Explainer.** `explain_tree` no longer raises
+  `anchor_ambiguity`. Each close call is a `CloseCall` in the
+  explanation's `close_calls`, with the term, both tables, both scores
+  and a sentence. `WarningCode` no longer lists the code. The Retriever
+  still sets a rival aside, and the tree still says which of them is
+  absent from the answer: only what is said about it changed. The frozen
+  judgement still knows the code and still expects it of questions 8, 9
+  and 13.
+- **The report** prints `close call` lines under the warnings, and its
+  summary gains three lines: the tables beyond the expected over all
+  questions, the warnings raised with the number of questions each, and
+  the close calls.
+
+**Tests, written first and seen to fail.** Five on the Retriever: a table
+set aside for a winner the cap then cuts is not lost; the same table is
+still set aside when the winner has room under the cap; one winner that
+is an anchor is enough to keep it set aside when another was cut; a table
+given back can push a second winner over the cap and free that one's
+rival too; and the property itself over every cap from 1 to 5, with
+nothing that reached the cut going missing. Four on the tree and one on
+`locate`: a close call is recorded with its scores and raises nothing; no
+explanation of a tree carries the code, with every possible rival set
+aside at once; a close call does not hide a real `arbitrary_choice`; a
+rival in the tree anyway is not a close call. 439 pass and the paid one
+skips, in the container.
+
+**Mutations: twelve real ones, all caught.** The rule as it was; one
+refinement and not "until nothing changes"; the cap ignored when asking
+who is still an anchor; the cap read on the first pass's order only; a
+nominated table set aside; set aside for any choice, at the cut or not;
+nothing ever set aside; a close call raised as a warning as well; close
+calls not handed on; the two scores swapped; a rival in the tree anyway
+counted; a rival of a table not in the tree counted. A thirteenth, as
+first written, changed nothing in the code's behaviour and so proved
+nothing; it was rewritten into the fourth of this list.
+
+### PREDICTIONS FOR RUN 3, AND HOW THE GRID WILL BE READ, written before either — 9 October 2026
+
+Committed before `show_eval --step6` has been run with the fourth-stop
+corrections. Made from the recorded run 2 and from nothing else.
+
+**Run 3, predicted.**
+
+- **0 agree, 16 disagree.** Question 8 was the one agreement, and it
+  expects `anchor_ambiguity`, which is no longer raised. No other
+  question has its tables right, so none can newly agree.
+- **Ruling 2 changes no tree.** It removes `anchor_ambiguity` from the
+  warnings of the twelve questions that had it. Run 2's 21 warnings
+  become close calls: **21 on 12 questions**, perhaps 22 (question 9
+  gains an anchor that may bring a pair of its own).
+- **Ruling 1 changes question 9 and no other.** Run 2 shows a pair "WHICH
+  THE CAP THEN CUT" in questions 6 and 9 only, and question 6's
+  `catalog_returns` is also set aside for `store_sales`, an anchor, so it
+  stays. In question 9 `store_sales` and `catalog_returns` come back;
+  `catalog_sales` stays set aside for `store`. Predicted anchors, from
+  run 2's scores: `household_demographics`, `store_sales`,
+  `store_returns`, `store`, `customer_demographics`; the cap cuts
+  `customer`, `web_sales` and `catalog_returns`. Its tree then holds both
+  expected tables and three beyond them, where run 2 lacked one and had
+  four beyond. It still disagrees: tables, and the warning it expects.
+- **Anchors per question: as run 2**, 1:5 2:5 3:5 4:4 5:3 6:5 7:5 8:2 9:5
+  10:5 11:4 12:5 13:5 14:5 15:5 16:5.
+- **Parts.** Declined as expected 15 of 16. Tables 1 of 15 and joins 1 of
+  15 (question 8, whose tree is unchanged). **Warnings 3 of 14**:
+  questions 4, 5 and 11 expect none and had only `anchor_ambiguity`.
+  Every expected table in the tree: 11 of 15. No table beyond the
+  expected: 1 of 15. Tables beyond the expected, in all: 34 (35, less
+  question 9's four, plus its three).
+- **Warnings raised, as questions each**, from run 2 less the one
+  withdrawn: `many_to_many` about 9, `multi_anchor` about 7,
+  `arbitrary_choice` about 6. Question 9's new tree may move each by one.
+
+**The grid, fixed before any cell is run.**
+
+- **All 25 cells**: alpha 0, 0.25, 0.5, 0.75, 1 by anchor cut 0.3, 0.4,
+  0.5, 0.6, 0.7. Cap 5, bound 10, max joins 3. The margin follows alpha
+  from the calibration file. The cell at the defaults is run 3 itself; it
+  is run again inside the grid and must reproduce it, the timing apart.
+- **Where the log lives.** Each cell's full report is committed as a file
+  under `backend/eval/tuning/`. This file's tuning log records every
+  cell with its parameters, its counts, its parts, its anchors per
+  question and the questions that agree, and prints run 3's report in
+  full. Printing 25 reports of 900 lines here would bury the record;
+  nothing is left out of the repository.
+- **How the keep-rule is read.** The rule: a setting replaces a default
+  only if it improves at least two questions, worsens none, and its
+  neighbours in the grid move the same way. The protocol did not say
+  what "improves a question" means. Fixed now, with no cell seen:
+  - A question is **improved** when its strict step 6 status goes from
+    disagrees at the baseline (run 3) to agrees. Nothing weaker counts.
+  - A question is **worsened** when it agreed at the baseline and does
+    not, **or when it loses any part it held at the baseline**: declined
+    as expected, tables, joins, warnings. The second clause is mine. With
+    no question agreeing at the baseline, "worsens none" would otherwise
+    be empty. It can only make a setting harder to keep, never easier.
+  - **Neighbours** are the cells one grid step away in alpha or in the
+    cut. They "move the same way" when each of them also improves at
+    least one question and worsens none. An isolated peak is noise.
+  - If several cells qualify, the one that improves most questions; then
+    the one nearest the defaults. If none qualifies, **the defaults
+    stand**.
+- **Reported for every cell and deciding nothing:** questions with every
+  expected table present, tables beyond the expected, warnings raised,
+  close calls. These are the numbers the owner asked for, and they are
+  how the anchor cut's effect on over-retrieval is seen (ruling 3).
+- **The bound** changes only if the log shows it binding. The cap is
+  fixed.
+
+**What I expect of the grid. A guess, recorded so it cannot be
+hindsight.** Raising the cut removes surplus tables and loses expected
+ones; lowering it does the reverse and fills the cap. I expect the
+surplus to fall steadily from cut 0.3 to 0.7, and a few questions with
+few expected tables (5, 11, 12) to agree at 0.6 or 0.7. I do not know
+whether two will in one cell with its neighbours agreeing; if I had to
+bet, the defaults stand. Alpha I expect to matter less than the cut,
+because the keyword half mostly says which table and so does the
+semantic half.
+
 ### Tuning log
 
 Every run of `python -m app.show_eval --step6`, with what changed, the
