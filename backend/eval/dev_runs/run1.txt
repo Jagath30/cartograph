@@ -1,0 +1,312 @@
+
+ d1  one table and no join
+    question   How many customers were born in each country?
+    outcome    answered
+    anchors    customer, customer_address, customer_demographics, web_returns, catalog_returns
+    in prompt  customer, customer_address, customer_demographics, web_returns, catalog_returns  (6930
+                 characters)
+    selected   catalog_returns.cr_refunded_customer_sk = customer.c_customer_sk
+               customer.c_current_addr_sk = customer_address.ca_address_sk
+               customer.c_current_cdemo_sk = customer_demographics.cd_demo_sk
+               web_returns.wr_refunded_customer_sk = customer.c_customer_sk
+    warnings   arbitrary_choice, many_to_many, multi_anchor
+               arbitrary_choice: I had no basis for this choice. 2 routes of 1 join connect web returns and
+                 customer, and nothing declares which is meant. Used: Each web returns row has one customer,
+                 through its refunded customer surrogate key. Equally valid: Each web returns row has one
+                 customer, through its returning customer sur
+               multi_anchor: I had no basis for where to join web returns. It is 1 join from customer and
+                 equally from customer address and customer demographics, and nothing declares which is meant.
+                 Used: Each web returns row has one customer, through its refunded customer surrogate key.
+                 Equally valid: Each web returns row has
+               arbitrary_choice: I had no basis for this choice. 2 routes of 1 join connect catalog returns and
+                 customer, and nothing declares which is meant. Used: Each catalog returns row has one
+                 customer, through its refunded customer surrogate key. Equally valid: Each catalog returns row
+                 has one customer, through its returning
+               multi_anchor: I had no basis for where to join catalog returns. It is 1 join from customer and
+                 equally from customer address and customer demographics, and nothing declares which is meant.
+                 Used: Each catalog returns row has one customer, through its refunded customer surrogate key.
+                 Equally valid: Each catalog ret
+               many_to_many: This answer joins catalog returns and web returns through customer. One customer
+                 row has many rows of each, so every row of one is paired with every row of the other that
+                 shares it: rows multiply, and sums and counts over them are inflated.
+    attempt 1  accepted; asked gpt-6-luna, answered gpt-6-luna; 1706 in (0 cached), 36 out; $0.000189; 2731 ms
+    validation syntax pass; read_only pass; references pass
+    conformanceincomplete
+               an edge of the path is not used: customer.c_current_addr_sk = customer_address.ca_address_sk
+               an edge of the path is not used: customer.c_current_cdemo_sk = customer_demographics.cd_demo_sk
+               an edge of the path is not used: web_returns.wr_refunded_customer_sk = customer.c_customer_sk
+               an edge of the path is not used: catalog_returns.cr_refunded_customer_sk =
+                 customer.c_customer_sk
+    actual     no joins
+    sql
+               SELECT customer.c_birth_country, COUNT(*) AS customer_count
+               FROM customer
+               GROUP BY customer.c_birth_country
+    hashes     validated 0f12ac1067b29dd4, executed 0f12ac1067b29dd4: the same text
+    rows       212; 522 ms; statement_timeout 30s
+               c_birth_country | customer_count
+               ETHIOPIA | 444
+               ECUADOR | 449
+               GUERNSEY | 471
+               NULL | 3439
+               UKRAINE | 432
+    timings    locate 5036 ms; prompt 0 ms; generate 2740 ms; validate 17 ms; conform 7 ms; execute 523 ms
+    cost       1706 tokens in, 36 out, $0.000189, over 1 model calls
+
+ d2  one join, and three keys from customer to the date table (first sale, first shipment, last review), so the tree's choice may be arbitrary
+    question   In which year did the most customers make their first purchase?
+    outcome    not_answerable  [question_not_answerable]
+               This cannot be answered from the tables retrieved: the model, shown those tables, said they do
+                 not hold the answer.
+    anchors    customer, customer_demographics, web_sales, store_sales
+    in prompt  customer, customer_demographics, web_sales, store_sales  (6241 characters)
+    selected   customer.c_current_cdemo_sk = customer_demographics.cd_demo_sk
+               store_sales.ss_customer_sk = customer.c_customer_sk
+               web_sales.ws_bill_customer_sk = customer.c_customer_sk
+    warnings   arbitrary_choice, many_to_many, multi_anchor
+               arbitrary_choice: I had no basis for this choice. 2 routes of 1 join connect web sales and
+                 customer, and nothing declares which is meant. Used: Each web sales row has one customer,
+                 through its bill customer surrogate key. Equally valid: Each web sales row has one customer,
+                 through its ship customer surrogate key.
+               multi_anchor: I had no basis for where to join web sales. It is 1 join from customer and equally
+                 from customer demographics, and nothing declares which is meant. Used: Each web sales row has
+                 one customer, through its bill customer surrogate key. Equally valid: Each web sales row has
+                 one customer demographics, thr
+               multi_anchor: I had no basis for where to join store sales. It is 1 join from customer and
+                 equally from customer demographics, and nothing declares which is meant. Used: Each store
+                 sales row has one customer, through its customer surrogate key. Equally valid: Each store
+                 sales row has one customer demographics, th
+               many_to_many: This answer joins store sales and web sales through customer. One customer row has
+                 many rows of each, so every row of one is paired with every row of the other that shares it:
+                 rows multiply, and sums and counts over them are inflated.
+    attempt 1  not_answerable; asked gpt-6-luna, answered gpt-6-luna; 1609 in (0 cached), 18 out; $0.000170;
+                 1395 ms
+    timings    locate 1627 ms; prompt 0 ms; generate 1396 ms
+    cost       1609 tokens in, 18 out, $0.000170, over 1 model calls
+
+ d3  one join with a single key; the smoke check's question
+    question   Which catalog pages brought in the most orders?
+    outcome    not_answerable  [question_not_answerable]
+               This cannot be answered from the tables retrieved: the model, shown those tables, said they do
+                 not hold the answer.
+    anchors    catalog_page, web_sales, web_returns, promotion
+    in prompt  catalog_page, web_sales, date_dim, web_returns, promotion  (7826 characters)
+    selected   catalog_page.cp_end_date_sk = date_dim.d_date_sk
+               web_returns.wr_item_sk = web_sales.ws_item_sk and web_returns.wr_order_number =
+                 web_sales.ws_order_number
+               web_sales.ws_promo_sk = promotion.p_promo_sk
+               web_sales.ws_ship_date_sk = date_dim.d_date_sk
+    warnings   arbitrary_choice, many_to_many
+               arbitrary_choice: I had no basis for this choice. 4 routes of 2 joins connect web sales and
+                 catalog page, and nothing declares which is meant. Used: Each web sales row has one date
+                 dimension, through its ship date surrogate key; then each date dimension row has many catalog
+                 page rows, through their end date surrogate
+               many_to_many: This answer joins catalog page and web sales through date dimension. One date
+                 dimension row has many rows of each, so every row of one is paired with every row of the other
+                 that shares it: rows multiply, and sums and counts over them are inflated.
+    close calls2
+    attempt 1  not_answerable; asked gpt-6-luna, answered gpt-6-luna; 2018 in (0 cached), 18 out; $0.000211;
+                 1397 ms
+    timings    locate 763 ms; prompt 0 ms; generate 1398 ms
+    cost       2018 tokens in, 18 out, $0.000211, over 1 model calls
+
+ d4  one join, billing against shipping customer demographics
+    question   How do purchases on the web split by the buyer's level of education?
+    outcome    answered
+    anchors    customer_demographics, web_sales, web_site, web_page
+    in prompt  customer_demographics, web_sales, web_site, web_page  (6028 characters)
+    selected   web_sales.ws_bill_cdemo_sk = customer_demographics.cd_demo_sk
+               web_sales.ws_web_page_sk = web_page.wp_web_page_sk
+               web_sales.ws_web_site_sk = web_site.web_site_sk
+    warnings   arbitrary_choice
+               arbitrary_choice: I had no basis for this choice. 2 routes of 1 join connect web sales and
+                 customer demographics, and nothing declares which is meant. Used: Each web sales row has one
+                 customer demographics, through its bill customer demographics surrogate key. Equally valid:
+                 Each web sales row has one customer demogr
+    close calls1
+    attempt 1  accepted; asked gpt-6-luna, answered gpt-6-luna; 1544 in (0 cached), 79 out; $0.000194; 1929 ms
+    validation syntax pass; read_only pass; references pass
+    conformanceincomplete
+               an edge of the path is not used: web_sales.ws_web_site_sk = web_site.web_site_sk
+               an edge of the path is not used: web_sales.ws_web_page_sk = web_page.wp_web_page_sk
+    actual     customer_demographics.cd_demo_sk = web_sales.ws_bill_cdemo_sk
+    sql
+               SELECT customer_demographics.cd_education_status, SUM(web_sales.ws_quantity) AS total_quantity, SUM(web_sales.ws_ext_sales_price) AS total_sales
+               FROM web_sales
+               JOIN customer_demographics ON web_sales.ws_bill_cdemo_sk = customer_demographics.cd_demo_sk
+               GROUP BY customer_demographics.cd_education_status
+    hashes     validated 800c169eca50e4b2, executed 800c169eca50e4b2: the same text
+    rows       7; 5730 ms; statement_timeout 30s
+               cd_education_status | total_quantity | total_sales
+               2 yr Degree | 5241031 | 265778891.06
+               4 yr Degree | 5188515 | 261967121.56
+               Advanced Degree | 5145058 | 259127112.57
+               College | 5101490 | 257993079.73
+               Primary | 5246610 | 267367147.54
+    timings    locate 730 ms; prompt 0 ms; generate 1930 ms; validate 3 ms; conform 1 ms; execute 5730 ms
+    cost       1544 tokens in, 79 out, $0.000194, over 1 model calls
+
+ d5  a return and its sale, joined by a key of two columns
+    question   What share of the money taken on the web was later refunded?
+    outcome    answered
+    anchors    web_returns, web_sales, store_returns, web_page
+    in prompt  web_returns, web_sales, web_page, store_returns, customer, customer_address,
+                 customer_demographics, date_dim, household_demographics, item  (11834 characters)
+    selected   store_returns.sr_customer_sk = customer.c_customer_sk
+               web_page.wp_customer_sk = customer.c_customer_sk
+               web_returns.wr_item_sk = web_sales.ws_item_sk and web_returns.wr_order_number =
+                 web_sales.ws_order_number
+               web_returns.wr_web_page_sk = web_page.wp_web_page_sk
+    warnings   arbitrary_choice, many_to_many, multi_anchor
+               multi_anchor: I had no basis for where to join web page. It is 1 join from web returns and
+                 equally from web sales, and nothing declares which is meant. Used: Each web page row has many
+                 web returns rows, through their web page surrogate key. Equally valid: Each web page row has
+                 many web sales rows, through their w
+               arbitrary_choice: I had no basis for this choice. 3 routes of 2 joins connect store returns and
+                 web page, and nothing declares which is meant. Used: Each store returns row has one customer,
+                 through its customer surrogate key; then each customer row has many web page rows, through
+                 their customer surrogate key (asserte
+               multi_anchor: I had no basis for where to join store returns. It is 2 joins from web page and
+                 equally from web returns and web sales, and nothing declares which is meant. Used: Each store
+                 returns row has one customer, through its customer surrogate key; then each customer row has
+                 many web page rows, through their
+               many_to_many: This answer joins store returns and web page through customer. One customer row
+                 has many rows of each, so every row of one is paired with every row of the other that shares
+                 it: rows multiply, and sums and counts over them are inflated.
+    close calls3
+    attempt 1  accepted; asked gpt-6-luna, answered gpt-6-luna; 3028 in (0 cached), 105 out; $0.000355; 2344 ms
+    validation syntax pass; read_only pass; references pass
+    conformanceincomplete
+               an edge of the path is not used: web_returns.wr_item_sk = web_sales.ws_item_sk and
+                 web_returns.wr_order_number = web_sales.ws_order_number
+               an edge of the path is not used: web_returns.wr_web_page_sk = web_page.wp_web_page_sk
+               an edge of the path is not used: store_returns.sr_customer_sk = customer.c_customer_sk
+               an edge of the path is not used: web_page.wp_customer_sk = customer.c_customer_sk
+    actual     no joins
+    sql
+               WITH web_money AS (
+                 SELECT SUM(web_sales.ws_net_paid) AS total_web_money
+                 FROM web_sales
+               ), web_refunds AS (
+                 SELECT SUM(web_returns.wr_return_amt) AS total_web_refunds
+                 FROM web_returns
+               )
+               SELECT web_refunds.total_web_refunds / NULLIF(web_money.total_web_money, 0) AS share_refunded
+               FROM web_money
+               CROSS JOIN web_refunds
+    hashes     validated 36ba0e06c2d645da, executed 36ba0e06c2d645da: the same text
+    rows       1; 356 ms; statement_timeout 30s
+               share_refunded
+               0.05393012690300064910
+    timings    locate 986 ms; prompt 1 ms; generate 2344 ms; validate 5 ms; conform 2 ms; execute 357 ms
+    cost       3028 tokens in, 105 out, $0.000355, over 1 model calls
+
+ d6  two joins, to the store and to the time of day
+    question   Which store managers take the most money in the evening?
+    outcome    not_answerable  [question_not_answerable]
+               This cannot be answered from the tables retrieved: the model, shown those tables, said they do
+                 not hold the answer.
+    anchors    store, store_sales, store_returns, call_center
+    in prompt  store, store_sales, store_returns, call_center, date_dim  (8030 characters)
+    selected   call_center.cc_closed_date_sk = date_dim.d_date_sk
+               store.s_closed_date_sk = date_dim.d_date_sk
+               store_returns.sr_store_sk = store.s_store_sk
+               store_sales.ss_store_sk = store.s_store_sk
+    warnings   arbitrary_choice, many_to_many, multi_anchor
+               multi_anchor: I had no basis for where to join store returns. It is 1 join from store and
+                 equally from store sales, and nothing declares which is meant. Used: Each store returns row
+                 has one store, through its store surrogate key. Equally valid: Each store returns row has one
+                 store sales, through its item surrogat
+               arbitrary_choice: I had no basis for this choice. 2 routes of 2 joins connect call center and
+                 store, and nothing declares which is meant. Used: Each call center row has one date dimension,
+                 through its closed date surrogate key; then each date dimension row has many store rows,
+                 through their closed date surrogate key.
+               multi_anchor: I had no basis for where to join call center. It is 2 joins from store and equally
+                 from store returns and store sales, and nothing declares which is meant. Used: Each call
+                 center row has one date dimension, through its closed date surrogate key; then each date
+                 dimension row has many store rows, thro
+               many_to_many: This answer joins store returns and store sales through store. One store row has
+                 many rows of each, so every row of one is paired with every row of the other that shares it:
+                 rows multiply, and sums and counts over them are inflated.
+               many_to_many: This answer joins call center and store through date dimension. One date dimension
+                 row has many rows of each, so every row of one is paired with every row of the other that
+                 shares it: rows multiply, and sums and counts over them are inflated.
+    attempt 1  not_answerable; asked gpt-6-luna, answered gpt-6-luna; 2113 in (0 cached), 18 out; $0.000220;
+                 1333 ms
+    timings    locate 617 ms; prompt 0 ms; generate 1335 ms
+    cost       2113 tokens in, 18 out, $0.000220, over 1 model calls
+
+ d7  two joins, each with two keys to choose between (sold or shipped date, billing or shipping demographics)
+    question   On which days of the week do married customers order most from the catalog?
+    outcome    answered
+    anchors    catalog_sales, catalog_returns, customer_demographics, customer, date_dim
+    in prompt  catalog_sales, catalog_returns, customer_demographics, customer, date_dim  (8147 characters)
+    selected   catalog_returns.cr_item_sk = catalog_sales.cs_item_sk and catalog_returns.cr_order_number =
+                 catalog_sales.cs_order_number
+               catalog_returns.cr_refunded_cdemo_sk = customer_demographics.cd_demo_sk
+               catalog_returns.cr_refunded_customer_sk = customer.c_customer_sk
+               catalog_returns.cr_returned_date_sk = date_dim.d_date_sk
+    warnings   arbitrary_choice, multi_anchor
+               arbitrary_choice: I had no basis for this choice. 2 routes of 1 join connect customer
+                 demographics and catalog returns, and nothing declares which is meant. Used: Each customer
+                 demographics row has many catalog returns rows, through their refunded customer demographics
+                 surrogate key. Equally valid: Each customer demo
+               multi_anchor: I had no basis for where to join customer demographics. It is 1 join from catalog
+                 returns and equally from catalog sales, and nothing declares which is meant. Used: Each
+                 customer demographics row has many catalog returns rows, through their refunded customer
+                 demographics surrogate key. Equally valid
+               arbitrary_choice: I had no basis for this choice. 2 routes of 1 join connect customer and
+                 catalog returns, and nothing declares which is meant. Used: Each customer row has many catalog
+                 returns rows, through their refunded customer surrogate key. Equally valid: Each customer row
+                 has many catalog returns rows, through
+               multi_anchor: I had no basis for where to join customer. It is 1 join from catalog returns and
+                 equally from catalog sales and customer demographics, and nothing declares which is meant.
+                 Used: Each customer row has many catalog returns rows, through their refunded customer
+                 surrogate key. Equally valid: Each custom
+               multi_anchor: I had no basis for where to join date dimension. It is 1 join from catalog returns
+                 and equally from catalog sales and customer, and nothing declares which is meant. Used: Each
+                 date dimension row has many catalog returns rows, through their returned date surrogate key.
+                 Equally valid: Each date dimens
+    attempt 1  accepted; asked gpt-6-luna, answered gpt-6-luna; 2070 in (0 cached), 90 out; $0.000252; 2318 ms
+    validation syntax pass; read_only pass; references pass
+    conformancediverged
+               joins outside the path: catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk
+               joins outside the path: catalog_sales.cs_sold_date_sk = date_dim.d_date_sk
+               an edge of the path is not used: catalog_returns.cr_item_sk = catalog_sales.cs_item_sk and
+                 catalog_returns.cr_order_number = catalog_sales.cs_order_number
+               an edge of the path is not used: catalog_returns.cr_refunded_cdemo_sk =
+                 customer_demographics.cd_demo_sk
+               an edge of the path is not used: catalog_returns.cr_refunded_customer_sk =
+                 customer.c_customer_sk
+               an edge of the path is not used: catalog_returns.cr_returned_date_sk = date_dim.d_date_sk
+    actual     catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk
+               catalog_sales.cs_sold_date_sk = date_dim.d_date_sk
+    sql
+               SELECT d.d_day_name, SUM(cs.cs_quantity) AS total_quantity FROM catalog_sales AS cs JOIN customer_demographics AS cd ON cs.cs_bill_cdemo_sk = cd.cd_demo_sk JOIN date_dim AS d ON cs.cs_sold_date_sk = d.d_date_sk WHERE cd.cd_marital_status = 'M' GROUP BY d.d_day_name ORDER BY total_quantity DESC
+    hashes     validated 2972c9291dd0a163, executed 2972c9291dd0a163: the same text
+    rows       7; 2325 ms; statement_timeout 30s
+               d_day_name | total_quantity
+               Saturday | 2107442
+               Monday | 2077042
+               Thursday | 2071140
+               Sunday | 2064105
+               Tuesday | 2061695
+    timings    locate 829 ms; prompt 0 ms; generate 2319 ms; validate 9 ms; conform 2 ms; execute 2325 ms
+    cost       2070 tokens in, 90 out, $0.000252, over 1 model calls
+
+ d8  cannot be answered: the warehouse holds no suppliers and no delivery times. The reply expected is not_answerable
+    question   Which of our suppliers deliver late most often?
+    outcome    not_answerable  [question_not_answerable]
+               This cannot be answered from the tables retrieved: the model, shown those tables, said they do
+                 not hold the answer.
+    anchors    web_sales
+    in prompt  web_sales  (2853 characters)
+    selected   no joins: one table
+    warnings   none
+    attempt 1  not_answerable; asked gpt-6-luna, answered gpt-6-luna; 776 in (0 cached), 18 out; $0.000087;
+                 1175 ms
+    timings    locate 898 ms; prompt 0 ms; generate 1176 ms
+    cost       776 tokens in, 18 out, $0.000087, over 1 model calls
+
+    run 1: d1 answered, d2 not_answerable, d3 not_answerable, d4 answered, d5 answered, d6 not_answerable, d7 answered, d8 not_answerable
+    model spend this run $0.001677; embedded now 50 texts, $0.00000314; ledger total $0.001688 of a ceiling of $0.50
