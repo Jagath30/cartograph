@@ -6842,6 +6842,78 @@ sent to nothing. A test holds them apart from the evaluation set.
 
 **Suite.** 872 pass in the container and 2 paid tests skip.
 
+### The owner's rulings at the second review stop — 9 October 2026
+
+Given on the instrument, the prompt and the development questions, before
+any question went to the model.
+
+1. **The three extractions shown beside their SQL were checked by hand by
+   the owner and are right**: benchmark queries 3, 93 and 97, including
+   query 93's outer pairs forming no class and query 97 keeping its two
+   uses of `date_dim` apart.
+2. **The four decisions inside the instrument are approved.**
+   - A derived source that is one row by construction is not a cross
+     join. **Added by the owner:** a set-returning function in its select
+     list (`unnest`, `generate_series` and the like) makes it many rows,
+     and a cross join again.
+   - `x IN (SELECT key FROM t)` is `not_checked` for v1. **A known
+     limitation, and a candidate for later:** a semi-join is a join, and
+     extracting it would put those queries back in step 10's denominator.
+   - Half a two-column key beside something unread is `not_checked`:
+     diverged needs certain evidence.
+   - Separate uses of a table are never merged, and a self-join is
+     `not_checked`. Query 97 shows why: merging would invent
+     `ss_sold_date_sk = cs_sold_date_sk`.
+   - `json` and `sqlglot` in the core's import allowlist, and the
+     `*_to_xml` family on the terminal list: approved.
+3. **SET OPERATIONS: EXTENDED NOW, before any model SQL exists.** They
+   were the leading cause in the stress run, and this was the last moment
+   to change the instrument without breaking rule 1. Coverage is also a
+   matter of fairness at step 10: if one mode writes more UNIONs, its
+   wrong answers would leave the denominator more often than the other's.
+   - UNION and UNION ALL only. Each branch is its own scope, exactly like
+     a CTE body.
+   - INTERSECT and EXCEPT stay `not_checked`: they compare rows across
+     branches, which is a join in disguise.
+   - A join on a UNION's output column is `not_checked` unless every
+     branch's column there is a plain pass-through of a base column. Then
+     it yields one equality per branch, and these take no part in
+     transitivity, like an outer join's condition.
+4. **The prompt is approved**, both added lines included, with one
+   correction: the table's comment is above its CREATE TABLE, so the
+   rules say "the comment above each table and after each column".
+5. **The eight development questions are approved as written.**
+6. **For stop 3:** the development set is run twice and the number of the
+   eight that produced identical SQL both times is reported, as evidence
+   for Design section 12's single run at temperature 0.
+
+**Carried out** (the commit carrying this entry). `trace` follows a
+column through a UNION to one column for each branch, by position, and
+stops at a computed one. An equality with a side that came out of a UNION
+is marked `union`; with an outer join's it is `direct`: it must match a
+pair of the path as it stands and joins no class. 19 more tests, the
+owner's five cases among them; 17 more mutations, 16 caught at once and
+one that showed a missing test (a join on a recursive CTE's column), now
+written. 108 tests of the check in all.
+
+**The 99 benchmark queries again, after the extension.**
+
+                                    before     after
+    read with nothing unchecked     38         49
+    set_operation                   23         4      INTERSECT, EXCEPT
+    self_join                       18         18
+    non_equality                    14         14
+    correlated_subquery             12         12
+    subquery_predicate              10         10
+    computed_join_key                6          6
+    or                               3          3
+    refused by the validator         0          0
+
+**THE INSTRUMENT IS FIXED FROM THIS COMMIT.** `sql_reading.py`,
+`sql_validator.py` and `conformance.py` change after it only on the
+owner's ruling, as the two judgements of steps 5 and 6 do: from the next
+commit on, model SQL exists and any change would be shaped by it.
+
 ### To dissect, step 7
 
 - why the validator and the checker are committed before the first model
@@ -7144,3 +7216,21 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     close. The path is the one `show_eval --step6` took on its first run
     (110 texts embedded), through the same `open_retrieval`. Its message
     when the key is absent is untested against a live missing key.
+60. **Relative dates return nothing** (the owner, step 7's second stop).
+    A question such as "last year" will be filtered against today's
+    date. The warehouse's sales run from 1 January 1998 to 8 January
+    2003 (store and web: 2 January 1998 to 2 January 2003; catalog: 1
+    January 1998 to 8 January 2003; inventory to 26 December 2002;
+    measured 9 October 2026), while `date_dim` itself runs from 1900 to
+    2100, so the query is valid, joins correctly and returns no rows.
+    Evaluation question 1 is of this kind. For a decision before step
+    10.
+61. **Semi-joins are not extracted** (step 7). `x IN (SELECT key FROM
+    t)`, EXISTS with a correlation, and a comparison with a subquery that
+    passes a column through are joins spelled as filters. The
+    ConformanceCheck marks them `not_checked` (`subquery_predicate`,
+    `correlated_subquery`) and never reads them as "no join". In the
+    stress run over the benchmark's 99 queries these two reasons touch
+    22 queries. Extracting them would return such SQL to step 10's
+    denominator; it is a change to a frozen instrument and needs a
+    ruling.

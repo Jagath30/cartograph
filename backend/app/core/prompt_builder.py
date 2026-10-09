@@ -41,7 +41,7 @@ from app.core.snapshot import SchemaSnapshot
 GENERAL_RULES = """\
 You write one PostgreSQL query that answers a question about a data warehouse.
 
-You are given the tables you may use, as CREATE TABLE statements. The comment after each table and column says what it holds.
+You are given the tables you may use, as CREATE TABLE statements. The comment above each table and after each column says what it holds.
 
 Rules:
 - Write exactly one SELECT statement. It may begin with WITH. Never write anything that changes data.

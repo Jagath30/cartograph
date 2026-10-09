@@ -39,6 +39,15 @@ the three as one equivalence class, and so does this:
     join, not half a right one;
   - a source in a FROM that nothing joins is a cross join.
 
+UNION AND UNION ALL (the owner's ruling at stop 2). Each branch is read as
+its own scope, exactly as a CTE's body is. A join on a column that comes
+out of a UNION is read only when every branch puts a plain column of a
+table there; it is then one equality for each branch, and those take no
+part in transitivity, as an outer join's condition does not: each is true
+of its own branch's rows and of no others. INTERSECT and EXCEPT stay
+`not_checked`: they compare rows across their branches, which is a join
+in disguise.
+
 So joining two fact tables each to `item`, and joining them to each other
 on the item key with `item` joined too, both conform to a path through
 `item`; joining them directly without `item` is incomplete; and the wrong
@@ -117,10 +126,19 @@ class Equality:
     right: Column
     # Written in the ON of a LEFT, RIGHT or FULL join.
     outer: bool = False
+    # One side came out of a UNION: this is what the condition means for
+    # the rows of one branch.
+    union: bool = False
 
     @property
     def pair(self) -> frozenset[Column]:
         return frozenset((self.left, self.right))
+
+    @property
+    def direct(self) -> bool:
+        """True when it must match a pair of the path as it stands, and
+        makes nothing else equal: an outer join's, or a UNION branch's."""
+        return self.outer or self.union
 
 
 @dataclass(frozen=True)
@@ -199,7 +217,7 @@ class _Extractor:
         # Keyed by (source, column): one use of a table, one of its columns.
         self.inner = _Classes()
         self.sources: dict[int, Source] = {}
-        self.equalities: dict[tuple[frozenset[Column], bool], Equality] = {}
+        self.equalities: dict[tuple[frozenset[Column], bool, bool], Equality] = {}
         self.tables: set[str] = set()
         self.cross_joins: list[tuple[str, ...]] = []
         self.unchecked: dict[tuple[str, str], Unchecked] = {}
@@ -218,7 +236,11 @@ class _Extractor:
         if body.recursive:
             self.skip("recursive_cte", body.node)
         if body.is_set_operation:
-            self.skip("set_operation", body.node)
+            # UNION: each branch is a scope of its own, like a CTE's body.
+            # INTERSECT and EXCEPT compare rows across branches. Either
+            # way the joins inside each branch are read.
+            if not isinstance(body.node, exp.Union):
+                self.skip("set_operation", body.node)
             for branch in body.branches:
                 self.body(branch)
         elif body.select is not None:
@@ -300,18 +322,22 @@ class _Extractor:
         ):
             if any(end.kind == kind for end in traced):
                 return self.skip(reason, condition)
-        first, second = traced
-        if first.source is second.source:
+        # A column out of a UNION is one column for each branch.
+        lefts, rights = (end.branches if end.kind == "branches" else (end,) for end in traced)
+        union = any(end.kind == "branches" for end in traced)
+        if any(first.source is second.source for first in lefts for second in rights):
             # Two names for one use of a table: a CTE joined to itself.
             return self.skip("self_join", condition)
 
-        a, b = sorted(((first.table, first.column), (second.table, second.column)))
-        equality = Equality(a, b, outer)
-        self.equalities.setdefault((equality.pair, outer), equality)
-        for end in traced:
-            self.sources[id(end.source)] = end.source
-        if not outer:
-            self.inner.join((id(first.source), first.column), (id(second.source), second.column))
+        for first in lefts:
+            for second in rights:
+                a, b = sorted(((first.table, first.column), (second.table, second.column)))
+                equality = Equality(a, b, outer, union)
+                self.equalities.setdefault((equality.pair, outer, union), equality)
+                self.sources[id(first.source)] = first.source
+                self.sources[id(second.source)] = second.source
+                if not equality.direct:
+                    self.inner.join((id(first.source), first.column), (id(second.source), second.column))
         return None
 
     def _spanning(self, condition, select: Select, linked: _Classes) -> str | None:
@@ -348,8 +374,12 @@ class _Extractor:
     def _subquery(self, body: Body, select: Select) -> None:
         if self._correlated(body):
             return self.skip("correlated_subquery", body.node)
-        if isinstance(body.node.parent, exp.Exists) or body.select is None:
+        if isinstance(body.node.parent, exp.Exists):
             return None
+        if body.select is None:
+            # `x IN (SELECT .. UNION SELECT ..)`: a join spelled as a filter,
+            # over several tables at once.
+            return self.skip("subquery_predicate", body.node)
         # `x IN (SELECT key FROM t)` is a join spelled as a filter. A
         # subquery that gives out a value it computed is only a value.
         first = outputs(body, self.schema)[:1]
@@ -392,7 +422,7 @@ class _Extractor:
         for members in self.inner.classes():
             classes.append(frozenset((self.sources[source].table, column) for source, column in members))
         return Extraction(
-            equalities=tuple(sorted(self.equalities.values(), key=lambda e: (e.left, e.right, e.outer))),
+            equalities=tuple(sorted(self.equalities.values(), key=lambda e: (e.left, e.right, e.outer, e.union))),
             classes=tuple(sorted(classes, key=sorted)),
             tables=tuple(sorted(self.tables)),
             cross_joins=tuple(self.cross_joins),
@@ -427,17 +457,36 @@ def _column_equality(condition) -> tuple[exp.Column, exp.Column] | None:
 
 
 def _one_row(source: Source) -> bool:
-    """A derived source that is one row by construction: aggregates and no
-    GROUP BY. Setting it beside a table joins nothing wrongly."""
+    """A derived source that is one row by construction: aggregates, no
+    GROUP BY, and nothing in its select list that returns a set of rows.
+    Setting it beside a table joins nothing wrongly."""
     if source.kind != "derived" or source.body.select is None:
         return False
     node = source.body.select.node
     if node.args.get("group") is not None or not node.expressions:
         return False
+    if any(_returns_rows(inner) for projection in node.expressions for inner in projection.walk()):
+        return False
     return all(
         projection.find(exp.AggFunc) is not None and projection.find(exp.Window) is None
         for projection in node.expressions
     )
+
+
+# Functions that return a set of rows and not a value. One in a select
+# list multiplies the rows, whatever aggregate stands beside it.
+_ROW_RETURNING = (exp.Unnest, exp.Explode, exp.GenerateSeries, exp.ExplodingGenerateSeries)
+_ROW_RETURNING_NAMES = (
+    "generate_", "unnest", "regexp_split_to_table", "regexp_matches", "string_to_table",
+    "json_array_elements", "jsonb_array_elements", "json_each", "jsonb_each", "json_object_keys",
+    "jsonb_object_keys", "jsonb_path_query",
+)  # fmt: skip
+
+
+def _returns_rows(node) -> bool:
+    if isinstance(node, _ROW_RETURNING):
+        return True
+    return isinstance(node, exp.Anonymous) and node.name.lower().startswith(_ROW_RETURNING_NAMES)
 
 
 def extract_joins(sql: str, schema: Schema) -> Extraction:
@@ -470,10 +519,10 @@ def compare(extraction: Extraction, edges: tuple[Edge, ...]) -> Conformance:
         for a, b in edge:
             path.join(a, b)
             path_pairs.add(frozenset((a, b)))
-    outer_pairs = {equality.pair for equality in extraction.equalities if equality.outer}
+    direct_pairs = {equality.pair for equality in extraction.equalities if equality.direct}
 
     def joined(a: Column, b: Column) -> bool:
-        return any(a in members and b in members for members in extraction.classes) or frozenset((a, b)) in outer_pairs
+        return any(a in members and b in members for members in extraction.classes) or frozenset((a, b)) in direct_pairs
 
     present, missing, partial = [], [], []
     for edge in edges:
@@ -482,7 +531,7 @@ def compare(extraction: Extraction, edges: tuple[Edge, ...]) -> Conformance:
 
     foreign = []
     for equality in extraction.equalities:
-        if equality.outer:
+        if equality.direct:
             implied = equality.pair in path_pairs
         else:
             # A column the path does not mention is in a class of its own.
@@ -521,7 +570,8 @@ def _name(column: Column) -> str:
 
 
 def _show(equality: Equality) -> str:
-    return f"{_name(equality.left)} = {_name(equality.right)}" + (" (outer join)" if equality.outer else "")
+    how = (" (outer join)" if equality.outer else "") + (" (through a UNION)" if equality.union else "")
+    return f"{_name(equality.left)} = {_name(equality.right)}{how}"
 
 
 def _edge(edge: Edge) -> str:

@@ -407,6 +407,137 @@ def test_a_cte_nothing_reads_contributes_nothing() -> None:
 
 
 # --------------------------------------------------------------------------
+# UNION and UNION ALL: each branch its own scope (stop 2)
+# --------------------------------------------------------------------------
+
+WS_ITEM = edge("web_sales.ws_item_sk = item.i_item_sk")
+
+
+def test_each_branch_of_a_union_is_read_and_branches_that_follow_the_path_conform() -> None:
+    sql = """SELECT i.i_category, ss.ss_net_paid FROM store_sales ss JOIN item i ON ss.ss_item_sk = i.i_item_sk
+             UNION ALL
+             SELECT i.i_category, cs.cs_net_paid FROM catalog_sales cs JOIN item i ON cs.cs_item_sk = i.i_item_sk"""
+    assert reasons(sql) == set()
+    assert joins(sql) == {"item.i_item_sk = store_sales.ss_item_sk", "catalog_sales.cs_item_sk = item.i_item_sk"}
+    assert outcome(sql, SS_ITEM, CS_ITEM) == "conforms"
+    assert outcome(sql.replace("UNION ALL", "UNION"), SS_ITEM, CS_ITEM) == "conforms"
+
+
+def test_the_two_branches_are_two_scopes_and_nothing_makes_their_columns_equal() -> None:
+    """Each branch has its own item. store_sales and catalog_sales are not
+    thereby joined to each other."""
+    sql = """SELECT 1 FROM store_sales ss JOIN item i ON ss.ss_item_sk = i.i_item_sk
+             UNION ALL SELECT 1 FROM catalog_sales cs JOIN item i ON cs.cs_item_sk = i.i_item_sk"""
+    classes = extract_joins(sql, SCHEMA).classes
+    assert len(classes) == 2
+    assert not any(("store_sales", "ss_item_sk") in c and ("catalog_sales", "cs_item_sk") in c for c in classes)
+
+
+def test_a_foreign_join_inside_one_branch_is_diverged() -> None:
+    sql = """SELECT ca.ca_state FROM store_sales ss JOIN customer_address ca ON ss.ss_addr_sk = ca.ca_address_sk
+             UNION ALL
+             SELECT ca.ca_state FROM catalog_sales cs JOIN customer_address ca ON cs.cs_ship_addr_sk = ca.ca_address_sk"""
+    result = compare(extract_joins(sql, SCHEMA), (edge("store_sales.ss_addr_sk = customer_address.ca_address_sk"), CS_BILL))
+    assert result.outcome == "diverged" and result.missing == (CS_BILL,)
+    assert [(e.left, e.right) for e in result.foreign] == [(("catalog_sales", "cs_ship_addr_sk"), ("customer_address", "ca_address_sk"))]
+
+
+ALL_CHANNELS = """WITH sales AS (
+                      SELECT ss_item_sk AS item_sk, ss_net_paid AS paid FROM store_sales
+                      UNION ALL SELECT cs_item_sk, cs_net_paid FROM catalog_sales
+                      UNION ALL SELECT ws_item_sk, ws_net_paid FROM web_sales)
+                  SELECT i.i_category, SUM(s.paid) FROM sales s JOIN item i ON s.item_sk = i.i_item_sk GROUP BY i.i_category"""
+
+
+def test_all_channels_in_a_union_joined_to_item_on_its_item_key_conforms() -> None:
+    """One condition in the SQL, one equality for each branch."""
+    extraction = extract_joins(ALL_CHANNELS, SCHEMA)
+    assert extraction.unchecked == ()
+    assert joins(ALL_CHANNELS) == {
+        "item.i_item_sk = store_sales.ss_item_sk", "catalog_sales.cs_item_sk = item.i_item_sk",
+        "item.i_item_sk = web_sales.ws_item_sk",
+    }  # fmt: skip
+    assert all(equality.union and not equality.outer for equality in extraction.equalities)
+    assert outcome(ALL_CHANNELS, SS_ITEM, CS_ITEM, WS_ITEM) == "conforms"
+
+
+def test_a_join_through_a_union_takes_no_part_in_transitivity() -> None:
+    """The three item keys are each equal to item's for their own branch's
+    rows. They are not equal to one another, and no class says so."""
+    extraction = extract_joins(ALL_CHANNELS, SCHEMA)
+    assert extraction.classes == ()
+    # So a path that joins only two of the three does not imply the third,
+    result = compare(extraction, (SS_ITEM, CS_ITEM))
+    assert result.outcome == "diverged" and "(through a UNION)" in result.findings[0]
+    # and an equality the path implies only by transitivity is not matched.
+    direct = edge("store_sales.ss_item_sk = catalog_sales.cs_item_sk")
+    assert compare(extraction, (direct, CS_ITEM, WS_ITEM)).outcome == "diverged"
+
+
+def test_the_wrong_column_through_a_union_is_diverged() -> None:
+    sql = """WITH a AS (SELECT cs_bill_addr_sk AS addr FROM catalog_sales UNION ALL SELECT cs_ship_addr_sk FROM catalog_sales)
+             SELECT 1 FROM a JOIN customer_address ca ON a.addr = ca.ca_address_sk"""
+    result = compare(extract_joins(sql, SCHEMA), (CS_BILL,))
+    assert result.outcome == "diverged" and result.present == (CS_BILL,) and len(result.foreign) == 1
+
+
+@pytest.mark.parametrize("branch", ["cs_item_sk + 0", "COALESCE(cs_item_sk, 0)", "NULL", "1"])
+def test_a_computed_column_in_any_branch_makes_the_join_on_it_not_checked(branch) -> None:
+    sql = f"""WITH sales AS (SELECT ss_item_sk AS item_sk FROM store_sales UNION ALL SELECT {branch} FROM catalog_sales)
+              SELECT 1 FROM sales s JOIN item i ON s.item_sk = i.i_item_sk"""
+    extraction = extract_joins(sql, SCHEMA)
+    assert reasons(sql) == {"computed_join_key"} and extraction.equalities == ()
+    assert outcome(sql, SS_ITEM, CS_ITEM) == "not_checked"
+
+
+def test_a_union_inside_a_union_and_a_union_in_from_are_followed_the_same() -> None:
+    sql = """SELECT 1 FROM (SELECT ss_item_sk AS k FROM store_sales
+                            UNION ALL (SELECT cs_item_sk FROM catalog_sales UNION SELECT ws_item_sk FROM web_sales)) AS u
+             JOIN item i ON u.k = i.i_item_sk"""
+    assert len(joins(sql)) == 3 and reasons(sql) == set()
+    assert outcome(sql, SS_ITEM, CS_ITEM, WS_ITEM) == "conforms"
+
+
+def test_a_union_branch_with_joins_of_its_own_passes_its_key_through() -> None:
+    sql = """WITH sales AS (
+                 SELECT ss.ss_item_sk AS item_sk FROM store_sales ss JOIN date_dim d ON ss.ss_sold_date_sk = d.d_date_sk
+                 UNION ALL SELECT cs.cs_item_sk FROM catalog_sales cs)
+             SELECT 1 FROM sales s JOIN item i ON s.item_sk = i.i_item_sk"""
+    assert outcome(sql, SS_ITEM, CS_ITEM, SS_DATE) == "conforms"
+    assert outcome(sql, SS_ITEM, CS_ITEM) == "diverged"
+
+
+def test_intersect_and_except_are_not_followed_and_their_branches_are_still_read() -> None:
+    sql = """WITH both AS (SELECT ss_item_sk AS k FROM store_sales INTERSECT SELECT cs_item_sk FROM catalog_sales)
+             SELECT 1 FROM both b JOIN item i ON b.k = i.i_item_sk"""
+    assert reasons(sql) == {"set_operation"} and joins(sql) == set()
+    assert outcome(sql, SS_ITEM, CS_ITEM) == "not_checked"
+    wrong = """SELECT 1 FROM catalog_sales cs JOIN customer_address ca ON cs.cs_ship_addr_sk = ca.ca_address_sk
+               EXCEPT SELECT 1 FROM store"""
+    assert outcome(wrong, CS_BILL) == "diverged"
+
+
+def test_a_join_on_a_recursive_cte_s_column_is_not_followed_into_it() -> None:
+    sql = """WITH RECURSIVE r AS (SELECT ss_item_sk AS k FROM store_sales UNION ALL SELECT r.k FROM r WHERE r.k < 3)
+             SELECT 1 FROM r JOIN item i ON r.k = i.i_item_sk"""
+    assert joins(sql) == set() and reasons(sql) == {"recursive_cte", "set_operation"}
+    assert outcome(sql, SS_ITEM) == "not_checked"
+
+
+def test_a_row_returning_function_in_a_one_row_source_makes_it_a_cross_join_again() -> None:
+    base = """SELECT 1 FROM store_sales ss JOIN store s ON ss.ss_store_sk = s.s_store_sk
+              CROSS JOIN (SELECT {projection} FROM store_sales) AS t"""
+    assert outcome(base.format(projection="SUM(ss_net_paid) AS total"), SS_STORE) == "conforms"
+    for projection in (
+        "UNNEST(ARRAY_AGG(ss_item_sk)) AS k",
+        "SUM(ss_net_paid) AS total, GENERATE_SERIES(1, 3) AS n",
+        "MAX(ss_item_sk) + GENERATE_SERIES(1, 3) AS n",
+        "REGEXP_SPLIT_TO_TABLE(STRING_AGG('a', ','), ',') AS part",
+    ):
+        assert outcome(base.format(projection=projection), SS_STORE) == "diverged", projection
+
+
+# --------------------------------------------------------------------------
 # not_checked: never "conforms" (T-02)
 # --------------------------------------------------------------------------
 
@@ -429,8 +560,11 @@ NOT_CHECKED = [
     ("computed_join_key", "SELECT 1 FROM store_sales ss, item i WHERE COALESCE(ss.ss_item_sk, 0) = i.i_item_sk"),
     ("natural_join", "SELECT 1 FROM store_sales NATURAL JOIN item"),
     ("using", "SELECT 1 FROM date_dim a JOIN time_dim b USING (d_date_sk)"),
-    ("set_operation", "SELECT ss_item_sk FROM store_sales UNION ALL SELECT cs_item_sk FROM catalog_sales"),
-    ("set_operation", "WITH u AS (SELECT ss_item_sk AS k FROM store_sales UNION SELECT cs_item_sk FROM catalog_sales) SELECT 1 FROM u JOIN item i ON u.k = i.i_item_sk"),
+    ("set_operation", "SELECT ss_item_sk FROM store_sales INTERSECT SELECT cs_item_sk FROM catalog_sales"),
+    ("set_operation", "SELECT ss_item_sk FROM store_sales EXCEPT ALL SELECT cs_item_sk FROM catalog_sales"),
+    ("set_operation", "WITH u AS (SELECT ss_item_sk AS k FROM store_sales INTERSECT SELECT cs_item_sk FROM catalog_sales) SELECT 1 FROM u JOIN item i ON u.k = i.i_item_sk"),
+    ("set_operation", "SELECT ss_item_sk FROM store_sales UNION (SELECT cs_item_sk FROM catalog_sales EXCEPT SELECT ws_item_sk FROM web_sales)"),
+    ("subquery_predicate", "SELECT 1 FROM item WHERE i_item_sk IN (SELECT ss_item_sk FROM store_sales UNION SELECT cs_item_sk FROM catalog_sales)"),
     ("recursive_cte", "WITH RECURSIVE r AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM r WHERE n < 3) SELECT 1 FROM r"),
     ("correlated_subquery", "SELECT 1 FROM item i WHERE EXISTS (SELECT 1 FROM store_sales ss WHERE ss.ss_item_sk = i.i_item_sk)"),
     ("correlated_subquery", "SELECT 1 FROM item WHERE EXISTS (SELECT 1 FROM store_sales WHERE ss_item_sk = i_item_sk)"),

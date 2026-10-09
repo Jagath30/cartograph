@@ -25,7 +25,8 @@ THE WORDS USED HERE
     to trace    to follow a resolved column through derived sources down
                 to a column of a table. A derived column that is anything
                 but another column passed straight through is `computed`
-                and the trace stops there
+                and the trace stops there. Through a UNION a column comes
+                down to one column for each branch
 
 A NAME IS COMPARED IN LOWER CASE, as Postgres folds an unquoted one.
 """
@@ -155,11 +156,14 @@ class Resolved:
 
 @dataclass(frozen=True, eq=False)
 class Traced:
-    kind: Literal["column", "computed", "set_operation", "unresolved", "opaque"]
+    kind: Literal["column", "branches", "computed", "set_operation", "unresolved", "opaque"]
     # For a column: the source it was finally read from, and what it is.
     source: Source | None = None
     table: str | None = None
     column: str | None = None
+    # For a column that comes out of a UNION: the column each branch puts
+    # there, every one of them a column of a table.
+    branches: tuple["Traced", ...] = ()
 
 
 def _is_query(node: exp.Expression) -> bool:
@@ -346,35 +350,60 @@ def resolve(column: exp.Column, select: Select, schema: Schema) -> Resolved:
 
 def trace(resolved: Resolved, schema: Schema) -> Traced:
     """Follow a resolved column down to a column of a table, through any
-    derived source that passes it straight through."""
+    derived source that passes it straight through.
+
+    Through a UNION it comes down to one column per branch (`branches`),
+    and only if every branch passes a column straight through at that
+    position. INTERSECT and EXCEPT are not followed: they compare rows
+    across their branches, and what comes out is not any one branch's."""
     if resolved.kind == "opaque":
         return Traced("opaque")
     if resolved.kind != "found":
         return Traced("unresolved")
-    source, name = resolved.source, resolved.column
-    while True:
-        if source.kind == "table":
-            return Traced("column", source, source.table, name)
-        if source.kind == "unread":
-            return Traced("opaque")
-        body = source.body
-        if body.recursive or body.select is None:
+    return _from_source(resolved.source, resolved.column, schema)
+
+
+def _from_source(source: Source, name: str, schema: Schema) -> Traced:
+    if source.kind == "table":
+        return Traced("column", source, source.table, name)
+    if source.kind == "unread":
+        return Traced("opaque")
+    names = source_columns(source, schema)
+    if name not in names:
+        return Traced("unresolved")
+    return _from_body(source.body, names.index(name), schema)
+
+
+def _from_body(body: Body, position: int, schema: Schema) -> Traced:
+    if body.recursive:
+        return Traced("set_operation")
+    if body.select is None:
+        if not body.branches or not isinstance(body.node, exp.Union):
             return Traced("set_operation")
-        names = source_columns(source, schema)
-        if name not in names:
-            return Traced("unresolved")
-        out = outputs(body, schema)[names.index(name)]
-        if out.source is not None:
-            source, name = out.source, out.column
-            continue
-        expression = out.expression
-        while isinstance(expression, exp.Paren):
-            expression = expression.this
-        if not isinstance(expression, exp.Column):
-            return Traced("computed")
-        inner = resolve(expression, out.select, schema)
-        if inner.kind == "opaque":
-            return Traced("opaque")
-        if inner.kind != "found" or inner.correlated:
-            return Traced("unresolved")
-        source, name = inner.source, inner.column
+        ends: list[Traced] = []
+        for branch in body.branches:
+            end = _from_body(branch, position, schema)
+            if end.kind == "column":
+                ends.append(end)
+            elif end.kind == "branches":
+                ends += end.branches
+            else:
+                return end
+        return Traced("branches", branches=tuple(ends))
+    outs = outputs(body, schema)
+    if position >= len(outs):
+        return Traced("unresolved")
+    out = outs[position]
+    if out.source is not None:
+        return _from_source(out.source, out.column, schema)
+    expression = out.expression
+    while isinstance(expression, exp.Paren):
+        expression = expression.this
+    if not isinstance(expression, exp.Column):
+        return Traced("computed")
+    inner = resolve(expression, out.select, schema)
+    if inner.kind == "opaque":
+        return Traced("opaque")
+    if inner.kind != "found" or inner.correlated:
+        return Traced("unresolved")
+    return _from_source(inner.source, inner.column, schema)
