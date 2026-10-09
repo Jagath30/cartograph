@@ -43,7 +43,13 @@ from app.shell.model_client import ModelKeyMissing
 from app.shell.pipeline_session import open_pipeline
 
 # Development question d4 of eval/dev_questions.yaml: one join, with two
-# keys to choose between. Not an evaluation question.
+# keys to choose between. Not an evaluation question. (d3 was first named
+# for this and was declined in development run 1: retrieval did not bring
+# catalog_sales.)
+#
+# THE PIPELINE LINE IS STRICT: it needs "answered". The model does not
+# repeat itself exactly at temperature 0, so a decline is possible; it
+# fails the check and says that the model declined. No retry.
 QUESTION = "How do purchases on the web split by the buyer's level of education?"
 
 NO_KEY_EXIT = 3
@@ -113,6 +119,13 @@ def main() -> int:
     if trace.outcome == "answered" and found["row_count"] and not missing:
         print(f"PIPELINE PASS  answered; {found['row_count']} rows; conformance {found['conformance']}; "
               f"{len(trace.attempts)} model call(s), ${trace.cost_usd:.6f}; model {trace.attempts[-1].reply.returned_model}")  # fmt: skip
+    elif trace.outcome == "not_answerable" and trace.attempts:
+        # Strict on purpose: a check that can pass without running the whole
+        # pipeline is decorative. But the cause is said, so that the model
+        # declining is never mistaken for a fault in the code.
+        failed = True
+        print("PIPELINE FAIL  THE MODEL DECLINED the smoke question (it replied not_answerable). This is the "
+              f"model's answer and not a code fault; nothing was validated or run. It was shown: {', '.join(found['prompt_tables'])}")  # fmt: skip
     else:
         failed = True
         print(f"PIPELINE FAIL  outcome {trace.outcome} ({trace.message}); rows {found['row_count']}; missing sections {missing}")

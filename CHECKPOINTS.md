@@ -7023,6 +7023,88 @@ run is one paid model call, about $0.00005.
 **Suite.** 939 pass in the container and 2 paid tests skip; 881 pass and
 60 skip with both database URLs and the key unset.
 
+### The owner's rulings at the third review stop, and the diagnosis — 9 October 2026
+
+"This is a good stop. The pipeline answers, the model stays inside its
+prompt and declines honestly, and when it took a different route (d7) the
+trace said so. That is the project's claim working on a real case."
+
+1. **The smoke question is d4.** The label was moved from d3 to d4 in
+   `dev_questions.yaml`, in its own commit (`f4d3a8e`), and nothing else
+   in that file changed: d3 was declined in run 1 because retrieval did
+   not bring `catalog_sales`, so it cannot show a full run.
+2. **Smoke stays strict.** PIPELINE requires "answered". A decline fails
+   it, with a message naming the model's decline as the cause so that it
+   is never mistaken for a code fault. No automatic retry: a check that
+   can pass without running the whole pipeline is decorative. If it
+   flakes, it is revisited with the evidence.
+3. **Retrieval: nothing changes in step 7.** Diagnosed below, with no
+   change and no model call. Whether to do a retrieval pass, and where it
+   goes in the plan, is decided after the close.
+4. **Close.**
+
+**THE DIAGNOSIS OF THE THREE DECLINES.** From cached vectors, at the
+defaults (alpha 0.5, anchor cut 0.5, cap 5). Three declines, three
+different causes.
+
+- **d2, `date_dim`: the score, by a hair.** It scored 0.492 against a
+  cut of 0.5, eighth of 24 tables. "year" nominated it, and a nomination
+  does not make an anchor. Its own row carried it: the keyword half
+  matched (0.728 normalised) and the semantic half barely did (0.255);
+  `d_year` itself scored 0.342. Nothing was set aside and the cap cut
+  nothing: four tables reached the cut. DD-10 expected this of date
+  tables, and step 6 saw it in evaluation questions 4 and 7.
+- **d3, `catalog_sales`: the rival rule, not the score.** It scored
+  0.877, second of 24, by `cs_catalog_page_sk`, the very key the answer
+  needs. It was set aside as a rival: the term "orders" chose
+  `web_sales` (1.000) with `catalog_sales` within the margin (0.988) and
+  not joined to it, and no term nominated `catalog_sales` in its own
+  right: "catalog" and "catalog pages" both nominated `catalog_page`.
+  `catalog_returns` went the same way. So a question that says "catalog"
+  twice was answered with the web channel's tables. This is item 55 with
+  a cost: two sibling channels are rivals for a generic word, and the
+  question's own channel word was spent on another table.
+- **d6, `time_dim`: nothing in any description could match.** It scored
+  0.288, eleventh of 24, and its keyword score is exactly zero.
+  "evening" is not a word in any table's or column's description. It is
+  a *value*: `time_dim.t_sub_shift` holds `morning`, `afternoon`,
+  `evening`, `night`. Retrieval reads names and descriptions (DD-08) and
+  never data. "evening" did nominate `time_dim`, on the semantic half
+  alone, by `t_am_pm`. No cut would have brought it in without bringing
+  in half the schema.
+
+**FINDINGS RECORDED AT THE OWNER'S DIRECTION.**
+
+- **The alphabetical tie-break is not neutral on TPC-DS.** In every
+  channel `X_returns` sorts before `X_sales`. So whenever a returns
+  table is retrieved as surplus beside its sales table, a dimension that
+  either could carry attaches to the returns table. d7 is the instance:
+  the model rightly joined to `catalog_sales`, and the trace reported
+  it. Counted without new runs, a dimension attached to a returns table
+  while that channel's sales table is also in the tree:
+
+      development questions   4 attachments, in 2 of 8 trees (d5: web_page;
+                              d7: customer_demographics, customer,
+                              date_dim), every one by the alphabet
+      step 6 evaluation       12 attachments, in 7 of 16 trees
+      report (run 3)            9 by the alphabet, in 5 trees: questions
+                                  2 (2), 3 (3), 6 (1), 9 (2) and 16 (1)
+                                2 by question evidence, both question 12,
+                                  which is about catalog returns
+                                1 the only route: `reason`, question 5
+                              12 of the 16 trees hold a returns table
+                              and its sales table together
+
+  DD-12 chose the alphabet because it is stable, and said the choice is
+  arbitrary. It is arbitrary and it is not neutral: on this schema it
+  leans the same way every time.
+- **Warnings fire on structure the SQL never used.** d1 joined nothing
+  and carried three warnings, about joins among tables its SQL never
+  read. With `actual_edges` known, a warning can be marked as having
+  touched the answer or not, which is DD-21's own principle: a warning
+  about a choice that did not reach the answer interrupts for nothing.
+  Carried forward to steps 8 and 9 (item 64).
+
 ### To dissect, step 7
 
 - why the validator and the checker are committed before the first model
@@ -7365,12 +7447,38 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     Three of seven answerable development questions were declined by the
     model because retrieval had not brought a table the answer needs
     (`date_dim`, `catalog_sales`, `time_dim`). The decline is truthful
-    about the tables shown. Nothing tells the reader which kind of
-    decline it is, and FR-42's "cannot be answered from this schema" is
-    not what the system can honestly say. Evidence:
-    `backend/eval/dev_runs/run1.txt`, d2, d3 and d6.
+    about the tables shown. FR-42's "cannot be answered from this
+    schema" is not what the system can honestly say. **The three have
+    three causes**, diagnosed at the third review stop of step 7 (above):
+    a score 0.008 under the cut (`date_dim`); the rival rule setting
+    aside the second-best table of 24 for a sibling channel
+    (`catalog_sales`, item 55); and a word that is a value in the data
+    and in no description (`time_dim`, "evening"). **What the trace can
+    do without guessing:** a decline's trace lists the tables the model
+    was shown, so the reader can judge the decline; the system does not
+    try to say which kind of decline it was. Whether a retrieval pass
+    follows, and where it sits in the plan, is decided after the close of
+    step 7. Evidence: `backend/eval/dev_runs/run1.txt`, d2, d3 and d6.
 63. **Temperature 0 does not repeat on gpt-6-luna** (step 7). Two runs of
     eight questions agreed on five. One question changed its measure
     column, one changed from answered to not answerable, one gained a
-    LIMIT. For step 10: a single run cannot be called the result; decide
-    the number of runs and how they are combined before the first.
+    LIMIT. **The joins did not vary where the SQL text did.**
+    Recommended for step 10, and decided there: at least five runs,
+    reporting the mean, the range and per-question stability, with the
+    number of runs and how they are combined fixed before the first.
+64. **A warning can be marked as having touched the answer or not**
+    (step 7, for steps 8 and 9). The warnings are raised about the tree
+    retrieval built; the SQL may use a fraction of it. d1 of the
+    development runs joined nothing and carried `arbitrary_choice`,
+    `many_to_many` and `multi_anchor`. The trace now holds
+    `actual_edges`, so each warning can be set against the joins that
+    ran. DD-21's principle, one level further: the alarm should be about
+    the answer given.
+65. **The alphabet leans towards returns tables on TPC-DS** (step 7).
+    `catalog_returns` sorts before `catalog_sales`, and so in each
+    channel. Counts and evidence are in the record of step 7's third
+    stop. It compounds item 56: the partner rides in on its sales
+    table's words, and then the alphabet hangs the dimensions on it. A
+    declared preference per pair would not reach it: the tie is between
+    two places to attach, which a preference cannot decide (step 6,
+    piece 4).
