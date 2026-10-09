@@ -145,7 +145,7 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
     print(f"{'':<12}a question is declined only when its anchors cannot be connected (DD-10).")
     print(f"{'rivals':<12}CORRECTED by the owner's ruling after run 1: two tables joined by a foreign key, either")
     print(f"{'':<12}way round, are partners and are never set aside for one another. A \"partners\" line lists the")
-    print(f"{'':<12}tables that reached the cut, that no term nominates, and that this rule alone kept.")
+    print(f"{'':<12}tables that reached the cut, that no term nominates, and that were kept for this reason alone.")
     print(f"{'snapshot':<12}{stored.id}, sha256 {stored.hash}; embedded with {stored.embedding_model}")
 
     statuses: list[str] = []
@@ -204,23 +204,30 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
         ))  # fmt: skip
 
         bound = retrieval.anchor_bound
+        # Every pair that set a table aside. The winner reached the cut; if
+        # the cap then cut it, the line says so, because then neither table
+        # is an anchor and no warning names the pair.
+        above_cut = {*retrieval.anchors, *bound.excluded_by_cap, *bound.set_aside_as_rivals}
         aside = "; ".join(
-            f"{rival.rival} (\"{rival.term}\" chose {rival.chosen}: {rival.chosen_score:.3f} against "
-            f"{rival.rival_score:.3f})"
+            f"{rival.rival} (\"{rival.term}\" chose {rival.chosen}"
+            f"{'' if rival.chosen in retrieval.anchors else ', WHICH THE CAP THEN CUT'}: "
+            f"{rival.chosen_score:.3f} against {rival.rival_score:.3f})"
             for rival in retrieval.rivals
-            if rival.rival in bound.set_aside_as_rivals and rival.chosen in retrieval.anchors
+            if rival.rival in bound.set_aside_as_rivals and rival.chosen in above_cut
         )
         _line("anchors", f"{len(retrieval.anchors)}: "
                          + (", ".join(f"{a} {retrieval.score_of(a):.3f}" for a in retrieval.anchors) or "none"))  # fmt: skip
         _line("set aside", aside or "none")
-        above_cut = {*retrieval.anchors, *bound.excluded_by_cap, *bound.set_aside_as_rivals}
         nominated = {term.chosen_table for term in retrieval.terms}
         kept = "; ".join(
             f"{partner.rival} (joined to {partner.chosen}, which \"{partner.term}\" chose: "
             f"{partner.chosen_score:.3f} against {partner.rival_score:.3f})"
             for term in retrieval.terms
             for partner in term.partners
-            if partner.chosen in above_cut and partner.rival in above_cut and partner.rival not in nominated
+            if partner.chosen in above_cut
+            and partner.rival in above_cut
+            and partner.rival not in nominated
+            and partner.rival not in bound.set_aside_as_rivals
         )
         _line("partners", kept or "none")
         _line("cap cut", ", ".join(bound.excluded_by_cap) or "none")
