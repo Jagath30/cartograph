@@ -110,6 +110,8 @@ class Trace:
     selected_edges: tuple[Edge, ...]
     # ... paths.actual_edges, and paths.diverged (None: nothing ran).
     actual_edges: tuple[Equality, ...]
+    # The columns the executed SQL's inner joins make equal to one another.
+    actual_classes: tuple[frozenset, ...]
     diverged: bool | None
     # generation.attempts
     attempts: tuple[Attempt, ...]
@@ -191,6 +193,7 @@ class Orchestrator:
                 prompt=state["prompt"],
                 selected_edges=state["selected"],
                 actual_edges=state["extraction"].equalities if state["extraction"] else (),
+                actual_classes=state["extraction"].classes if state["extraction"] else (),
                 diverged=(conformance.outcome == "diverged") if conformance else None,
                 attempts=tuple(attempts),
                 validation=state["validation"],
