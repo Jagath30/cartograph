@@ -27,7 +27,7 @@ from app.shell.embedder import (
     make_embedder,
 )
 
-KEY = "sk-test-not-a-real-key-0123456789"
+KEY = "placeholder-secret-for-tests-only"
 MODEL = "text-embedding-3-small"
 
 
