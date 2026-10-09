@@ -671,25 +671,156 @@ understood well enough to defend under questioning:
 scoring, anchors, expansion, both bounds — tuned against this set and
 never the other way round. The freeze binds from its first commit.
 
-## Step 6 in progress: retrieval — opened 8 October 2026
+## checkpoint-06-retrieval — 9 October 2026
 
-No tag yet. This section is the step's working record: where it stands,
-what was decided before any code, and every tuning run. It becomes
-`checkpoint-06-retrieval` when the step closes.
+**What works now that did not before.** Given a question in English, the
+application says which tables answer it and how they join.
+`docker compose exec backend python -m app.show_retrieval "..."` embeds
+the question, scores every table and column of the stored schema two ways
+(pgvector cosine similarity and Postgres full-text rank, DD-09), combines
+them, chooses anchor tables under a cut and a cap (DD-11), joins them into
+one tree by nearest attachment, lets the question's own wording break a
+tie between routes where it is clear enough (DD-12 as amended), and prints
+all of it: what each word matched, what was set aside or cut, how each
+anchor was attached and by which rule, every warning, and the close calls.
+Underneath it: Alembic and the first migration; the schema stored as a
+snapshot and embedded once, 449 elements for $0.00013; an embedding
+adapter that is the only place the provider or the key appears; a margin
+computed from the schema alone before any question was scored; and a
+second, additive judgement of the frozen evaluation set, committed before
+any retrieval existed. `python -m app.show_eval --step6` runs the sixteen
+questions through it. 447 tests pass in the container and the paid one
+skips; 396 pass and 52 skip with both database URLs and the key unset.
+Smoke from a clean start: 30 passed, 0 failed, 2 skipped. All of step 6
+cost 9,209 tokens, $0.00018, in paid calls; no run after the first
+baseline embedded anything.
 
-**Where the work stands.** Pieces 0 to 9 are committed, and so is the one
-correction round the owner allowed at the fourth review stop: a table is
-set aside only for a winner still an anchor after the cap, and
-`anchor_ambiguity` is information and not a warning. Run 3, the baseline
-after it: 0 agree, 16 disagree; 11 of 15 questions hold every expected
-table; 34 tables beyond the expected. The grid is run, all 25 cells,
-runs 4 to 28. **THE KEEP-RULE SELECTS NOTHING: alpha 0.5 and anchor cut
-0.5 stand.** That outcome turns on a clause I added to the keep-rule
-before the grid ("worsened" includes losing a part); without it the
-protocol selects alpha 0.25, cut 0.7. Both are set out at the end of the
-grid's entry. STOPPED FOR THE OWNER'S REVIEW BEFORE THE CLOSE. After the
-fourth stop a defect of mechanism is carried forward and does not reopen
-the step. THE STEP 6 JUDGEMENT IS FROZEN like the step 5 one.
+**The numbers, reported whatever they say (Design section 12).** At the
+settings the tuning protocol left in place, which are the Design's
+defaults: alpha 0.5, anchor cut 0.5, anchor cap 5, subgraph bound 10,
+three joins, margin 0.107051.
+
+    strict agreement with the evaluation set   0 of 16
+    questions with every expected table       11 of 15
+    tables beyond the expected                34, on 14 of 15 questions
+    warnings raised                           arbitrary_choice on 6
+                                              questions, many_to_many on 9,
+                                              multi_anchor on 8; 12 of 16
+                                              raise at least one
+    close calls, shown as information         21 on 12 questions
+    declined as expected                      15 of 16
+    step 5 beside it, unchanged                7 of 16 match
+
+**Why 0 of 16, and what to read beside it.** The judge requires the exact
+tree: the expected tables and no other, the expected joins and no other,
+the expected warning and no other. The defaults favour recall, so 14 of
+15 questions carry a table too many and fail at the first of those. The
+one question whose tree is exactly right, question 8, expects the warning
+`anchor_ambiguity`, which was withdrawn at the fourth review stop. The
+figure to read beside the zero is 11 of 15 questions with every expected
+table present: step 7 hands the model only the retrieved subgraph, so a
+missing table cannot be recovered and a surplus one can be ignored.
+
+**The setting that was not kept, beside the one that was.** The keep-rule
+selected nothing, on a reading of "worsens" fixed before the grid ran and
+confirmed by the owner at the fifth review stop.
+
+                                      KEPT           NOT KEPT
+                                      alpha 0.5      alpha 0.25
+                                      cut 0.5        cut 0.7
+    strict agreement                  0 of 16        2 of 16
+    every expected table present      11 of 15       5 of 15
+    expected tables missing, in all   4              15
+    tables beyond the expected        34             10
+    warnings, question by code        6, 9, 8        2, 3, 3
+    close calls                       21 on 12       11 on 5
+
+**Findings.** Each is recorded where it was found, in the working record
+below; this is the list.
+
+- **Hybrid scoring earns its place (DD-09).** No cell of the grid at
+  alpha 0.75 or 1 agrees on any question, and alpha 1, embeddings alone,
+  carries the most surplus, 49 tables. The keyword signal is what tells
+  one sales channel from another.
+- **Over-retrieval is structural (item 56).** A partner reaches the cut
+  on the same words as its table, so no cut gives both precision and
+  recall: at alpha 0.5 the surplus runs 39, 39, 34, 23, 11 from cut 0.3
+  to 0.7 while the questions holding every expected table run 11, 11, 11,
+  8, 6. T-03 predicted that tables would be hard to find; DD-08's
+  readable names found them, and the risk inverted.
+- **The decline floor failed twice and was withdrawn.** Computed from the
+  schema alone by a method fixed in advance, one version would have
+  declined nothing and the other declined all sixteen: schema names score
+  higher against each other than any question scores against them.
+  Question 15, which should be declined, is declined in no cell of the
+  grid. FR-42 at retrieval rests on disconnection alone until a floor is
+  calibrated on a probe set (item 53), and otherwise on step 7.
+- **The margin held.** Computed by the same stand-in method, it sits
+  between the ties evidence decided and those it left: in run 3, 34 ties,
+  17 decided with gaps of 0.107 and up, 17 left with gaps of 0.089 and
+  down. One decision is within a thousandth of it.
+- **The evidence rule does what it was added for.** Question 2's billing
+  address and question 1's date of sale are chosen by the question's
+  wording, without a warning, where step 5 chose by the alphabet.
+- **"Alternatives" has no definition yet (item 55).** Two were tried.
+  Any two tables close in score for a word: the warning on 15 of 16
+  questions, and expected tables set aside for their own partners. Any
+  two such tables not joined: 12 of 16. Not being joined is necessary and
+  not sufficient. `anchor_ambiguity` is information now, and the category
+  itself came from the evaluation set at step 5, not from the signed
+  Design.
+- **`wp_customer_sk`, silent at step 5, is named at step 6** whenever
+  retrieval brings in `web_sales`: `multi_anchor` lists it among the
+  routes not taken.
+- **Three predictions were committed before their runs and held.** Runs
+  2 and 3 came out as written, anchor for anchor. That showed the code
+  did what was ruled; it did not show the rulings improved retrieval, and
+  the record says so each time.
+- **Faults of the build, found by a check and not by luck.** Among
+  them: a boundary test that could not fail because 0.30 - 0.20 is not 0.10; a
+  mutation that survived because no test had two snapshots; run 2's first
+  report, which said a table had been kept that had not; and two lines
+  deleted from the report at the fourth stop, missing from 26 committed
+  reports until the close. None changed a verdict. The last is why the
+  report's lines now have a test.
+- **Question 14 names no sales channel and its expectation assumes
+  store** (item 54). The set stays frozen; the decision is step 10's.
+
+**To dissect.** The list is long and is kept whole under "To dissect,
+step 6" at the end of the working record below. The ones to start with:
+- `normalise`: three lines, and the one branch that is all of DD-09's
+  warning
+- nominee, rival, partner, set aside: the four words, on the miniature
+- the loop in `retrieve` that settles the cap and the rivals together,
+  and why it must end
+- nearest attachment on paper, and the one line that separates
+  `arbitrary_choice` from `multi_anchor`
+- why the margin is a 95th percentile of differences between *sibling*
+  keys under *unrelated* names, and why the floor built the same way
+  failed
+- why the judgement, the methods, the predictions and the keep-rule's
+  reading were each committed before the thing they judge
+- why a prediction that comes out exactly right can still say little
+
+**Next single deliverable.** Step 7: generation. The retrieved subgraph
+and its tree go to a model through the IR-13 adapter, the SQL that comes
+back is checked for conformance with the reported joins, and one known
+question runs the whole pipeline, which is what the two SKIP lines of the
+smoke check are waiting for. FR-42's main mechanism arrives there too:
+IR-05's question-not-answerable code.
+
+### The working record of step 6
+
+Opened 8 October 2026 as "Step 6 in progress" and kept as written: where
+the work stood, what was decided before any code, every ruling at five
+review stops, and every run.
+
+**Where the work stood at the close.** Pieces 0 to 11 are done. Five
+review stops. One correction round after run 2, allowed once by the
+owner; after it a defect of mechanism is carried forward and does not
+reopen the step. Run 3 is the final baseline; the grid, runs 4 to 28,
+selected nothing; the defaults stand. THE STEP 6 JUDGEMENT IS FROZEN like
+the step 5 one, and so is `backend/eval/calibration.json`.
 
     0  this record                                  done
     1  the step 6 judgement                         done; reviewed; frozen
@@ -702,8 +833,8 @@ the step. THE STEP 6 JUDGEMENT IS FROZEN like the step 5 one.
     8  SemanticIndex                                done
     9  runner, step 6 baseline at Design defaults   done; OWNER REVIEW
     10 rival correction, run 2, then tuning runs    correction and run 2 done; tripwire fired; fourth stop ruled
-    10b last correction round, run 3, the grid     done; defaults stand; OWNER REVIEW before the close
-    11 close: smoke, suite, runner, tag
+    10b last correction round, run 3, the grid     done; defaults stand; reviewed at the fifth stop
+    11 close: smoke, suite, runner, tag             done
 
 The pure core (2 to 4) is written before anything that can produce a real
 score (5 to 8), so no rule or threshold is written after seeing a result.
@@ -5311,6 +5442,23 @@ margin 0.107051. They are run 3's.**
 fourth stop's decision nothing found here reopens the step. What is
 carried forward from the grid is at items 56 and 57.
 
+**A fault in these reports, found at the close and put right.** While the
+per-question block was being lifted out of the report for
+`show_retrieval`, I found that my edit of the report at the fourth stop
+had deleted two of its lines by accident: each question's `anchors` line
+and its `set aside` line. Run 3 and all 25 grid reports were first
+written and committed (`be73a8b`) without them. No verdict, part, count
+or summary line was affected, and nothing in the keep-rule read those
+lines; the per-question detail of which tables were anchors, with their
+scores, and which were set aside for which, was simply not on the page.
+The lines were restored and all 26 reports regenerated (`dae2ed6`). Each
+regenerated report was compared with the one it replaces: it differs by
+the added `anchors` and `set aside` lines and by the timing line, and by
+nothing else. The run 3 report printed below is the regenerated one. A
+test now holds every label of the block in place and in order
+(`tests/core/test_retrieval_report.py`), and deleting any of them fails
+it.
+
 
 
     ====================================================================================================
@@ -5340,6 +5488,8 @@ carried forward from the grid is at items 56 and 57.
         columns    store_sales.ss_quantity 0.719 [sem 0.462, key 0.015], store_sales.ss_net_profit 0.714 [sem
                      0.457, key 0.015], store_sales.ss_sales_price 0.706 [sem 0.451, key 0.015],
                      store_sales.ss_wholesale_cost 0.700 [sem 0.446, key 0.015]
+        anchors    5: store_sales 0.719, store_returns 0.634, store 0.617, date_dim 0.607, catalog_returns 0.502
+        set aside  none
         partners   store_returns (joined to store, which "store" chose: 0.991 against 0.949); store_returns (joined
                      to store_sales, which "store sell" chose: 0.939 against 0.919)
         cap cut    none
@@ -5379,6 +5529,10 @@ carried forward from the grid is at items 56 and 57.
         columns    catalog_sales.cs_bill_cdemo_sk 0.889 [sem 0.393, key 0.049], catalog_sales.cs_bill_customer_sk
                      0.888 [sem 0.393, key 0.049], customer_address.ca_state 0.788 [sem 0.434, key 0.034],
                      catalog_sales.cs_bill_addr_sk 0.768 [sem 0.419, key 0.034]
+        anchors    5: catalog_sales 0.889, customer_address 0.788, catalog_returns 0.699, catalog_page 0.560,
+                     customer 0.514
+        set aside  web_sales ("billed" chose catalog_sales: 0.875 against 0.869); web_sales ("customers billed"
+                     chose catalog_sales: 0.903 against 0.889)
         partners   catalog_returns (joined to catalog_sales, which "catalog customers" chose: 1.000 against 0.972)
         cap cut    none
         attached   0  catalog_sales: the seed
@@ -5440,6 +5594,9 @@ carried forward from the grid is at items 56 and 57.
                      catalog_returns.cr_returning_cdemo_sk 0.991 [sem 0.449, key 0.046],
                      catalog_sales.cs_ship_customer_sk 0.972 [sem 0.434, key 0.046], catalog_sales.cs_bill_cdemo_sk
                      0.964 [sem 0.427, key 0.046]
+        anchors    5: catalog_sales 1.000, catalog_returns 0.991, customer_address 0.953, catalog_page 0.802,
+                     customer 0.700
+        set aside  none
         partners   customer_demographics (joined to customer, which "customers" chose: 0.950 against 0.914);
                      catalog_returns (joined to catalog_sales, which "catalog customers" chose: 1.000 against
                      0.972)
@@ -5506,6 +5663,9 @@ carried forward from the grid is at items 56 and 57.
         columns    web_sales.ws_item_sk 0.840 [sem 0.356, key 0.017], web_returns.wr_item_sk 0.749 [sem 0.285, key
                      0.017], web_sales.ws_list_price 0.722 [sem 0.409, key 0.009], web_sales.ws_net_profit 0.719
                      [sem 0.407, key 0.009]
+        anchors    4: web_sales 0.840, item 0.804, web_returns 0.749, web_page 0.544
+        set aside  web_site ("top" chose item: 0.500 against 0.465); catalog_sales ("selling" chose web_sales:
+                     0.500 against 0.469); web_site ("web" chose web_page: 0.959 against 0.930)
         partners   web_returns (joined to web_page, which "web" chose: 0.959 against 0.857)
         cap cut    none
         attached   0  web_sales: the seed
@@ -5544,6 +5704,11 @@ carried forward from the grid is at items 56 and 57.
         columns    store_returns.sr_reason_sk 0.913 [sem 0.397, key 0.035], store_returns.sr_customer_sk 0.884 [sem
                      0.369, key 0.035], store_returns.sr_cdemo_sk 0.877 [sem 0.361, key 0.035],
                      store_returns.sr_item_sk 0.865 [sem 0.350, key 0.035]
+        anchors    3: store_returns 0.913, store_sales 0.607, reason 0.545
+        set aside  web_returns ("returning" chose store_returns: 1.000 against 0.991); catalog_returns ("returning"
+                     chose store_returns: 1.000 against 0.982); web_returns ("returning items" chose store_returns:
+                     0.899 against 0.861); catalog_returns ("returning items" chose store_returns: 0.899 against
+                     0.843)
         partners   none
         cap cut    none
         attached   0  store_returns: the seed
@@ -5577,6 +5742,8 @@ carried forward from the grid is at items 56 and 57.
         columns    catalog_returns.cr_store_credit 0.961 [sem 0.495, key 0.027], catalog_sales.cs_item_sk 0.925
                      [sem 0.461, key 0.027], catalog_returns.cr_item_sk 0.902 [sem 0.438, key 0.027],
                      store_sales.ss_item_sk 0.895 [sem 0.431, key 0.027]
+        anchors    5: catalog_sales 0.925, store_sales 0.895, store_returns 0.826, catalog_page 0.684, store 0.609
+        set aside  catalog_returns ("revenue" chose store_sales: 0.500 against 0.441)
         partners   store_returns (joined to store, which "store" chose: 0.991 against 0.949); store_returns (joined
                      to store_sales, which "revenue" chose: 0.500 against 0.449); store_returns (joined to
                      store_sales, which "store revenue" chose: 0.939 against 0.908)
@@ -5630,6 +5797,10 @@ carried forward from the grid is at items 56 and 57.
         columns    inventory.inv_warehouse_sk 0.875 [sem 0.414, key 0.017], inventory.inv_date_sk 0.825 [sem 0.377,
                      key 0.017], inventory.inv_item_sk 0.810 [sem 0.366, key 0.017], warehouse.w_warehouse_id 0.738
                      [sem 0.436, key 0.010]
+        anchors    5: inventory 0.875, item 0.854, warehouse 0.769, web_sales 0.576, catalog_returns 0.502
+        set aside  store ("stock" chose inventory: 0.500 against 0.431); catalog_sales ("stock" chose inventory:
+                     0.500 against 0.398); store_sales ("stock" chose inventory: 0.500 against 0.397); store_sales
+                     ("least stock" chose inventory: 0.500 against 0.411)
         partners   none
         cap cut    none
         attached   0  inventory: the seed
@@ -5673,6 +5844,12 @@ carried forward from the grid is at items 56 and 57.
         columns    store_sales.ss_promo_sk 0.970 [sem 0.385, key 0.046], web_sales.ws_promo_sk 0.922 [sem 0.346,
                      key 0.046], catalog_sales.cs_promo_sk 0.919 [sem 0.344, key 0.046], promotion.p_channel_dmail
                      0.767 [sem 0.400, key 0.025]
+        anchors    2: store_sales 0.970, promotion 0.816
+        set aside  web_sales ("increase" chose store_sales: 0.500 against 0.471); catalog_sales ("increase" chose
+                     store_sales: 0.500 against 0.440); web_sales ("sales" chose store_sales: 0.990 against 0.976);
+                     catalog_sales ("sales" chose store_sales: 0.990 against 0.960); catalog_sales ("increase
+                     sales" chose store_sales: 0.949 against 0.899); web_sales ("increase sales" chose store_sales:
+                     0.949 against 0.887)
         partners   none
         cap cut    none
         attached   0  store_sales: the seed
@@ -5701,6 +5878,9 @@ carried forward from the grid is at items 56 and 57.
         columns    household_demographics.hd_dep_count 0.904 [sem 0.509, key 0.023], store_sales.ss_hdemo_sk 0.841
                      [sem 0.443, key 0.023], store_returns.sr_hdemo_sk 0.804 [sem 0.404, key 0.023],
                      store.s_number_employees 0.796 [sem 0.396, key 0.023]
+        anchors    5: household_demographics 0.904, store_sales 0.841, store_returns 0.804, store 0.796,
+                     customer_demographics 0.697
+        set aside  catalog_sales ("shop" chose store: 0.500 against 0.407)
         partners   store_sales (joined to store, which "shop" chose: 0.500 against 0.444); store_returns (joined to
                      store, which "stores" chose: 0.989 against 0.963); store_sales (joined to store, which
                      "stores" chose: 0.989 against 0.883)
@@ -5757,6 +5937,9 @@ carried forward from the grid is at items 56 and 57.
         columns    web_sales.ws_ext_ship_cost 0.931 [sem 0.448, key 0.027], web_sales.ws_net_paid_inc_ship_tax
                      0.931 [sem 0.447, key 0.027], web_sales.ws_net_paid_inc_ship 0.928 [sem 0.445, key 0.027],
                      web_returns.wr_return_ship_cost 0.895 [sem 0.416, key 0.027]
+        anchors    5: web_sales 0.969, web_returns 0.895, web_site 0.804, catalog_sales 0.619, catalog_returns
+                     0.575
+        set aside  none
         partners   none
         cap cut    ship_mode, store_returns
         attached   0  web_sales: the seed
@@ -5798,6 +5981,10 @@ carried forward from the grid is at items 56 and 57.
         columns    store_sales.ss_net_profit 0.938 [sem 0.485, key 0.030], store_sales.ss_ext_tax 0.938 [sem 0.484,
                      key 0.030], store_sales.ss_sales_price 0.923 [sem 0.454, key 0.032],
                      store_sales.ss_ext_sales_price 0.923 [sem 0.454, key 0.032]
+        anchors    4: store_sales 0.938, date_dim 0.824, store 0.625, store_returns 0.590
+        set aside  web_sales ("sales" chose store_sales: 0.990 against 0.976); catalog_sales ("sales" chose
+                     store_sales: 0.990 against 0.960); catalog_sales ("sales break" chose store_sales: 0.978
+                     against 0.945); web_sales ("sales break" chose store_sales: 0.978 against 0.940)
         partners   store_returns (joined to store, which "store" chose: 0.991 against 0.949)
         cap cut    none
         attached   0  store_sales: the seed
@@ -5834,6 +6021,9 @@ carried forward from the grid is at items 56 and 57.
         columns    catalog_returns.cr_call_center_sk 0.989 [sem 0.499, key 0.043], catalog_returns.cr_store_credit
                      0.836 [sem 0.489, key 0.030], catalog_returns.cr_refunded_cash 0.827 [sem 0.479, key 0.030],
                      catalog_returns.cr_return_ship_cost 0.808 [sem 0.445, key 0.032]
+        anchors    5: catalog_returns 0.989, catalog_sales 0.767, call_center 0.600, store_returns 0.591,
+                     catalog_page 0.553
+        set aside  web_returns ("returns" chose store_returns: 0.986 against 0.973)
         partners   none
         cap cut    none
         attached   0  catalog_returns: the seed
@@ -5948,6 +6138,9 @@ carried forward from the grid is at items 56 and 57.
         columns    income_band.ib_upper_bound 0.959 [sem 0.411, key 0.030], income_band.ib_lower_bound 0.920 [sem
                      0.381, key 0.030], income_band.ib_income_band_sk 0.911 [sem 0.343, key 0.033],
                      household_demographics.hd_income_band_sk 0.825 [sem 0.379, key 0.024]
+        anchors    5: income_band 0.959, household_demographics 0.825, customer_demographics 0.647, customer 0.570,
+                     web_sales 0.504
+        set aside  none
         partners   customer_demographics (joined to customer, which "customers" chose: 0.950 against 0.914)
         cap cut    none
         attached   0  income_band: the seed
@@ -5999,6 +6192,11 @@ carried forward from the grid is at items 56 and 57.
         columns    promotion.p_item_sk 0.974 [sem 0.380, key 0.023], store_returns.sr_item_sk 0.883 [sem 0.312, key
                      0.023], catalog_returns.cr_item_sk 0.830 [sem 0.272, key 0.023], web_returns.wr_item_sk 0.818
                      [sem 0.264, key 0.023]
+        anchors    5: promotion 0.974, web_returns 0.818, store_sales 0.659, catalog_sales 0.634, item 0.616
+        set aside  store_returns ("returned" chose web_returns: 0.984 against 0.976); catalog_returns ("returned"
+                     chose web_returns: 0.984 against 0.973); store_returns ("items returned" chose web_returns:
+                     0.858 against 0.854); catalog_returns ("items returned" chose web_returns: 0.858 against
+                     0.817)
         partners   web_sales (joined to promotion, which "also" chose: 0.500 against 0.436); catalog_sales (joined
                      to promotion, which "also" chose: 0.500 against 0.425); web_sales (joined to item, which
                      "often also" chose: 0.500 against 0.479); catalog_sales (joined to item, which "often also"
@@ -6049,6 +6247,9 @@ carried forward from the grid is at items 56 and 57.
                      customer_demographics.cd_dep_college_count 0.910 [sem 0.317, key 0.025],
                      customer.c_preferred_cust_flag 0.908 [sem 0.292, key 0.028],
                      customer_demographics.cd_dep_count 0.902 [sem 0.312, key 0.025]
+        anchors    5: customer_demographics 0.939, customer 0.908, web_returns 0.804, web_sales 0.801,
+                     catalog_returns 0.801
+        set aside  customer_address ("customers abandoned" chose customer_demographics: 0.864 against 0.807)
         partners   catalog_sales (joined to catalog_returns, which "carts" chose: 0.500 against 0.469); web_returns
                      (joined to customer_demographics, which "customers abandoned" chose: 0.864 against 0.770)
         cap cut    catalog_sales, store_returns, store_sales, web_page
@@ -6114,6 +6315,10 @@ carried forward from the grid is at items 56 and 57.
         columns    web_page.wp_customer_sk 0.962 [sem 0.375, key 0.053], web_sales.ws_bill_cdemo_sk 0.821 [sem
                      0.405, key 0.034], web_sales.ws_web_page_sk 0.820 [sem 0.391, key 0.036],
                      web_sales.ws_ship_cdemo_sk 0.813 [sem 0.399, key 0.034]
+        anchors    5: web_page 0.962, web_sales 0.821, web_returns 0.774, customer_demographics 0.601, customer
+                     0.584
+        set aside  web_site ("web" chose web_page: 0.959 against 0.930); catalog_page ("pages" chose web_page:
+                     0.978 against 0.945)
         partners   web_returns (joined to web_page, which "web" chose: 0.959 against 0.857); web_sales (joined to
                      customer_demographics, which "customers buy" chose: 0.894 against 0.795)
         cap cut    catalog_sales, customer_address
@@ -6184,12 +6389,12 @@ carried forward from the grid is at items 56 and 57.
     warnings    raised, questions each: arbitrary_choice 6, many_to_many 9, multi_anchor 8
     close calls 21 on 12 questions (information, not a warning)
     anchors     per question: 1:5, 2:5, 3:5, 4:4, 5:3, 6:5, 7:5, 8:2, 9:5, 10:5, 11:4, 12:5, 13:5, 14:5, 15:5, 16:5
-    timing      scoring (embedding lookups and both searches) median 130 ms, largest 245 ms; retrieval and tree median 115 ms, largest 214 ms
+    timing      scoring (embedding lookups and both searches) median 131 ms, largest 218 ms; retrieval and tree median 115 ms, largest 191 ms
                 external embedding calls, not in the figures' budget (NFR-02) but in them here: 0 ms in all
     cost        embedded now: 0 texts, 0 tokens, $0.00000000; everything else came from the cache
     note        With 16 questions a difference of one is noise.
 
-### To dissect (running, step 6)
+### To dissect, step 6
 
 - why the step 6 judgement is committed before the Retriever exists, and
   what the history can prove that one commit holding both could not
@@ -6315,6 +6520,23 @@ carried forward from the grid is at items 56 and 57.
   was derived mechanically and what was a guess
 - why the report had to change before run 2 could be believed: a pair is
   printed only when its winner is an anchor
+- the loop in `retrieve`: winners, beaten, in the running, still anchors.
+  Work `test_a_table_given_back_can_push_another_winner_over_the_cap_...`
+  on paper, pass by pass, and say why a winner once cut stays cut
+- `CloseCall` against `PathWarning`: what moved, what did not, and why the
+  frozen judgement still knows a code the Explainer no longer raises
+- the keep-rule as fixed before the grid: improved, worsened, neighbours.
+  Find run 8 in the table and say which half of "worsened" it fails
+- why 0 of 16 and 11 of 15 are both true of the same run, and which one
+  step 7 depends on
+- why raising the cut cannot separate a returns table from its sales table
+- `open_retrieval`: the three hashes, the margin looked up by `str(alpha)`,
+  and `_NoKey`, which raises only if a vector is actually missing
+- `capsys` in `test_retrieval_report.py`, and what a test of printed
+  labels would have caught at the fourth stop
+- the smoke check's guard against comparing two empty strings
+- `docker compose down` against `down -v`: which one a clean start means
+  here, and what the other would have destroyed
 
 ### Carried forward
 
@@ -6572,3 +6794,16 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     defaults stand; without it alpha 0.25, cut 0.7 is selected (run 13).
     The owner reviews this before the close. Any later tuning protocol
     should define improved and worsened before it is used.
+58. "Smoke from a clean start" at the close of step 6 meant `docker
+    compose down`, then `./scripts/smoke.sh`: every container and the
+    network removed and recreated, the database volume kept. The volume
+    holds the 2.2 GB warehouse and the stored, embedded snapshot. A start
+    from an empty volume was last proven at checkpoint-01; with a
+    warehouse and a key it now also needs `warehouse.sh`, `ingest_schema`
+    (a paid call) and nothing else, and that path has not been run end to
+    end since the snapshot store existed.
+59. `show_retrieval` on a question that is not in the cache has not been
+    run for real: it would be a paid call, and none was made at the
+    close. The path is the one `show_eval --step6` took on its first run
+    (110 texts embedded), through the same `open_retrieval`. Its message
+    when the key is absent is untested against a live missing key.

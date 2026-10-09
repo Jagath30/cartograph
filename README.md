@@ -76,3 +76,24 @@ not. An alphabetical choice is reported as arbitrary, and the warning names
 the routes that were not taken. A selected route that joins two "many"
 sides through one table says so, and says what it does to the rows.
 `--all` lists every alternative; `--max-joins 4` raises the limit.
+
+## Retrieval: from a question to the tables that answer it
+
+    docker compose exec backend python -m app.ingest_schema
+    docker compose exec backend python -m app.show_retrieval "How much did each store sell last year?"
+
+The first stores the warehouse's schema in the application database and
+embeds it, once; it needs `OPENAI_API_KEY` in `.env`. The second puts one
+question through retrieval: what its words matched, which tables became
+anchors and which were set aside or cut, the tree that joins them and how
+each was attached, every warning, and the close calls. A question that has
+not been asked before is embedded, which is a paid call of a few dozen
+tokens; the last line says what the run cost.
+
+    docker compose exec backend python -m app.show_eval --step6
+
+runs the sixteen questions of the frozen evaluation set
+(`backend/eval/questions.yaml`) and reports where retrieval agrees with
+them and where it does not. At the settings in use it holds every expected
+table for 11 of 15 questions and brings 34 tables too many; it agrees
+strictly with none. `CHECKPOINTS.md` has the whole record.
