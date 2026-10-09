@@ -227,8 +227,9 @@ def test_nothing_in_the_core_imports_anything_that_does_io() -> None:
     """DD-01, checked rather than trusted. Every import statement in
     app/core is read, and each must come from this short list. A database
     driver, the shell, or the settings appearing here fails the build."""
-    # sqlglot is a parser: text in, a tree out. It opens nothing (step 7).
-    allowed = {"app.core", "dataclasses", "networkx", "sqlglot", "typing", "yaml"}
+    # sqlglot is a parser: text in, a tree out. json reads the model's
+    # reply from a string. Neither opens anything (step 7).
+    allowed = {"app.core", "dataclasses", "json", "networkx", "sqlglot", "typing", "yaml"}
 
     files = sorted(CORE.glob("*.py"))
     assert files, "app/core holds no modules -- this test is looking in the wrong place"

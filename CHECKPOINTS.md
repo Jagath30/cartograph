@@ -6547,10 +6547,10 @@ ruled before any code, each review stop, every paid call.
 
     0  the placeholder key renamed, alone             done (e3630d9)
     1  this record                                    done
-    2  sqlglot; the model adapter and its fake; probe
-    3  SqlValidator                                   before any model SQL
-    4  ConformanceCheck, extraction and comparison    before any model SQL
-    5  PromptBuilder; the development questions       STOP 2
+    2  sqlglot; the model adapter and its fake; probe done (c3b0320)
+    3  SqlValidator                                   done (3a9a2ea), before any model SQL
+    4  ConformanceCheck, extraction and comparison    done (ccb9e91), before any model SQL
+    5  PromptBuilder; the development questions       done; STOPPED FOR THE OWNER (stop 2)
     6  QueryExecutor, orchestrator, app.ask, dev runs STOP 3
     7  smoke end to end; the close
 
@@ -6697,10 +6697,183 @@ the precedence (ruling 6). DD-14: the two-field reply (ruling 2). DD-15:
 no retry on divergence, and none on a cut-off reply (ruling 7). DD-12's
 amendment from step 6 is still owed as well.
 
+### Pieces 2 to 5, and the second review stop — 9 October 2026
+
+**STOPPED HERE FOR THE OWNER'S REVIEW. No question has gone to the model.
+The one paid call is the probe, whose prompt was `Reply with {"ok": true}`.**
+
+**The order things happened in, which is the point (rule 1).**
+
+    e3630d9  the placeholder key renamed, alone
+    5c46d02  the rulings recorded
+    aa19291  the embedder: error codes from a fixed table only
+    c3b0320  the model adapter, its fake, the price table, the ledger
+             then the probe: one call, no SQL
+    3a9a2ea  SqlValidator
+    ccb9e91  ConformanceCheck
+             then the 99 benchmark queries, read and not committed
+             then the PromptBuilder and the development questions
+
+At `ccb9e91` no model had written a line of SQL for either judge to read,
+and none has yet.
+
+**The embedding adapter and the error-body rule (ruling 1).** It did not
+have the fault as first feared: it never repeated a provider's message or
+body, and dropped a transport error's text and chain. It did repeat the
+provider's `code` whenever that looked like a code. `provider_error_code`
+now repeats a code only from `KNOWN_ERROR_CODES` and says `other`
+otherwise; the model adapter uses the same function. A 429 for a rate
+limit and one for exhausted credit are told apart in both, by test.
+
+**The probe.** `python -m app.probe_model`, once: `gpt-6-luna` asked for
+and `gpt-6-luna` answered, no fingerprint returned; reasoning effort
+`none`, temperature 0, an output cap of 800 and a strict JSON shape all
+accepted; 52 tokens in, 11 out, 3.5 seconds, $0.0000107. So this account
+can use the model, and a temperature is accepted at effort `none`.
+
+**The model adapter** (`app/shell/model_client.py`). The embedding
+adapter's shape: httpx, one POST, a scripted fake. A call returns an
+outcome and never raises for what the provider or the network does. The
+failure causes are fixed words: `transport`, `provider` (with the status
+and a code from the table), `shape`, `cut_off`, `refused`, `ceiling`.
+Every call sets an output cap, records the model ID returned, and logs
+tokens and cost from `MODEL_PRICES` in `app/config.py`, each price with
+the date it was read. A ledger file git ignores (`backend/eval/.spend/`)
+adds up every paid call; a ceiling of $0.50 stops the next one. 30 tests,
+one paid test that skips, 16 mutations caught.
+
+**SqlValidator** (`app/core/sql_validator.py`, on `app/core/sql_reading.py`).
+Three checks in the trace's words: `syntax`, `read_only`, `references`.
+
+    terminal    more than one statement; a root that is not a SELECT; a
+                write anywhere, CTE bodies included; SELECT INTO; FOR
+                UPDATE or SHARE; a function on the named list
+    retryable   text that does not parse; an unknown table or column; a
+                schema other than public (which is how the system
+                catalogs are refused); an ambiguous column; a function
+                merely off the allowlist
+
+The named list is exact names and prefixes: `pg_sleep*`, `set_config`,
+`pg_terminate_*`, `pg_cancel_*`, `pg_read_*`, `pg_ls_*`, `lo_*`,
+`dblink*`, advisory locks, `nextval`, `setval`, `pg_notify`, and the
+`*_to_xml` family. *Found while writing it:* `query_to_xml('select
+pg_sleep(100)', ...)` runs SQL handed to it as text, so a sleep can hide
+inside a string; the family is on the list for that. The allowlist names
+the class sqlglot parses a function into, so `ceil` and `ceiling` are one
+entry. 262 tests; 24 mutations, 23 caught and one equivalent.
+
+**ConformanceCheck** (`app/core/conformance.py`). As ruled, in full. Two
+decisions of mine inside it, for this review:
+
+- **A derived source that is one row by construction is not a cross
+  join.** A subquery in FROM with aggregates and no GROUP BY, set beside
+  a table to work out a share of a total, joins nothing wrongly. The
+  ruling said an unjoined *table* is a cross join; this is where I drew
+  its edge. With a GROUP BY, or a window function, it is a cross join
+  again, and both are tested.
+- **`x IN (SELECT key FROM t)` is `not_checked`, reason
+  `subquery_predicate`.** It is a join spelled as a filter, and reading
+  it as "no join" would let a wrong key pass as incomplete. A subquery
+  that gives out a value it computed (a maximum, an average) is a value
+  and is not a join.
+
+Also decided: the same table used in two different CTEs is two uses and
+their columns are never merged into one class; the same table twice in
+one FROM is a self-join and `not_checked`. 89 tests; 45 mutations on the
+check and 16 on the reader.
+
+**What the mutations and the tests found.**
+
+- A statement that is not a SELECT at all read as "no joins", which
+  `compare` would have called conforms. It is `not_checked` now
+  (`not_a_select`). The validator would have stopped it first at step 7;
+  at step 10 extraction runs alone.
+- Two mutations survived because the code they changed was redundant: a
+  membership test before a lookup that already handles it, and a second
+  self-join check. The first was removed. The second turned out to have a
+  case of its own (one CTE reached through two derived tables), now
+  tested.
+- Three survived in the reader for want of a test: a subquery in FROM
+  seeing the table beside it, names written in upper case, a table of
+  the same name in another schema. Each now has one.
+- An unresolved join condition was also being reported as a cross join.
+
+**The 99 TPC-DS benchmark queries, as a stress test and not an
+estimate.** From DuckDB's cached `tpcds` extension, read in the scratch
+directory, never committed.
+
+    parsed                                   99 of 99
+    crashed either judge                     0
+    refused by the validator                 0     no false rejection
+    read with nothing unchecked              38
+    something unchecked                      61
+
+    reason                queries   the only reason in
+    set_operation         23        13
+    self_join             18         6
+    non_equality          14         5
+    correlated_subquery   12        11
+    subquery_predicate    10         3
+    computed_join_key      6         1
+    or                     3         2
+
+**Set operations are the leading cause, and the owner asked to be told.**
+23 queries, and the only obstacle in 13. Nothing was changed for it. The
+benchmark writes one query over three channels as a UNION; whether a
+question of ours would come back so is not something these queries say.
+
+**The prompt** (`app/core/prompt_builder.py`). Three parts kept apart:
+`GENERAL_RULES`, the system message, which says nothing of joins and is
+used unchanged in both modes at step 10; the tables as CREATE TABLE with
+readable names as comments, primary keys declared, no REFERENCES; and the
+join section, which carries everything said about joins. `parse_reply`
+reads the two-field reply strictly: no code fence stripped, nothing dug
+out of prose. 36 tests, 14 mutations caught. The whole schema rendered
+this way is about 23,000 characters.
+
+**The development questions** (`backend/eval/dev_questions.yaml`). Eight,
+with no expectations, committed in the commit that carries this entry and
+sent to nothing. A test holds them apart from the evaluation set.
+
+**Paid calls of step 7 so far.**
+
+    the probe      1 call    52 in, 11 out    $0.0000107
+    total                                     $0.0000107
+
+**Suite.** 872 pass in the container and 2 paid tests skip.
+
 ### To dissect, step 7
 
 - why the validator and the checker are committed before the first model
   call, and what the history proves by it
+- `sql_reading.py`: a select, a source, a body. Follow `s.the_item` in
+  `test_a_passed_through_column_is_followed_under_a_new_name` through
+  `resolve` and `trace` by hand
+- why a subquery in FROM is read with its select's parent and a subquery
+  in WHERE with the select itself
+- union-find in fifteen lines (`_Classes`): `find`, `join`, and why the
+  keys are (one use of a table, column) and not (table, column)
+- the four consequences of comparison by meaning, each on paper: through
+  item, directly with item, directly without, and the extra equality
+- why an outer join's condition is kept out of the classes: write three
+  rows where `a LEFT JOIN b` and `a JOIN b` differ
+- the precedence, and the one place it bends: half a key beside something
+  unread
+- `_spanning`: when a condition that is not a plain equality is a filter
+  and when it is a join this cannot read
+- the seal on `ValidatedSql`, and what stops a second module making one
+- why the allowlist names sqlglot's classes and the danger list names
+  Postgres's functions
+- `query_to_xml`: how a function turns a string into a statement, and why
+  no parser of the outer statement can see inside it
+- `ModelReply`: one type for an answer and for six kinds of failure, and
+  why the adapter returns and does not raise
+- `response_format` with `strict`: what the provider guarantees and what
+  `parse_reply` checks all the same
+- why the ledger's ceiling is checked before a call and can be passed by
+  one call's cost
+- a mutation that survives because the code is redundant, against one
+  that survives because a test is missing: how to tell which
 
 ### Carried forward
 

@@ -1,0 +1,55 @@
+# The development questions of step 7.
+#
+# What they are for: writing the prompt and seeing the pipeline run end to
+# end, and nothing else. They are NOT the evaluation set and are never
+# scored against it. backend/eval/questions.yaml stays out of development
+# altogether: no question of it, and no paraphrase of one, is sent to the
+# model at step 7, and the prompt is never changed with one of its outputs
+# in view.
+#
+# They carry no expected tables, joins or answers. Nothing here is a
+# ground truth; `exercises` says why the question is in the set.
+#
+# Written on 9 October 2026 and committed before the first of them was
+# sent to any model. None is on the topic of an evaluation question. Two
+# need two or more joins, one needs none, and one cannot be answered from
+# the warehouse at all.
+questions:
+  - id: d1
+    question: How many customers were born in each country?
+    exercises: one table and no join
+
+  - id: d2
+    question: In which year did the most customers make their first purchase?
+    exercises: >-
+      one join, and three keys from customer to the date table (first
+      sale, first shipment, last review), so the tree's choice may be
+      arbitrary
+
+  - id: d3
+    question: Which catalog pages brought in the most orders?
+    exercises: one join with a single key; the smoke check's question
+
+  - id: d4
+    question: How do purchases on the web split by the buyer's level of education?
+    exercises: one join, billing against shipping customer demographics
+
+  - id: d5
+    question: What share of the money taken on the web was later refunded?
+    exercises: a return and its sale, joined by a key of two columns
+
+  - id: d6
+    question: Which store managers take the most money in the evening?
+    exercises: two joins, to the store and to the time of day
+
+  - id: d7
+    question: On which days of the week do married customers order most from the catalog?
+    exercises: >-
+      two joins, each with two keys to choose between (sold or shipped
+      date, billing or shipping demographics)
+
+  - id: d8
+    question: Which of our suppliers deliver late most often?
+    exercises: >-
+      cannot be answered: the warehouse holds no suppliers and no delivery
+      times. The reply expected is not_answerable
