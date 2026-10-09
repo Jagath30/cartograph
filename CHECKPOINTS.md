@@ -2177,6 +2177,184 @@ joins the two directly, in either direction.
   appears above at least once, so no table is unexplained; pairs may be
   missing.
 
+### Ruling 1, second part: partners are never rivals — 9 October 2026
+
+**What exists** (`2062822`). A term's rivals are the tables within the
+margin of its choice **and not directly joined to it**. A table within the
+margin and joined to the choice by a foreign key, whichever of the two
+holds the key, is a partner: it is recorded on the term
+(`TermResult.partners`) and is never set aside for that choice. Nothing
+else about the mechanism moved: nomination, "set aside only if no term
+nominates it", the cut, the cap after the rivals, and what the tree and
+the Explainer do with a table set aside are as they were.
+
+**Where the knowledge of adjacency enters, as the handoff left open.**
+`joined_tables(graph)` in `app/core/graph_builder.py`, pure, gives each
+table the tables a foreign key joins it to. `locate`, where the graph and
+the retrieval already met, hands it to `retrieve` as plain data, like the
+scores. The Retriever still imports no graph. `linked_tables` in the
+calibration computes the same thing from a snapshot and was left alone:
+`locate` has a graph and no snapshot. Handed no partners, `retrieve`
+treats no two tables as joined, as `find_paths` handed no evidence is the
+PathFinder of step 4; a test in `test_locate.py` fails if `locate` stops
+passing them.
+
+**Tests, written first and seen to fail: eleven.** Seven on the Retriever
+from typed scores: joined tables are never rivals and neither is set
+aside; the partner is recorded; **the same scores with no key between the
+two tables still set one aside**; the key may point either way and either
+table may be the choice; one term can have a partner and a rival at once;
+a table joined to one term's choice is still set aside as the rival of
+another term's; no partners handed in means none. Two on `joined_tables`
+from the hand-written fixture. One on the committed TPC-DS overlay, with
+the ruling's own examples: the three sales channels are joined to none of
+each other, the two demographics tables are not joined, a sale is joined
+to its store and a return to its sale; 82 joined pairs. One on `locate`.
+432 pass and the paid one skips, in the container.
+
+**Mutations: eleven, all caught.** Partners ignored (the rule as it was);
+every table a partner; only the choice's side of the lookup; only the
+other side; "joined to anything at all" for "joined to the choice";
+partners left out and not recorded; a partner that need not be within the
+margin; `locate` not passing the joins; `joined_tables` one way only; the
+joins dropped inside `retrieve`; rivals left unfiltered. One line has no
+test and needs none: `joined_tables` skips a key from a table to itself,
+and a table is never its own rival.
+
+**The report** (`show_eval_step6.py`, which is not frozen) gains a header
+line stating the correction and, per question, a `partners` line: the
+tables that reached the cut, that no term nominates, and that this rule
+alone kept.
+
+### PREDICTIONS FOR RUN 2, written before it — 9 October 2026
+
+Committed before `show_eval --step6` has been run with the corrected
+rule, and before any evaluation question has been scored by it in any
+other way. No test in the suite and no line of the smoke check runs the
+step 6 report. **Made from the recorded run 1 and the list above, and
+from nothing else.** What is derived and what is guessed is said.
+
+**What the correction can and cannot do, by its construction.** It only
+ever shrinks the set of tables set aside. So every question's anchors are
+run 1's plus the tables given back, less whatever the cap of five then
+cuts. A tree can lose a table only through the cap. **Run 1's fault was
+too many tables; this correction adds tables.** I expect over-retrieval
+to get worse, and I do not expect one more question to agree.
+
+**Derived: which tables are given back.** A table comes back when every
+line that set it aside is marked JOINED.
+
+    Q1   store_returns
+    Q2   catalog_returns          (web_sales stays set aside)
+    Q3   catalog_returns, customer_demographics
+    Q4   web_returns              (web_site, catalog_sales stay)
+    Q6   store_returns            (catalog_returns stays, for store_sales)
+    Q9   store_returns            (store_sales STAYS set aside: see below)
+    Q11  store_returns            (catalog_sales, web_sales stay)
+    Q13  customer_demographics
+    Q14  store_sales, catalog_sales, web_sales
+                                  (store_returns, catalog_returns stay)
+    Q15  catalog_sales, web_returns   (customer_address stays)
+    Q16  web_sales, web_returns   (web_site, catalog_page stay)
+    Q5, Q7, Q8, Q10, Q12   nothing: every pair is not joined, or there is none
+
+**Predicted anchors**, best first, from run 1's table scores. Where the
+record does not show a score (it prints six tables a question) the order
+at the cap is a guess and is marked.
+
+    Q1   5  store_sales, store_returns, store, date_dim, catalog_returns
+    Q2   5  catalog_sales, customer_address, catalog_returns, catalog_page,
+            customer
+    Q3   5  catalog_sales, catalog_returns, customer_address, catalog_page,
+            customer.   The cap now cuts customer_demographics and
+            promotion, which was an anchor in run 1
+    Q4   4  web_sales, item, web_returns, web_page
+    Q5   3  unchanged
+    Q6   5  catalog_sales, store_sales, store_returns, catalog_page, store.
+            THE CAP NOW CUTS item, AN EXPECTED TABLE
+    Q7   5  unchanged
+    Q8   2  unchanged
+    Q9   5  household_demographics, store_returns, store,
+            customer_demographics, customer.   The cap now cuts web_sales
+    Q10  5  unchanged
+    Q11  4  store_sales, date_dim, store, store_returns
+    Q12  5  unchanged
+    Q13  5  income_band, household_demographics, customer_demographics,
+            customer, web_sales
+    Q14  5  promotion, web_returns, store_sales, catalog_sales, and item
+            or web_sales (guess: item)
+    Q15  5  customer_demographics, customer, web_returns, web_sales,
+            catalog_returns
+    Q16  5  web_page, web_sales, web_returns, customer_demographics,
+            customer.   The cap now cuts catalog_sales, customer_address
+
+    anchors per question   1:5 2:5 3:5 4:4 5:3 6:5 7:5 8:2 9:5 10:5 11:4
+                           12:5 13:5 14:5 15:5 16:5
+    at the cap             11 questions, against 7 in run 1
+
+**Predicted verdicts.**
+
+- **1 agrees, 15 disagree: the same count as run 1, and the same
+  question, 8.** Its pairs are all not joined, so its report should be
+  identical apart from the new lines.
+- **Unchanged trees: questions 5, 7, 8, 10 and 12.** Nothing in them was
+  set aside for a table it is joined to.
+- **Changed, and still disagreeing on tables: 1, 2, 3, 4, 6, 9, 11, 13,
+  14, 15 (decline), 16.** Each gains at least one table it should not
+  have: `store_returns` in 1, 6, 9 and 11, `catalog_returns` in 2 and 3,
+  `web_returns` in 4, 15 and 16, `customer_demographics` in 13.
+- **Question 16 gets `web_sales` back** and then holds all three expected
+  tables, with `web_returns` and `customer_demographics` beyond them.
+  **`wp_customer_sk` is not taken silently any more:** with `web_sales`
+  in the tree `customer` has several places to attach, so either evidence
+  picks another key or the alphabet picks and `multi_anchor` says so.
+  (Guess, from the tree test of piece 4.)
+- **Question 14 gets `store_sales` back and not `store_returns`**, which
+  stays set aside for `web_returns`, a sibling. It still has the wrong
+  returns table.
+- **Question 9 does not get `store_sales` back.** It was set aside for
+  `store`, joined, and also for `web_sales`, not joined. Worse:
+  `web_sales` is predicted to fall to the cap. Then `store_sales` is set
+  aside for a table that is not itself an anchor, the question has
+  neither, and no warning names it, because a warning is raised only
+  when the winner is in the tree.
+- **Question 6 may lose `item`**, an expected table, to the cap. It may
+  come back as the bridge between the two sales tables, since the item
+  keys led both tables' scores. (Guess.)
+- **Question 13 loses the one warning it is expected to have.** Its only
+  set-aside table was `customer_demographics`, for `customer`, joined.
+- **Parts.** Declined as expected 15 of 16. Tables 1 of 15. Joins 1 of
+  15. Warnings 1 of 14, perhaps 2. Every expected table in the tree: 10
+  of 15 (question 16 joins the nine), or 9 if question 6 loses `item`.
+  No table beyond the expected: 1 of 15.
+
+**The `anchor_ambiguity` rate expected: 12 of 16**, against 15 of 16 in
+run 1. It should stop on questions 1, 3 and 13, where every table set
+aside was joined to the table that won. It should continue on 2, 4, 5, 6,
+7, 8, 9, 11, 12, 14, 15 and 16, and question 10 has none as before. I
+would not be surprised by 11 or 13: a table still set aside can enter a
+tree as a bridge and stop warning, and the list above may lack pairs
+where a cap applied. Fewer warnings a question, too: 60 lines set a table
+aside in run 1 and 24 of them were joined.
+
+**What that expectation means, said before the run so that it is not
+hindsight.** Ruling 2 has a tripwire: if run 2 shows a mechanism
+contradicting its own definition, stop and do not tune. Two things above
+would be that, if they happen as predicted, and I would report them and
+stop:
+
+1. **A warning on 12 of 16 questions is still a warning that fires
+   almost everywhere.** The correction removes the partner pairs and
+   keeps, as ruled, the sibling channels: sales against sales, returns
+   against returns. Those are 24 of the 36 lines that remain, and nearly
+   every question mentions a sale or a return.
+2. **Question 9: a table set aside for a winner the cap then cuts.**
+   Ruling c says the Retriever picks one of two and names the other. Here
+   it would keep neither and name nothing. This is not new with the
+   correction; run 1 could not show it because the report prints a pair
+   only when the winner is an anchor. The correction makes it likelier,
+   by returning tables that push winners over the cap.
+
 ### Tuning log
 
 Every run of `python -m app.show_eval --step6`, with what changed, the
