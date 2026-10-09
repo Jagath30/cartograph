@@ -51,6 +51,11 @@ wh_ro() {
   pg "PGPASSWORD=\"\$WAREHOUSE_RO_PASSWORD\" psql -X -At -U \"\$WAREHOUSE_RO_USER\" -d \"\$WAREHOUSE_DB_NAME\" -h 127.0.0.1 -c \"$1\""
 }
 
+# One value from the application store.
+app_sql() {
+  pg "psql -X -At -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -c \"$1\""
+}
+
 # Exact match, where expect's substring match would let 124 pass for 24.
 equal() {
   local name="$1" want="$2" got="$3"
@@ -154,6 +159,36 @@ else
     "foreign key edges for $overlay_fks foreign keys" "$ingested"
   contains "naming overlay applied to the descriptions" \
     " — " "$(grep '^naming' <<<"$ingested" || true)"
+fi
+
+# The schema as the application keeps it (DD-17), embedded once (DR-11).
+# Storing needs a loaded warehouse and embedding needs OPENAI_API_KEY, so a
+# clean clone has no snapshot and that is a SKIP. A snapshot that IS there
+# is held to three things: it holds one element for every table and column
+# of the warehouse, every one of them has its vector, and it is the schema
+# the margin in eval/calibration.json was computed from. Retrieval refuses
+# to run otherwise, and says so; this says so first.
+stage "Stored schema (DR-11, DD-17)"
+current="$(app_sql "select count(*) from schema_snapshots where is_current" 2>/dev/null || true)"
+if [[ "$wh_tables" == "0" ]]; then
+  pending "warehouse is empty -- no schema to store"
+elif [[ "$current" != "1" ]]; then
+  pending "no schema snapshot stored -- python -m app.ingest_schema stores and embeds it (needs OPENAI_API_KEY)"
+else
+  wh_columns="$(wh_ro "select count(*) from pg_attribute a join pg_class c on c.oid = a.attrelid where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'p') and a.attnum > 0 and not a.attisdropped" 2>/dev/null || true)"
+  equal "the current snapshot holds every table and column of the warehouse" "$((wh_tables + wh_columns))" \
+    "$(app_sql "select count(*) from schema_elements e join schema_snapshots s on s.id = e.snapshot_id where s.is_current" 2>/dev/null || true)"
+  equal "every element of it is embedded" "0" \
+    "$(app_sql "select count(*) from schema_elements e join schema_snapshots s on s.id = e.snapshot_id where s.is_current and e.embedding is null" 2>/dev/null || true)"
+  # An empty value on both sides would compare equal, so the file's hash
+  # must be there before the two are compared.
+  calibrated="$(sed -n 's/.*"snapshot_sha256": *"\([0-9a-f]*\)".*/\1/p' backend/eval/calibration.json 2>/dev/null || true)"
+  if [[ ${#calibrated} -ne 64 ]]; then
+    bad "it is the schema the margin was calibrated on -- eval/calibration.json holds no snapshot hash"
+  else
+    equal "it is the schema the margin was calibrated on" "$calibrated" \
+      "$(app_sql "select hash from schema_snapshots where is_current" 2>/dev/null || true)"
+  fi
 fi
 
 # The ambiguity the project exists to surface, on the live graph. A tie must

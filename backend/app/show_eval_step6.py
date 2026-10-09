@@ -20,32 +20,23 @@ that file, the stored snapshot and the live warehouse are not all the same
 schema: scores from one schema judged with thresholds from another would
 look like numbers and mean nothing.
 
-No logic lives here: score (shell), locate and judge (core), print.
+No logic lives here: score (shell), locate and judge (core), print. The
+per-question block is printed by app.retrieval_report, which
+`python -m app.show_retrieval` shares.
 """
 
-import json
 import statistics
-import sys
-import textwrap
 import time
-from pathlib import Path
 
-from app.config import get_settings
 from app.core.eval_set import MATCH, EvalSet, Question
 from app.core.eval_step6 import AGREES, DISAGREES, Produced, TreeRoute, judge_step6
 from app.core.explainer import route_codes
-from app.core.join_tree import NO_ANCHORS
 from app.core.locate import Located, locate
 from app.core.path_finder import DEFAULT_MAX_JOINS
-from app.core.retriever import Settings
-from app.shell.embedder import Embedded, EmbeddingKeyMissing, MeteredEmbedder, make_embedder
-from app.shell.semantic_index import SemanticIndex
-from app.shell.snapshot_store import SnapshotStore, snapshot_hash
-from app.shell.vector_cache import CachedEmbedder
-
-EVAL = Path(__file__).resolve().parents[1] / "eval"
-CALIBRATION = EVAL / "calibration.json"
-CACHE = EVAL / ".cache"
+from app.retrieval_report import joins_of as _joins
+from app.retrieval_report import line as _line
+from app.retrieval_report import print_retrieval, print_warnings
+from app.shell.retrieval_session import open_retrieval
 
 _LABEL = {
     "match": "MATCH",
@@ -57,19 +48,6 @@ _LABEL = {
     DISAGREES: "DISAGREES",
     "not_evaluable_at_step_6": "NOT EVALUABLE AT STEP 6",
 }
-
-
-class _NoKey:
-    """Stands where the real embedder would when no key is configured. A
-    run whose vectors are all cached never reaches it; one that needs a new
-    vector gets the usual message."""
-
-    def __init__(self, model: str, missing: EmbeddingKeyMissing) -> None:
-        self.model = model
-        self._missing = missing
-
-    def embed(self, texts: list[str]) -> Embedded:
-        raise self._missing
 
 
 def produced(question: Question, located: Located) -> Produced:
@@ -85,17 +63,6 @@ def produced(question: Question, located: Located) -> Produced:
     return Produced(False, frozenset(located.tables), tree.edges, located.warning_codes, tuple(routes))
 
 
-def _line(label: str, text: str) -> None:
-    lines = textwrap.wrap(text, width=96, subsequent_indent="  ") or [""]
-    print(f"    {label:<11}{lines[0]}")
-    for line in lines[1:]:
-        print(f"    {'':<11}{line}")
-
-
-def _joins(edges) -> list[str]:
-    return sorted(" and ".join(f"{start} = {end}" for start, end in sorted(join)) for join in edges)
-
-
 def _expected_joins(question: Question) -> list[str]:
     lines = []
     for alternatives in question.joins:
@@ -105,33 +72,9 @@ def _expected_joins(question: Question) -> list[str]:
 
 
 def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments) -> None:
-    settings = get_settings()
-    if not CALIBRATION.exists():
-        sys.exit("step 6: eval/calibration.json is missing. Run: python -m app.calibrate")
-    calibration = json.loads(CALIBRATION.read_text())
-
-    stored = SnapshotStore(settings.app_database_url).current()
-    hashes = {"live warehouse": snapshot_hash(snapshot), "stored snapshot": stored.hash,
-              "calibration": calibration["snapshot_sha256"]}  # fmt: skip
-    if len(set(hashes.values())) != 1:
-        described = "; ".join(f"{name} {value[:12]}" for name, value in hashes.items())
-        sys.exit(
-            f"step 6: these are not the same schema: {described}. Run python -m app.ingest_schema, "
-            "then python -m app.calibrate."
-        )
-    if str(arguments.alpha) not in calibration["margin"]:
-        sys.exit(
-            f"step 6: no margin was computed for alpha {arguments.alpha}. The grid is "
-            f"{', '.join(calibration['margin'])}; a margin is never made up for another value."
-        )
-    margin = calibration["margin"][str(arguments.alpha)]["value"]
-    retrieval_settings = Settings(arguments.alpha, arguments.cut, arguments.cap, margin)
-
-    try:
-        paid = MeteredEmbedder(make_embedder(settings))
-    except EmbeddingKeyMissing as missing:
-        paid = MeteredEmbedder(_NoKey(calibration["embedding_model"], missing))
-    index = SemanticIndex(settings.app_database_url, CachedEmbedder(paid, CACHE))
+    opened = open_retrieval(snapshot, arguments.alpha, arguments.cut, arguments.cap, "step 6")
+    calibration, stored, paid, index = opened.calibration, opened.stored, opened.paid, opened.index
+    margin, retrieval_settings = opened.margin, opened.settings
 
     print("\n" + "=" * 100)
     print("STEP 6: retrieval and the join tree, judged on the tree as a whole")
@@ -198,61 +141,8 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
         differs = f"  -- differs in: {', '.join(wrong)}" if wrong else ""
         print(f"    step 5: {_LABEL[step5[question.id]]}    |    step 6: {_LABEL[verdict.status]}{differs}")
 
-        best = max(retrieval.candidates, key=lambda candidate: candidate.semantic_raw)
-        _line("best raw", f"{retrieval.best_raw:.4f} ({best.element})  (information only)")
-        _line("terms", "; ".join(f"{term.term.text} -> {term.chosen_table}" for term in retrieval.terms) or "none")
-        _line("tables", ", ".join(
-            f"{entry.table} {entry.score:.3f} (by {entry.best.split('.')[-1]})" for entry in retrieval.tables[:6]
-        ))  # fmt: skip
-        _line("columns", ", ".join(
-            f"{c.element} {c.combined:.3f} [sem {c.semantic_raw:.3f}, key {c.keyword_raw:.3f}]"
-            for c in [candidate for candidate in retrieval.candidates if candidate.column][:4]
-        ))  # fmt: skip
-
-        bound = retrieval.anchor_bound
-        # Every pair that set a table aside. The winner is always an anchor.
-        above_cut = {*retrieval.anchors, *bound.excluded_by_cap, *bound.set_aside_as_rivals}
-        aside = "; ".join(
-            f"{rival.rival} (\"{rival.term}\" chose {rival.chosen}: {rival.chosen_score:.3f} against "
-            f"{rival.rival_score:.3f})"
-            for rival in retrieval.rivals
-            if rival.rival in bound.set_aside_as_rivals and rival.chosen in retrieval.anchors
-        )
-        nominated = {term.chosen_table for term in retrieval.terms}
-        kept = "; ".join(
-            f"{partner.rival} (joined to {partner.chosen}, which \"{partner.term}\" chose: "
-            f"{partner.chosen_score:.3f} against {partner.rival_score:.3f})"
-            for term in retrieval.terms
-            for partner in term.partners
-            if partner.chosen in above_cut
-            and partner.rival in above_cut
-            and partner.rival not in nominated
-            and partner.rival not in bound.set_aside_as_rivals
-        )
-        _line("partners", kept or "none")
-        _line("cap cut", ", ".join(bound.excluded_by_cap) or "none")
-
+        print_retrieval(located)
         tree = located.tree
-        if located.declined:
-            _line("DECLINED", located.explanation.reason)
-        elif tree.decline_reason == NO_ANCHORS:
-            _line("tree", "none: no table reached the anchor cut")
-        else:
-            for attachment, explained in zip(tree.attachments, located.explanation.attachments):
-                if attachment.path is None:
-                    _line("attached", f"0  {attachment.anchor}: the seed")
-                    continue
-                tied = f", {len(attachment.tied)} tied" if attachment.tied else ""
-                evidence = ""
-                if attachment.evidence:
-                    (_, top), (_, second) = attachment.evidence[:2]
-                    evidence = f"; evidence {top:.3f} against {second:.3f}, margin {attachment.margin:.3f}"
-                _line("attached", f"{attachment.order}  {attachment.anchor} to {attachment.attached_to} "
-                                  f"by {explained.path.id}  [{attachment.rule}{tied}{evidence}]")  # fmt: skip
-            _line("tree", ", ".join(tree.tables))
-            if tree.subgraph_bound.dropped_anchors or tree.subgraph_bound.excluded:
-                _line("bound", f"dropped anchors: {', '.join(tree.subgraph_bound.dropped_anchors) or 'none'}; "
-                               f"alternatives left out: {', '.join(tree.subgraph_bound.excluded) or 'none'}")  # fmt: skip
 
         if question.warning == "decline":
             _line("expected", "DECLINE: the warehouse cannot answer this")
@@ -281,13 +171,9 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
         raised = sorted(located.warning_codes)
         raised_codes += raised
         wanted = "not judged (see_note)" if question.warning == "see_note" else question.warning
-        _line("warnings", f"{', '.join(raised) or 'none'}; expected: {wanted}")
+        print_warnings(located, f"; expected: {wanted}")
         if not located.declined:
-            for warning in located.explanation.warnings:
-                _line("", f"{warning.code}: {warning.text}")
             close_call_counts.append(len(located.explanation.close_calls))
-            for position, call in enumerate(located.explanation.close_calls):
-                _line("close call" if position == 0 else "", call.text)
 
         if verdict.checks:
             _line("checks", "; ".join(

@@ -26,6 +26,8 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    date_dim.d_same_day_ly 0.701 [sem 0.225, key 0.024], store.s_store_id 0.477 [sem 0.287, key
                  0.017], store.s_store_name 0.477 [sem 0.275, key 0.017], store.s_store_sk 0.477 [sem 0.245,
                  key 0.017]
+    anchors    5: date_dim 1.000, customer 0.701, store 0.499, store_returns 0.477, store_sales 0.477
+    set aside  none
     partners   store_returns (joined to store, which "store" chose: 1.000 against 0.956); store_sales (joined
                  to store, which "store" chose: 1.000 against 0.956); store_returns (joined to store, which
                  "store sell" chose: 1.000 against 0.956); store_sales (joined to store, which "store sell"
@@ -72,6 +74,10 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    catalog_sales.cs_bill_cdemo_sk 1.000 [sem 0.393, key 0.049], catalog_sales.cs_bill_customer_sk
                  1.000 [sem 0.393, key 0.049], catalog_returns.cr_refunded_cdemo_sk 0.692 [sem 0.366, key
                  0.034], catalog_returns.cr_refunded_customer_sk 0.692 [sem 0.364, key 0.034]
+    anchors    5: catalog_sales 1.000, catalog_returns 0.692, customer_address 0.692, catalog_page 0.450,
+                 customer 0.438
+    set aside  web_sales ("billed" chose catalog_sales: 1.000 against 1.000); web_sales ("customers billed"
+                 chose catalog_sales: 1.000 against 1.000)
     partners   none
     cap cut    customer_demographics, call_center, promotion, store, store_returns, store_sales, warehouse,
                  web_page, web_returns, web_site
@@ -116,6 +122,9 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
                  catalog_returns.cr_refunded_customer_sk 1.000 [sem 0.395, key 0.046],
                  catalog_returns.cr_returning_cdemo_sk 1.000 [sem 0.449, key 0.046],
                  catalog_returns.cr_returning_customer_sk 1.000 [sem 0.420, key 0.046]
+    anchors    5: catalog_returns 1.000, catalog_sales 1.000, customer_address 1.000, catalog_page 0.650,
+                 customer 0.633
+    set aside  none
     partners   catalog_sales (joined to catalog_page, which "catalog" chose: 1.000 against 0.930);
                  catalog_sales (joined to catalog_returns, which "catalog customers" chose: 1.000 against
                  1.000)
@@ -182,6 +191,8 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    item.i_category 0.842 [sem 0.208, key 0.017], item.i_category_id 0.842 [sem 0.189, key 0.017],
                  web_returns.wr_item_sk 0.842 [sem 0.285, key 0.017], web_sales.ws_item_sk 0.842 [sem 0.356,
                  key 0.017]
+    anchors    5: item 1.000, web_returns 0.842, web_sales 0.842, web_page 0.509, catalog_returns 0.374
+    set aside  web_site ("web" chose web_page: 1.000 against 0.918)
     partners   web_returns (joined to web_page, which "web" chose: 1.000 against 1.000); web_sales (joined to
                  web_page, which "web" chose: 1.000 against 1.000)
     cap cut    catalog_sales, inventory, promotion, store_returns, store_sales
@@ -229,6 +240,11 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    store_returns.sr_cdemo_sk 1.000 [sem 0.361, key 0.035], store_returns.sr_customer_sk 1.000 [sem
                  0.369, key 0.035], store_returns.sr_item_sk 1.000 [sem 0.350, key 0.035],
                  store_returns.sr_reason_sk 1.000 [sem 0.397, key 0.035]
+    anchors    5: catalog_returns 0.718, store_sales 0.643, customer 0.407, item 0.407, reason 0.407
+    set aside  store_returns ("returning" chose catalog_returns: 1.000 against 1.000); web_returns ("returning"
+                 chose catalog_returns: 1.000 against 1.000); store_returns ("returning items" chose
+                 catalog_returns: 1.000 against 1.000); web_returns ("returning items" chose catalog_returns:
+                 1.000 against 1.000)
     partners   store_sales (joined to store, which "stores" chose: 1.000 against 0.956)
     cap cut    store, customer_address, customer_demographics
     attached   0  catalog_returns: the seed
@@ -276,6 +292,9 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    catalog_returns.cr_item_sk 1.000 [sem 0.438, key 0.027], catalog_returns.cr_store_credit 1.000
                  [sem 0.495, key 0.027], catalog_sales.cs_item_sk 1.000 [sem 0.461, key 0.027],
                  store_returns.sr_item_sk 1.000 [sem 0.365, key 0.027]
+    anchors    5: catalog_returns 1.000, catalog_sales 1.000, store_returns 1.000, store_sales 1.000,
+                 catalog_page 0.650
+    set aside  none
     partners   store_returns (joined to store, which "store" chose: 1.000 against 0.956); store_sales (joined
                  to store, which "store" chose: 1.000 against 0.956); catalog_returns (joined to catalog_page,
                  which "catalog" chose: 1.000 against 0.930); catalog_sales (joined to catalog_page, which
@@ -399,6 +418,41 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    item.i_rec_end_date 0.935 [sem 0.265, key 0.019], item.i_rec_start_date 0.935 [sem 0.224, key
                  0.019], inventory.inv_date_sk 0.842 [sem 0.377, key 0.017], inventory.inv_item_sk 0.842 [sem
                  0.366, key 0.017]
+    anchors    5: item 1.000, inventory 0.842, warehouse 0.547, date_dim 0.532, call_center 0.468
+    set aside  catalog_page ("held" chose call_center: 0.000 against 0.000); customer ("held" chose
+                 call_center: 0.000 against 0.000); promotion ("held" chose call_center: 0.000 against 0.000);
+                 store ("held" chose call_center: 0.000 against 0.000); store_returns ("held" chose
+                 call_center: 0.000 against 0.000); store_sales ("held" chose call_center: 0.000 against
+                 0.000); web_page ("held" chose call_center: 0.000 against 0.000); web_returns ("held" chose
+                 call_center: 0.000 against 0.000); web_sales ("held" chose call_center: 0.000 against 0.000);
+                 web_site ("held" chose call_center: 0.000 against 0.000); catalog_page ("least" chose
+                 call_center: 0.000 against 0.000); customer ("least" chose call_center: 0.000 against 0.000);
+                 promotion ("least" chose call_center: 0.000 against 0.000); store ("least" chose call_center:
+                 0.000 against 0.000); store_returns ("least" chose call_center: 0.000 against 0.000);
+                 store_sales ("least" chose call_center: 0.000 against 0.000); web_page ("least" chose
+                 call_center: 0.000 against 0.000); web_returns ("least" chose call_center: 0.000 against
+                 0.000); web_sales ("least" chose call_center: 0.000 against 0.000); web_site ("least" chose
+                 call_center: 0.000 against 0.000); catalog_page ("stock" chose call_center: 0.000 against
+                 0.000); customer ("stock" chose call_center: 0.000 against 0.000); promotion ("stock" chose
+                 call_center: 0.000 against 0.000); store ("stock" chose call_center: 0.000 against 0.000);
+                 store_returns ("stock" chose call_center: 0.000 against 0.000); store_sales ("stock" chose
+                 call_center: 0.000 against 0.000); web_page ("stock" chose call_center: 0.000 against 0.000);
+                 web_returns ("stock" chose call_center: 0.000 against 0.000); web_sales ("stock" chose
+                 call_center: 0.000 against 0.000); web_site ("stock" chose call_center: 0.000 against 0.000);
+                 catalog_page ("latest" chose call_center: 0.000 against 0.000); customer ("latest" chose
+                 call_center: 0.000 against 0.000); promotion ("latest" chose call_center: 0.000 against
+                 0.000); store ("latest" chose call_center: 0.000 against 0.000); store_returns ("latest" chose
+                 call_center: 0.000 against 0.000); store_sales ("latest" chose call_center: 0.000 against
+                 0.000); web_page ("latest" chose call_center: 0.000 against 0.000); web_returns ("latest"
+                 chose call_center: 0.000 against 0.000); web_sales ("latest" chose call_center: 0.000 against
+                 0.000); web_site ("latest" chose call_center: 0.000 against 0.000); catalog_page ("least
+                 stock" chose call_center: 0.000 against 0.000); customer ("least stock" chose call_center:
+                 0.000 against 0.000); promotion ("least stock" chose call_center: 0.000 against 0.000); store
+                 ("least stock" chose call_center: 0.000 against 0.000); store_returns ("least stock" chose
+                 call_center: 0.000 against 0.000); store_sales ("least stock" chose call_center: 0.000 against
+                 0.000); web_page ("least stock" chose call_center: 0.000 against 0.000); web_returns ("least
+                 stock" chose call_center: 0.000 against 0.000); web_sales ("least stock" chose call_center:
+                 0.000 against 0.000); web_site ("least stock" chose call_center: 0.000 against 0.000)
     partners   catalog_returns (joined to call_center, which "held" chose: 0.000 against 0.000); catalog_sales
                  (joined to call_center, which "held" chose: 0.000 against 0.000); catalog_returns (joined to
                  call_center, which "least" chose: 0.000 against 0.000); catalog_sales (joined to call_center,
@@ -468,6 +522,10 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    catalog_sales.cs_promo_sk 1.000 [sem 0.344, key 0.046], store_sales.ss_promo_sk 1.000 [sem
                  0.385, key 0.046], web_sales.ws_promo_sk 1.000 [sem 0.346, key 0.046],
                  catalog_sales.cs_ext_sales_price 0.605 [sem 0.337, key 0.028]
+    anchors    3: catalog_sales 1.000, promotion 0.633, customer 0.444
+    set aside  store_sales ("sales" chose catalog_sales: 1.000 against 1.000); web_sales ("sales" chose
+                 catalog_sales: 1.000 against 1.000); store_sales ("increase sales" chose catalog_sales: 1.000
+                 against 1.000); web_sales ("increase sales" chose catalog_sales: 1.000 against 1.000)
     partners   none
     cap cut    none
     attached   0  catalog_sales: the seed
@@ -502,6 +560,26 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    household_demographics.hd_dep_count 0.808 [sem 0.509, key 0.023], store.s_number_employees 0.808
                  [sem 0.396, key 0.023], store.s_street_number 0.808 [sem 0.269, key 0.023],
                  store.s_suite_number 0.808 [sem 0.237, key 0.023]
+    anchors    5: store 1.000, household_demographics 0.808, customer_demographics 0.489, call_center 0.449,
+                 catalog_returns 0.359
+    set aside  catalog_page ("average" chose call_center: 0.000 against 0.000); customer ("average" chose
+                 call_center: 0.000 against 0.000); customer_address ("average" chose call_center: 0.000
+                 against 0.000); store_returns ("average" chose call_center: 0.000 against 0.000); store_sales
+                 ("average" chose call_center: 0.000 against 0.000); warehouse ("average" chose call_center:
+                 0.000 against 0.000); web_returns ("average" chose call_center: 0.000 against 0.000);
+                 web_sales ("average" chose call_center: 0.000 against 0.000); web_site ("average" chose
+                 call_center: 0.000 against 0.000); catalog_page ("number" chose store: 1.000 against 0.918);
+                 customer_address ("number" chose store: 1.000 against 0.918); warehouse ("number" chose store:
+                 1.000 against 0.918); web_site ("number" chose store: 1.000 against 0.918); catalog_page
+                 ("shop" chose call_center: 0.000 against 0.000); customer ("shop" chose call_center: 0.000
+                 against 0.000); customer_address ("shop" chose call_center: 0.000 against 0.000);
+                 store_returns ("shop" chose call_center: 0.000 against 0.000); store_sales ("shop" chose
+                 call_center: 0.000 against 0.000); warehouse ("shop" chose call_center: 0.000 against 0.000);
+                 web_returns ("shop" chose call_center: 0.000 against 0.000); web_sales ("shop" chose
+                 call_center: 0.000 against 0.000); web_site ("shop" chose call_center: 0.000 against 0.000);
+                 catalog_page ("average number" chose store: 1.000 against 0.918); customer_address ("average
+                 number" chose store: 1.000 against 0.918); warehouse ("average number" chose store: 1.000
+                 against 0.918); web_site ("average number" chose store: 1.000 against 0.918)
     partners   catalog_returns (joined to call_center, which "average" chose: 0.000 against 0.000);
                  catalog_sales (joined to call_center, which "average" chose: 0.000 against 0.000);
                  catalog_returns (joined to call_center, which "shop" chose: 0.000 against 0.000);
@@ -589,6 +667,9 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    web_site.web_site_id 1.000 [sem 0.234, key 0.032], web_site.web_site_sk 1.000 [sem 0.194, key
                  0.032], web_site.web_city 0.957 [sem 0.224, key 0.030], web_site.web_class 0.957 [sem 0.234,
                  key 0.030]
+    anchors    5: web_site 1.000, web_returns 0.862, catalog_sales 0.521, ship_mode 0.521, web_page 0.521
+    set aside  web_sales ("shipping" chose catalog_sales: 1.000 against 1.000); web_sales ("shipping method"
+                 chose catalog_sales: 1.000 against 1.000)
     partners   web_returns (joined to web_page, which "web" chose: 1.000 against 1.000); ship_mode (joined to
                  catalog_sales, which "shipping" chose: 1.000 against 1.000); ship_mode (joined to
                  catalog_sales, which "shipping method" chose: 1.000 against 1.000)
@@ -635,6 +716,9 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    store_sales.ss_ext_sales_price 0.915 [sem 0.454, key 0.032], store_sales.ss_sales_price 0.915
                  [sem 0.454, key 0.032], store_sales.ss_store_sk 0.915 [sem 0.406, key 0.032],
                  store_sales.ss_addr_sk 0.876 [sem 0.385, key 0.030]
+    anchors    5: date_dim 1.000, store_sales 0.937, catalog_sales 0.499, store 0.499, store_returns 0.477
+    set aside  web_sales ("sales" chose catalog_sales: 1.000 against 1.000); web_sales ("sales break" chose
+                 catalog_sales: 1.000 against 1.000)
     partners   store_returns (joined to store, which "store" chose: 1.000 against 0.956)
     cap cut    catalog_returns, customer
     attached   0  date_dim: the seed
@@ -680,6 +764,13 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
                  catalog_returns.cr_catalog_page_sk 0.746 [sem 0.393, key 0.032],
                  catalog_returns.cr_return_amount 0.746 [sem 0.435, key 0.032],
                  catalog_returns.cr_return_amt_inc_tax 0.746 [sem 0.436, key 0.032]
+    anchors    4: catalog_returns 1.000, catalog_sales 0.643, catalog_page 0.418, call_center 0.389
+    set aside  store_returns ("centres" chose call_center: 0.000 against 0.000); web_returns ("centres" chose
+                 call_center: 0.000 against 0.000); store_returns ("handle" chose call_center: 0.000 against
+                 0.000); web_returns ("handle" chose call_center: 0.000 against 0.000); store_returns
+                 ("returns" chose catalog_returns: 1.000 against 1.000); web_returns ("returns" chose
+                 catalog_returns: 1.000 against 1.000); store_returns ("centres handle" chose call_center:
+                 0.000 against 0.000); web_returns ("centres handle" chose call_center: 0.000 against 0.000)
     partners   catalog_sales (joined to call_center, which "centres" chose: 0.000 against 0.000); catalog_sales
                  (joined to call_center, which "handle" chose: 0.000 against 0.000); catalog_sales (joined to
                  catalog_page, which "catalog" chose: 1.000 against 0.930); catalog_sales (joined to
@@ -726,6 +817,9 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    income_band.ib_income_band_sk 1.000 [sem 0.343, key 0.033], income_band.ib_lower_bound 0.918
                  [sem 0.381, key 0.030], income_band.ib_upper_bound 0.918 [sem 0.411, key 0.030],
                  household_demographics.hd_income_band_sk 0.735 [sem 0.379, key 0.024]
+    anchors    5: income_band 1.000, household_demographics 0.735, customer 0.523, customer_address 0.459,
+                 customer_demographics 0.459
+    set aside  none
     partners   none
     cap cut    catalog_returns, catalog_sales, store_returns, store_sales, web_page, web_returns, web_sales
     attached   0  income_band: the seed
@@ -766,6 +860,11 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    catalog_returns.cr_item_sk 1.000 [sem 0.272, key 0.023], promotion.p_item_sk 1.000 [sem 0.380,
                  key 0.023], store_returns.sr_item_sk 1.000 [sem 0.312, key 0.023], web_returns.wr_item_sk
                  1.000 [sem 0.264, key 0.023]
+    anchors    5: catalog_returns 1.000, promotion 1.000, item 0.633, catalog_sales 0.444, inventory 0.444
+    set aside  store_returns ("returned" chose catalog_returns: 1.000 against 1.000); web_returns ("returned"
+                 chose catalog_returns: 1.000 against 1.000); store_returns ("items returned" chose
+                 catalog_returns: 1.000 against 1.000); web_returns ("items returned" chose catalog_returns:
+                 1.000 against 1.000)
     partners   none
     cap cut    store_sales, web_sales
     attached   0  catalog_returns: the seed
@@ -816,6 +915,9 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    customer.c_current_cdemo_sk 0.956 [sem 0.254, key 0.028], customer.c_customer_id 0.956 [sem
                  0.254, key 0.028], customer.c_customer_sk 0.956 [sem 0.220, key 0.028],
                  customer.c_preferred_cust_flag 0.956 [sem 0.292, key 0.028]
+    anchors    5: customer 1.000, customer_address 0.878, customer_demographics 0.878, catalog_returns 0.702,
+                 catalog_sales 0.702
+    set aside  none
     partners   none
     cap cut    store_returns, store_sales, web_page, web_returns, web_sales
     attached   0  customer: the seed
@@ -868,6 +970,8 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    web_page.wp_customer_sk 1.000 [sem 0.375, key 0.053], web_page.wp_web_page_id 0.778 [sem 0.292,
                  key 0.041], web_page.wp_web_page_sk 0.778 [sem 0.294, key 0.041], web_page.wp_access_date_sk
                  0.714 [sem 0.284, key 0.038]
+    anchors    5: web_page 1.000, web_returns 0.675, web_sales 0.675, catalog_page 0.407, customer 0.407
+    set aside  web_site ("web" chose web_page: 1.000 against 0.918)
     partners   web_returns (joined to web_page, which "web" chose: 1.000 against 1.000); web_sales (joined to
                  web_page, which "web" chose: 1.000 against 1.000)
     cap cut    customer_address, customer_demographics
@@ -967,7 +1071,7 @@ diagnostic  every expected table in the tree: 9 of 15; no table beyond the expec
 warnings    raised, questions each: arbitrary_choice 9, many_to_many 10, multi_anchor 11
 close calls 36 on 10 questions (information, not a warning)
 anchors     per question: 1:5, 2:5, 3:5, 4:5, 5:5, 6:5, 7:5, 8:3, 9:5, 10:5, 11:5, 12:4, 13:5, 14:5, 15:5, 16:5
-timing      scoring (embedding lookups and both searches) median 146 ms, largest 214 ms; retrieval and tree median 120 ms, largest 159 ms
+timing      scoring (embedding lookups and both searches) median 128 ms, largest 205 ms; retrieval and tree median 119 ms, largest 147 ms
             external embedding calls, not in the figures' budget (NFR-02) but in them here: 0 ms in all
 cost        embedded now: 0 texts, 0 tokens, $0.00000000; everything else came from the cache
 note        With 16 questions a difference of one is noise.

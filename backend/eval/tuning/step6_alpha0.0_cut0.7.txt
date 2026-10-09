@@ -26,6 +26,8 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    date_dim.d_same_day_ly 0.701 [sem 0.225, key 0.024], store.s_store_id 0.477 [sem 0.287, key
                  0.017], store.s_store_name 0.477 [sem 0.275, key 0.017], store.s_store_sk 0.477 [sem 0.245,
                  key 0.017]
+    anchors    2: date_dim 1.000, customer 0.701
+    set aside  none
     partners   none
     cap cut    none
     attached   0  date_dim: the seed
@@ -51,6 +53,8 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    catalog_sales.cs_bill_cdemo_sk 1.000 [sem 0.393, key 0.049], catalog_sales.cs_bill_customer_sk
                  1.000 [sem 0.393, key 0.049], catalog_returns.cr_refunded_cdemo_sk 0.692 [sem 0.366, key
                  0.034], catalog_returns.cr_refunded_customer_sk 0.692 [sem 0.364, key 0.034]
+    anchors    1: catalog_sales 1.000
+    set aside  none
     partners   none
     cap cut    none
     attached   0  catalog_sales: the seed
@@ -74,6 +78,8 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
                  catalog_returns.cr_refunded_customer_sk 1.000 [sem 0.395, key 0.046],
                  catalog_returns.cr_returning_cdemo_sk 1.000 [sem 0.449, key 0.046],
                  catalog_returns.cr_returning_customer_sk 1.000 [sem 0.420, key 0.046]
+    anchors    3: catalog_returns 1.000, catalog_sales 1.000, customer_address 1.000
+    set aside  none
     partners   catalog_sales (joined to catalog_returns, which "catalog customers" chose: 1.000 against 1.000)
     cap cut    none
     attached   0  catalog_returns: the seed
@@ -116,6 +122,8 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    item.i_category 0.842 [sem 0.208, key 0.017], item.i_category_id 0.842 [sem 0.189, key 0.017],
                  web_returns.wr_item_sk 0.842 [sem 0.285, key 0.017], web_sales.ws_item_sk 0.842 [sem 0.356,
                  key 0.017]
+    anchors    3: item 1.000, web_returns 0.842, web_sales 0.842
+    set aside  none
     partners   none
     cap cut    none
     attached   0  item: the seed
@@ -151,6 +159,9 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    store_returns.sr_cdemo_sk 1.000 [sem 0.361, key 0.035], store_returns.sr_customer_sk 1.000 [sem
                  0.369, key 0.035], store_returns.sr_item_sk 1.000 [sem 0.350, key 0.035],
                  store_returns.sr_reason_sk 1.000 [sem 0.397, key 0.035]
+    anchors    1: catalog_returns 0.718
+    set aside  store_returns ("returning" chose catalog_returns: 1.000 against 1.000); store_returns
+                 ("returning items" chose catalog_returns: 1.000 against 1.000)
     partners   none
     cap cut    none
     attached   0  catalog_returns: the seed
@@ -176,6 +187,8 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    catalog_returns.cr_item_sk 1.000 [sem 0.438, key 0.027], catalog_returns.cr_store_credit 1.000
                  [sem 0.495, key 0.027], catalog_sales.cs_item_sk 1.000 [sem 0.461, key 0.027],
                  store_returns.sr_item_sk 1.000 [sem 0.365, key 0.027]
+    anchors    4: catalog_returns 1.000, catalog_sales 1.000, store_returns 1.000, store_sales 1.000
+    set aside  none
     partners   none
     cap cut    none
     attached   0  catalog_returns: the seed
@@ -281,6 +294,8 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    item.i_rec_end_date 0.935 [sem 0.265, key 0.019], item.i_rec_start_date 0.935 [sem 0.224, key
                  0.019], inventory.inv_date_sk 0.842 [sem 0.377, key 0.017], inventory.inv_item_sk 0.842 [sem
                  0.366, key 0.017]
+    anchors    2: item 1.000, inventory 0.842
+    set aside  none
     partners   none
     cap cut    none
     attached   0  item: the seed
@@ -307,6 +322,10 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    catalog_sales.cs_promo_sk 1.000 [sem 0.344, key 0.046], store_sales.ss_promo_sk 1.000 [sem
                  0.385, key 0.046], web_sales.ws_promo_sk 1.000 [sem 0.346, key 0.046],
                  catalog_sales.cs_ext_sales_price 0.605 [sem 0.337, key 0.028]
+    anchors    1: catalog_sales 1.000
+    set aside  store_sales ("sales" chose catalog_sales: 1.000 against 1.000); web_sales ("sales" chose
+                 catalog_sales: 1.000 against 1.000); store_sales ("increase sales" chose catalog_sales: 1.000
+                 against 1.000); web_sales ("increase sales" chose catalog_sales: 1.000 against 1.000)
     partners   none
     cap cut    none
     attached   0  catalog_sales: the seed
@@ -333,6 +352,8 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    household_demographics.hd_dep_count 0.808 [sem 0.509, key 0.023], store.s_number_employees 0.808
                  [sem 0.396, key 0.023], store.s_street_number 0.808 [sem 0.269, key 0.023],
                  store.s_suite_number 0.808 [sem 0.237, key 0.023]
+    anchors    4: store 1.000, household_demographics 0.808, store_returns 0.808, store_sales 0.808
+    set aside  none
     partners   store_returns (joined to store, which "stores" chose: 1.000 against 0.956); store_sales (joined
                  to store, which "stores" chose: 1.000 against 0.956)
     cap cut    none
@@ -373,6 +394,8 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    web_site.web_site_id 1.000 [sem 0.234, key 0.032], web_site.web_site_sk 1.000 [sem 0.194, key
                  0.032], web_site.web_city 0.957 [sem 0.224, key 0.030], web_site.web_class 0.957 [sem 0.234,
                  key 0.030]
+    anchors    3: web_sales 1.000, web_site 1.000, web_returns 0.862
+    set aside  none
     partners   web_sales (joined to web_site, which "web site" chose: 1.000 against 0.904)
     cap cut    none
     attached   0  web_sales: the seed
@@ -401,6 +424,8 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    store_sales.ss_ext_sales_price 0.915 [sem 0.454, key 0.032], store_sales.ss_sales_price 0.915
                  [sem 0.454, key 0.032], store_sales.ss_store_sk 0.915 [sem 0.406, key 0.032],
                  store_sales.ss_addr_sk 0.876 [sem 0.385, key 0.030]
+    anchors    2: date_dim 1.000, store_sales 0.937
+    set aside  none
     partners   none
     cap cut    none
     attached   0  date_dim: the seed
@@ -426,6 +451,8 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
                  catalog_returns.cr_catalog_page_sk 0.746 [sem 0.393, key 0.032],
                  catalog_returns.cr_return_amount 0.746 [sem 0.435, key 0.032],
                  catalog_returns.cr_return_amt_inc_tax 0.746 [sem 0.436, key 0.032]
+    anchors    1: catalog_returns 1.000
+    set aside  none
     partners   none
     cap cut    none
     attached   0  catalog_returns: the seed
@@ -450,6 +477,8 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    income_band.ib_income_band_sk 1.000 [sem 0.343, key 0.033], income_band.ib_lower_bound 0.918
                  [sem 0.381, key 0.030], income_band.ib_upper_bound 0.918 [sem 0.411, key 0.030],
                  household_demographics.hd_income_band_sk 0.735 [sem 0.379, key 0.024]
+    anchors    2: income_band 1.000, household_demographics 0.735
+    set aside  none
     partners   none
     cap cut    none
     attached   0  income_band: the seed
@@ -480,6 +509,11 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    catalog_returns.cr_item_sk 1.000 [sem 0.272, key 0.023], promotion.p_item_sk 1.000 [sem 0.380,
                  key 0.023], store_returns.sr_item_sk 1.000 [sem 0.312, key 0.023], web_returns.wr_item_sk
                  1.000 [sem 0.264, key 0.023]
+    anchors    2: catalog_returns 1.000, promotion 1.000
+    set aside  store_returns ("returned" chose catalog_returns: 1.000 against 1.000); web_returns ("returned"
+                 chose catalog_returns: 1.000 against 1.000); store_returns ("items returned" chose
+                 catalog_returns: 1.000 against 1.000); web_returns ("items returned" chose catalog_returns:
+                 1.000 against 1.000)
     partners   none
     cap cut    none
     attached   0  catalog_returns: the seed
@@ -518,6 +552,9 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    customer.c_current_cdemo_sk 0.956 [sem 0.254, key 0.028], customer.c_customer_id 0.956 [sem
                  0.254, key 0.028], customer.c_customer_sk 0.956 [sem 0.220, key 0.028],
                  customer.c_preferred_cust_flag 0.956 [sem 0.292, key 0.028]
+    anchors    5: customer 1.000, customer_address 0.878, customer_demographics 0.878, catalog_returns 0.702,
+                 catalog_sales 0.702
+    set aside  none
     partners   none
     cap cut    store_returns, store_sales, web_page, web_returns, web_sales
     attached   0  customer: the seed
@@ -570,6 +607,8 @@ snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4
     columns    web_page.wp_customer_sk 1.000 [sem 0.375, key 0.053], web_page.wp_web_page_id 0.778 [sem 0.292,
                  key 0.041], web_page.wp_web_page_sk 0.778 [sem 0.294, key 0.041], web_page.wp_access_date_sk
                  0.714 [sem 0.284, key 0.038]
+    anchors    1: web_page 1.000
+    set aside  none
     partners   none
     cap cut    none
     attached   0  web_page: the seed
@@ -596,7 +635,7 @@ diagnostic  every expected table in the tree: 3 of 15; no table beyond the expec
 warnings    raised, questions each: arbitrary_choice 3, many_to_many 4, multi_anchor 5
 close calls 5 on 3 questions (information, not a warning)
 anchors     per question: 1:2, 2:1, 3:3, 4:3, 5:1, 6:4, 7:2, 8:1, 9:4, 10:3, 11:2, 12:1, 13:2, 14:2, 15:5, 16:1
-timing      scoring (embedding lookups and both searches) median 139 ms, largest 233 ms; retrieval and tree median 51 ms, largest 128 ms
+timing      scoring (embedding lookups and both searches) median 149 ms, largest 184 ms; retrieval and tree median 49 ms, largest 135 ms
             external embedding calls, not in the figures' budget (NFR-02) but in them here: 0 ms in all
 cost        embedded now: 0 texts, 0 tokens, $0.00000000; everything else came from the cache
 note        With 16 questions a difference of one is noise.
