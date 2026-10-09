@@ -1,0 +1,127 @@
+# The held-out evaluation set.
+#
+# THE RULE. This file is never run, embedded, sent to a model or used to
+# choose any setting before step 10. Retrieval and prompt work may not open
+# it. Its first run is step 10, where it is reported beside the original set,
+# backend/eval/questions.yaml.
+#
+# FROZEN FROM ITS FIRST COMMIT. This file's sha256 is pinned in
+# backend/tests/core/test_heldout.py, so no byte of it -- these comments
+# included -- changes without that test changing in the same diff. An
+# expectation is never edited to match what the system does, or to make a
+# check pass; the expectations are the owner's to correct.
+#
+# HOW TO READ A QUESTION. The set judges tables, joins and declines only: no
+# question carries a warning, and none is expected.
+#
+#   tables    the tables a correct answer uses.
+#   joins     the joins a correct answer uses. A join is `from` (the foreign
+#             key side) and `to` (the primary key side), each one
+#             table.column or a list for a key of several columns, as in
+#             questions.yaml and the overlay.
+#   decline   present, and true, only on a question the warehouse cannot
+#             answer: a correct system declines it. Such a question names no
+#             tables and no joins.
+
+provenance: >-
+  Drafted by Claude in a Cowork session on 9 October 2026, after step 7
+  closed and before any retrieval change, from the schema alone with no
+  retrieval output consulted. Approved by Jagath Manjunath. Reported beside
+  the original set at step 10.
+
+questions:
+
+  - id: H1
+    question: Which item brands made the most net profit in our stores in 2001?
+    tables: [store_sales, item, date_dim]
+    joins:
+      - from: store_sales.ss_item_sk
+        to:   item.i_item_sk
+      - from: store_sales.ss_sold_date_sk
+        to:   date_dim.d_date_sk
+
+  - id: H2
+    question: Which shipping carriers handled the most catalog orders shipped in 2000?
+    tables: [catalog_sales, ship_mode, date_dim]
+    joins:
+      - from: catalog_sales.cs_ship_mode_sk
+        to:   ship_mode.sm_ship_mode_sk
+      - from: catalog_sales.cs_ship_date_sk
+        to:   date_dim.d_date_sk
+
+  - id: H3
+    question: Which states do our in-store shoppers currently live in, ranked by what they spent in our stores in 2002?
+    tables: [store_sales, customer, customer_address, date_dim]
+    joins:
+      - from: store_sales.ss_customer_sk
+        to:   customer.c_customer_sk
+      - from: customer.c_current_addr_sk
+        to:   customer_address.ca_address_sk
+      - from: store_sales.ss_sold_date_sk
+        to:   date_dim.d_date_sk
+
+  - id: H4
+    question: Which of our web sites lose the most money to customer returns?
+    tables: [web_returns, web_sales, web_site]
+    joins:
+      - from: [web_returns.wr_item_sk, web_returns.wr_order_number]
+        to:   [web_sales.ws_item_sk, web_sales.ws_order_number]
+      - from: web_sales.ws_web_site_sk
+        to:   web_site.web_site_sk
+
+  - id: H5
+    question: Which promotions were run by email, and what did each one cost?
+    tables: [promotion]
+    joins: []
+
+  - id: H6
+    question: At what hour of the day do customers place the most web orders?
+    tables: [web_sales, time_dim]
+    joins:
+      - from: web_sales.ws_sold_time_sk
+        to:   time_dim.t_time_sk
+
+  - id: H7
+    question: Which item colours are returned to our stores most often?
+    tables: [store_returns, item]
+    joins:
+      - from: store_returns.sr_item_sk
+        to:   item.i_item_sk
+
+  - id: H8
+    question: Which warehouses filled the most web orders placed in 2001?
+    tables: [web_sales, warehouse, date_dim]
+    joins:
+      - from: web_sales.ws_warehouse_sk
+        to:   warehouse.w_warehouse_sk
+      - from: web_sales.ws_sold_date_sk
+        to:   date_dim.d_date_sk
+
+  - id: H9
+    question: Which products get the best customer ratings?
+    tables: []
+    joins: []
+    decline: true
+
+  - id: H10
+    question: How much did web customers born before 1960 pay for their orders in each year?
+    tables: [web_sales, customer, date_dim]
+    joins:
+      - from: web_sales.ws_bill_customer_sk
+        to:   customer.c_customer_sk
+      - from: web_sales.ws_sold_date_sk
+        to:   date_dim.d_date_sk
+
+  - id: H11
+    question: How many of our customers live in each county of Texas?
+    tables: [customer, customer_address]
+    joins:
+      - from: customer.c_current_addr_sk
+        to:   customer_address.ca_address_sk
+
+  - id: H12
+    question: Which states receive the most refunds for catalog returns?
+    tables: [catalog_returns, customer_address]
+    joins:
+      - from: catalog_returns.cr_refunded_addr_sk
+        to:   customer_address.ca_address_sk
