@@ -236,9 +236,36 @@ else
     "sha256      $(sha256sum backend/eval/questions.yaml | cut -d' ' -f1)" "$evaluated"
 fi
 
-stage "Not yet verified"
-pending "one known question runs the full pipeline (arrives at step 7)"
-pending "generated SQL joins along the reported path (arrives at step 7)"
+# One fixed development question through every stage: retrieval, the join
+# tree, the model, validation, conformance, execution (NFR-27). It is ONE
+# PAID MODEL CALL, a few hundredths of a cent, written to the spend ledger;
+# without OPENAI_API_KEY it is a clean SKIP.
+#
+# The second line is criterion 13: the trace reports the joins the executed
+# SQL actually made. Postgres is the witness, not the application: its plan
+# for the executed text is read for its join conditions and compared with
+# the trace's. A model that diverges from the selected path does not fail
+# this; a trace that misreports what ran does.
+stage "The whole pipeline (NFR-27, criterion 13)"
+if [[ "$wh_tables" == "0" ]]; then
+  pending "one known question runs the full pipeline -- warehouse is empty"
+  pending "the trace reports the joins the executed SQL made -- warehouse is empty"
+elif [[ "$current" != "1" ]]; then
+  pending "one known question runs the full pipeline -- no schema snapshot stored"
+  pending "the trace reports the joins the executed SQL made -- no schema snapshot stored"
+else
+  answered_code=0
+  answered="$(docker compose exec -T backend python -m app.smoke_pipeline 2>/dev/null)" || answered_code=$?
+  if [[ "$answered_code" == "3" ]]; then
+    pending "one known question runs the full pipeline -- needs OPENAI_API_KEY (one paid model call)"
+    pending "the trace reports the joins the executed SQL made -- needs OPENAI_API_KEY"
+  else
+    contains "one known question runs the full pipeline, model and warehouse included" "PIPELINE PASS" \
+      "$(grep '^PIPELINE' <<<"$answered" || true)"
+    contains "the trace reports the joins the executed SQL made, with Postgres's plan as witness" "WITNESS PASS" \
+      "$(grep '^WITNESS' <<<"$answered" || true)"
+  fi
+fi
 
 printf '\n== Result\n'
 printf '   %d passed, %d failed, %d skipped\n' "$pass" "$fail" "$skip"

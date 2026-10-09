@@ -6551,8 +6551,8 @@ ruled before any code, each review stop, every paid call.
     3  SqlValidator                                   done (3a9a2ea), before any model SQL
     4  ConformanceCheck, extraction and comparison    done (ccb9e91), before any model SQL
     5  PromptBuilder; the development questions       done; STOPPED FOR THE OWNER (stop 2)
-    6  QueryExecutor, orchestrator, app.ask, dev runs STOP 3
-    7  smoke end to end; the close
+    6  QueryExecutor, orchestrator, app.ask, dev runs done; STOPPED FOR THE OWNER (stop 3)
+    7  smoke end to end; the close                    smoke lines written and green; the close waits
 
 **Three rules this step adds, set by the owner.**
 
@@ -6914,6 +6914,115 @@ written. 108 tests of the check in all.
 owner's ruling, as the two judgements of steps 5 and 6 do: from the next
 commit on, model SQL exists and any change would be shaped by it.
 
+### Piece 6, the first real answers, and the third review stop — 9 October 2026
+
+**STOPPED HERE FOR THE OWNER'S REVIEW, before the close.**
+
+**The order, again.** `d5594e5` fixed the instrument. `bb72a4a` added the
+executor and the orchestrator, tested with a scripted model whose every
+statement was written by hand. `6bc3387` added `app.ask` and
+`app.run_dev`, unrun. Only then did a question go to a model. Nothing in
+`sql_reading.py`, `sql_validator.py`, `conformance.py` or the prompt has
+changed since, and the prompt was not adjusted after seeing any output.
+
+**QueryExecutor** (`app/shell/query_executor.py`). Takes a ValidatedSql
+and nothing else; streams, so the text sent is the text validated with
+nothing in front of it; reads the cap plus one and cancels; refuses a
+role with no timeout, one that may write, or a superuser, before sending.
+A stream uses the extended protocol, in which Postgres refuses two
+statements in one text: a second line of defence nobody had planned, and
+tested. **Stopping the stream: an unaggregated `SELECT * FROM
+store_sales`, 2.9 million rows, stopped after 1,000: 88 ms, and the
+statement gone from `pg_stat_activity`. Reading one column of it to the
+end: 16.6 s.** 16 tests.
+
+**The orchestrator** (`app/orchestrator.py`). 30 tests, 23 mutations, 22
+caught at once and one that showed a missing test (that the prompt holds
+the whole subgraph and not the tree alone), now written.
+
+**The model adapter's mutation count, left out of the stop 2 report:**
+16, all caught.
+
+**THE FIRST REAL ANSWERS. Development run 1, then run 2, unchanged
+between.** Full traces: `backend/eval/dev_runs/run1.txt` and `run2.txt`.
+
+    run 1   d1 answered        incomplete   212 rows
+            d2 not_answerable               no date table retrieved
+            d3 not_answerable               catalog_sales not retrieved
+            d4 answered        incomplete   7 rows
+            d5 answered        incomplete   1 row; no join made
+            d6 not_answerable               no time-of-day table retrieved
+            d7 answered        DIVERGED     7 rows
+            d8 not_answerable               as it should be
+
+    every question: one attempt, no retry, no validator rejection, no
+    function refused, no table named that was not in its prompt, the
+    validated and executed text the same by hash
+
+**Findings.**
+
+- **Three of the seven answerable questions were declined, each
+  truthfully, each for a table retrieval did not bring.** d2 needs
+  `date_dim` for the year of a first purchase and was shown `customer`
+  with its three date keys and no date table. d3 asks about catalog
+  orders and was shown `catalog_page` with `web_sales`. d6 asks about the
+  evening and was shown no `time_dim`. The model said "not answerable"
+  and, of the tables it was shown, that was true. This is the limit
+  recorded with ruling 2, met on the first run: "cannot be answered from
+  the tables retrieved" is the right sentence and is not the same as
+  "cannot be answered". At step 6 recall was 11 of 15 on the evaluation
+  set; here it is 4 of 7.
+- **d7 diverged, and the model's joins are the sensible ones.** The tree
+  hung `customer_demographics` and `date_dim` off `catalog_returns`,
+  which rode in beside `catalog_sales` (item 56), by the alphabet, with
+  `multi_anchor` raised for each. The model joined both to
+  `catalog_sales`, by the billing demographics and the sold date. The SQL
+  ran, the trace says diverged and names both joins. This is DD-15's
+  warning exactly: a retry would have argued it into the returns table.
+- **d5 was answered without the join it was written to exercise.** Two
+  one-row totals, set side by side. Conformance: incomplete, and no cross
+  join, by the one-row rule.
+- **TEMPERATURE 0 IS NOT REPEATABLE ON THIS MODEL. 5 of 8 questions
+  produced the same SQL and outcome in both runs.**
+    - d4: the same join, a different measure: `ws_ext_sales_price` in
+      run 1, `ws_net_paid` in run 2. Different numbers for one question.
+    - d5: answered in run 1, `not_answerable` in run 2.
+    - d7: the same two joins and the same divergence; run 2 added
+      `LIMIT 1` and returned one row where run 1 returned seven.
+  The joins never differed where there were joins. Design section 12
+  plans a single run at temperature 0 and says three runs and a mean is
+  better "if budget allows". The budget allows: a run of eight costs a
+  fifth of a cent. The API returned no system fingerprint on any call.
+- **The second run cost a fifth of the first**: the provider cached the
+  prompts (2,110 of 2,113 input tokens cached on one call). The ledger
+  prices cached tokens separately, so the cost recorded is the cost
+  charged.
+- **Tables not in the prompt: none, in any of the 12 SQL-bearing replies
+  of both runs and the smoke runs.**
+
+**Smoke** (`app/smoke_pipeline.py`, `scripts/smoke.sh`). The two SKIP
+lines are gone: 32 passed, 0 failed, 0 skipped. **The smoke question is
+d4, not d3 as the questions file says**: d3 is declined, for retrieval's
+missing table, so it cannot show a full run. The file is left as
+committed; this is for the owner's ruling. The witness is `EXPLAIN
+(VERBOSE, FORMAT JSON)`: VERBOSE, so that every column in the plan is
+qualified. **Shown failing once:** with extraction broken on purpose to
+report the shipping key where the SQL uses the billing key, PIPELINE
+passed and WITNESS failed, naming both; restored, both passed. Each smoke
+run is one paid model call, about $0.00005.
+
+**Paid calls, all of step 7.**
+
+    the probe            1 call        52 in     11 out   $0.000011
+    development run 1    8 calls   14,864 in    382 out   $0.001677
+    development run 2    8 calls   14,864 in    292 out   $0.000366
+    smoke, four times    4 calls    6,176 in    280 out   $0.000203
+    embedding, 50 texts                                   $0.000003
+    total               21 model calls                    $0.002260
+
+**Suite.** 939 pass in the container and 2 paid tests skip; 881 pass and
+60 skip with both database URLs and the key unset.
+
 ### To dissect, step 7
 
 - why the validator and the checker are committed before the first model
@@ -6946,6 +7055,24 @@ commit on, model SQL exists and any change would be shaped by it.
   one call's cost
 - a mutation that survives because the code is redundant, against one
   that survives because a test is missing: how to tell which
+- `trace` through a UNION: one column for each branch, by position, and
+  why such an equality is `direct` and joins no class
+- the executor's stream: what `cursor.stream` sends, why leaving it early
+  cancels, and what a server-side cursor would have put in front of the SQL
+- the extended protocol refusing two statements, and why psycopg's plain
+  `execute` with no parameters would not have
+- `Orchestrator.answer`: the one `finish`, and why every way out goes
+  through it
+- the retry loop on paper: `number`, `last`, and the four things that can
+  happen to one reply
+- why a divergence is flagged after validation and before execution, and
+  changes neither
+- d7 of run 1: which tree the model was shown, which joins it made, and
+  why the trace is right to say diverged and wrong to imply the model erred
+- why two runs at temperature 0 differ, and what "the same joins,
+  different SQL" means for step 10's two measures
+- `plan_joins`: reading Postgres's plan as a witness, and what VERBOSE
+  is for
 
 ### Carried forward
 
@@ -7234,3 +7361,16 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     22 queries. Extracting them would return such SQL to step 10's
     denominator; it is a change to a frozen instrument and needs a
     ruling.
+62. **Declines that are retrieval's, not the warehouse's** (step 7).
+    Three of seven answerable development questions were declined by the
+    model because retrieval had not brought a table the answer needs
+    (`date_dim`, `catalog_sales`, `time_dim`). The decline is truthful
+    about the tables shown. Nothing tells the reader which kind of
+    decline it is, and FR-42's "cannot be answered from this schema" is
+    not what the system can honestly say. Evidence:
+    `backend/eval/dev_runs/run1.txt`, d2, d3 and d6.
+63. **Temperature 0 does not repeat on gpt-6-luna** (step 7). Two runs of
+    eight questions agreed on five. One question changed its measure
+    column, one changed from answered to not answerable, one gained a
+    LIMIT. For step 10: a single run cannot be called the result; decide
+    the number of runs and how they are combined before the first.
