@@ -170,12 +170,30 @@ def test_a_refused_key_reports_the_status_and_code_and_not_the_providers_message
     assert raised.value.__cause__ is None and raised.value.__context__ is None
 
 
-def test_an_error_code_that_is_not_a_plain_code_is_not_repeated() -> None:
-    body = {"error": {"code": f"leaked {KEY}"}}
-    with pytest.raises(EmbeddingFailed, match=r"answered 500 \(no code\)"):
-        _embedder(_failing(500, body)).embed(["a"])
-    with pytest.raises(EmbeddingFailed, match=r"answered 502 \(no code\)"):
-        _embedder(_failing(502, "not an object")).embed(["a"])
+def test_an_error_code_that_is_not_in_the_table_is_not_repeated() -> None:
+    """A code is the provider's text as much as the message is. One that
+    looks like a code and is not listed is still not repeated."""
+    for status, body in [
+        (500, {"error": {"code": f"leaked {KEY}"}}),
+        (500, {"error": {"code": "a_plausible_code_nobody_listed"}}),
+        (500, {"error": {"code": "abcd1234"}}),
+        (502, "not an object"),
+        (503, {"error": "not an object either"}),
+    ]:
+        with pytest.raises(EmbeddingFailed) as raised:
+            _embedder(_failing(status, body)).embed(["a"])
+        assert str(raised.value) == f"the embedding provider answered {status} (other)"
+
+
+def test_a_rate_limit_and_exhausted_credit_are_told_apart() -> None:
+    """Both are a 429. `type` is read when `code` is absent."""
+    for body, code in [
+        ({"error": {"message": "slow down", "code": "rate_limit_exceeded"}}, "rate_limit_exceeded"),
+        ({"error": {"message": "pay up", "code": None, "type": "insufficient_quota"}}, "insufficient_quota"),
+    ]:
+        with pytest.raises(EmbeddingFailed) as raised:
+            _embedder(_failing(429, body)).embed(["a"])
+        assert str(raised.value) == f"the embedding provider answered 429 ({code})"
 
 
 def test_a_request_that_never_completes_names_the_kind_of_failure_only() -> None:

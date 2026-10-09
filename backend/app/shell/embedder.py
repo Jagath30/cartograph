@@ -13,8 +13,9 @@ structured line on the `cartograph.embedding` logger.
 
 THE KEY NEVER LEAVES THIS MODULE. It is not logged, not put in an
 exception, and not echoed from the provider's error text -- which is why a
-failure reports the HTTP status and the provider's error code and never
-its message: OpenAI's "incorrect API key" message quotes part of the key.
+failure reports the HTTP status and a code from a fixed table and never
+the provider's own text: OpenAI's "incorrect API key" message quotes part
+of the key.
 
 A MISSING KEY IS LOUD AND LOCAL. `make_embedder` raises EmbeddingKeyMissing
 with a sentence saying what to set and where. Nothing else in the
@@ -174,7 +175,7 @@ class OpenAIEmbedder:
 
         if response.status_code != 200:
             raise EmbeddingFailed(
-                f"the embedding provider answered {response.status_code} ({_error_code(response)})"
+                f"the embedding provider answered {response.status_code} ({provider_error_code(response)})"
             )
         try:
             body = response.json()
@@ -210,11 +211,32 @@ def _words(text: str) -> list[str]:
     return re.findall(r"[a-z0-9]+", text.lower())
 
 
-def _error_code(response: httpx.Response) -> str:
-    """The provider's short error code, never its message."""
+# The only provider error codes ever repeated. Anything not listed is
+# recorded as "other": a code is provider-supplied text like the message,
+# and only a fixed table makes what is repeated ours (CHECKPOINTS, step 7,
+# ruling 1). The table is here so that a 429 for a rate limit can be told
+# from a 429 for exhausted credit.
+KNOWN_ERROR_CODES = frozenset(
+    {
+        "invalid_api_key",
+        "insufficient_quota",
+        "rate_limit_exceeded",
+        "model_not_found",
+        "context_length_exceeded",
+        "invalid_request_error",
+        "unsupported_parameter",
+        "unsupported_value",
+        "server_error",
+    }
+)
+
+
+def provider_error_code(response: httpx.Response) -> str:
+    """The provider's error code if it is one this code already knows,
+    otherwise "other". Never its message."""
     try:
         error = response.json()["error"]
-        code = error.get("code") or error.get("type") or "no code"
+        code = error.get("code") or error.get("type")
     except (ValueError, KeyError, TypeError, AttributeError):
-        return "no code"
-    return code if isinstance(code, str) and re.fullmatch(r"[a-z0-9_]{1,60}", code) else "no code"
+        return "other"
+    return code if isinstance(code, str) and code in KNOWN_ERROR_CODES else "other"
