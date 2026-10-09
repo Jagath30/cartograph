@@ -2546,6 +2546,60 @@ bet, the defaults stand. Alpha I expect to matter less than the cut,
 because the keyword half mostly says which table and so does the
 semantic half.
 
+### The owner's rulings at the fifth review stop — 9 October 2026
+
+Given on run 3 and the grid. Recorded as given, before the close.
+
+1. **THE KEEP-RULE READING IS CONFIRMED. The defaults stand: alpha 0.5,
+   anchor cut 0.5.** The reading was committed before any cell ran, so
+   overturning it now would be choosing a rule with its result in view,
+   which is what T-04 forbids. It is also the plain meaning of the word:
+   a question whose tables and joins were right and are no longer right
+   has been made worse, whether or not it agreed overall. And it serves
+   the project: step 7 gives the model only the retrieved subgraph, so a
+   missing table cannot be recovered, while a surplus table can be
+   ignored. The alternative's numbers stay beside the decision so the
+   trade-off stays visible:
+
+                                         KEPT           NOT KEPT
+                                         alpha 0.5      alpha 0.25
+                                         cut 0.5        cut 0.7
+                                         (runs 3, 16)   (run 13)
+       strict agreement                  0 of 16        2 of 16  (2 and 11)
+       every expected table present      11 of 15       5 of 15
+       expected tables missing, in all   4              15
+       tables beyond the expected        34             10
+       no table beyond the expected      1 of 15        7 of 15
+       arbitrary_choice, questions       6              2
+       many_to_many, questions           9              3
+       multi_anchor, questions           8              3
+       close calls                       21 on 12       11 on 5
+
+2. **THE COMPACT GRID LOG IS ACCEPTED**, with one line in the log stating
+   that every cell's full report is committed under
+   `backend/eval/tuning/` and naming the files. Added to the grid's
+   entry.
+
+3. **THREE FINDINGS, recorded.**
+   - **Hybrid scoring earns its place.** No cell at alpha 0.75 or 1
+     agrees on any question, and alpha 1, embeddings alone, carries the
+     most surplus. The keyword signal is doing real work, as DD-09
+     argued.
+   - **Over-retrieval is structural.** A partner reaches the cut on the
+     same words as its table, so no cut gives both precision and recall
+     (carried forward, item 56).
+   - **Step 6's strict agreement is 0 of 16, and why.** The judge
+     requires the exact tree, the defaults favour recall, and question
+     8's exactly right tree lacks only the warning withdrawn at the
+     fourth stop. The figure to read beside it is 11 of 15 questions with
+     every expected table present.
+
+4. **CLOSE STEP 6 by the ritual:** `show_retrieval` and the smoke check
+   for the stored snapshot, both deferred to the close; smoke from a
+   clean start; the full suite in the container; the runner;
+   CHECKPOINTS.md with the to-dissect list; the tag
+   `checkpoint-06-retrieval`. Nothing is pushed.
+
 ### Tuning log
 
 Every run of `python -m app.show_eval --step6`, with what changed, the
@@ -5075,6 +5129,13 @@ belongs to each alpha. Each cell's full report is committed as
 at the defaults, reproduces run 3 line for line, the timing apart. No
 cell embedded anything: $0 in all. No cell declined a question, and in no
 cell did the subgraph bound drop an anchor, so the bound stays at 10.
+**Every cell's full report is committed under `backend/eval/tuning/`, 25
+files named `step6_alpha<A>_cut<C>.txt` for A in 0.0, 0.25, 0.5, 0.75,
+1.0 and C in 0.3, 0.4, 0.5, 0.6, 0.7: `step6_alpha0.0_cut0.3.txt`
+through `step6_alpha1.0_cut0.7.txt`.** Run n is file number n - 3 in
+the order alpha first, then cut; run 16 is `step6_alpha0.5_cut0.5.txt`
+and run 13 is `step6_alpha0.25_cut0.7.txt`. The two tables below are the
+log's compact form of them, accepted by the owner at the fifth stop.
 The reading of the keep-rule was committed before any cell was run
 (`72d0eb6`) and is applied here as written.
 
