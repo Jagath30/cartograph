@@ -5,6 +5,7 @@ arrive as environment variables, and the two are separate values so that
 no component can accidentally hold the wrong one (DD-02, rule 2).
 """
 
+from dataclasses import dataclass
 from functools import lru_cache
 
 from pydantic import SecretStr
@@ -33,6 +34,18 @@ class Settings(BaseSettings):
     # call (NFR-14). Confirmed by the owner, 8 October 2026.
     embedding_price_per_million: float = 0.02
 
+    # The model that writes SQL (IR-13). Chosen at step 7; the reasons are
+    # in CHECKPOINTS.md. No dated snapshot of it exists, so every call also
+    # records the model ID the provider says it used.
+    sql_model: str = "gpt-6-luna"
+    # A temperature is accepted only at this effort (the provider's GPT-6
+    # guide), and Design section 12's method is temperature 0.
+    sql_model_reasoning_effort: str = "none"
+    sql_model_temperature: float = 0.0
+    # Every call sets a maximum output length. A reply cut off by it is
+    # recorded as that and is not retried.
+    sql_model_max_output_tokens: int = 800
+
     # Comma-separated rather than a list: pydantic-settings expects JSON for
     # complex types, and a plain string with an explicit split is one less
     # thing to get wrong in a deployment environment variable.
@@ -40,6 +53,25 @@ class Settings(BaseSettings):
 
     def allowed_origins(self) -> list[str]:
         return [origin.strip() for origin in self.frontend_origins.split(",") if origin.strip()]
+
+
+@dataclass(frozen=True)
+class ModelPrice:
+    """US dollars per million tokens, and the day they were read."""
+
+    input: float
+    cached_input: float
+    output: float
+    as_of: str
+
+
+# The price table the cost logged with every model call is worked from
+# (NFR-14). Read from the provider's pricing page on the date given. A
+# model that is not here cannot be called: a cost is never made up.
+MODEL_PRICES: dict[str, ModelPrice] = {
+    "gpt-6-luna": ModelPrice(input=0.10, cached_input=0.01, output=0.50, as_of="2026-10-09"),
+    "gpt-5.6-luna": ModelPrice(input=0.20, cached_input=0.02, output=1.20, as_of="2026-10-09"),
+}
 
 
 @lru_cache
