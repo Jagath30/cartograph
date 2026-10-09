@@ -677,19 +677,15 @@ No tag yet. This section is the step's working record: where it stands,
 what was decided before any code, and every tuning run. It becomes
 `checkpoint-06-retrieval` when the step closes.
 
-**Where the work stands.** Pieces 0 to 9 are committed. The third
-review stop's ruling 1 is carried out: the rival pairs of run 1 are
-listed, joined or not; tables joined by a foreign key are partners and
-never rivals; the predictions were committed before run 2; run 2 is in
-the tuning log in full. **RULING 2 IS NOT CARRIED OUT: ITS TRIPWIRE
-FIRED.** Run 2 shows two mechanisms contradicting their own definitions:
-a table set aside for a winner the cap then cuts, so that the question
-keeps neither and nothing says so (question 9 loses `store_sales` this
-way); and `anchor_ambiguity` still on 12 of 16 questions. Run 2: 1
-agrees, 15 disagree, as run 1, with more surplus tables. NO GRID RUN HAS
-BEEN MADE AND NO PARAMETER HAS MOVED. STOPPED FOR THE OWNER, whose
-decisions are listed at the end of run 2's entry. THE STEP 6 JUDGEMENT IS
-FROZEN like the step 5 one.
+**Where the work stands.** Pieces 0 to 9 are committed. Run 2 fired the
+tripwire of the third stop's ruling 2 and the owner ruled at a FOURTH
+REVIEW STOP: one last correction round (a table is set aside only for a
+winner still an anchor after the cap; `anchor_ambiguity` becomes
+information and is no longer raised as a warning), then run 3, then the
+grid, then stop before the close. After this round a defect of mechanism
+is carried forward and does not reopen the step. THE RULINGS ARE RECORDED
+AND NOT YET CARRIED OUT at the commit carrying this sentence. THE STEP 6
+JUDGEMENT IS FROZEN like the step 5 one.
 
     0  this record                                  done
     1  the step 6 judgement                         done; reviewed; frozen
@@ -701,7 +697,8 @@ FROZEN like the step 5 one.
     7  embedding adapter                            done
     8  SemanticIndex                                done
     9  runner, step 6 baseline at Design defaults   done; OWNER REVIEW
-    10 rival correction, run 2, then tuning runs    correction and run 2 done; TRIPWIRE FIRED; no tuning run; OWNER REVIEW
+    10 rival correction, run 2, then tuning runs    correction and run 2 done; tripwire fired; fourth stop ruled
+    10b last correction round, run 3, the grid     next; OWNER REVIEW before the close
     11 close: smoke, suite, runner, tag
 
 The pure core (2 to 4) is written before anything that can produce a real
@@ -2358,6 +2355,61 @@ stop:
    correction; run 1 could not show it because the report prints a pair
    only when the winner is an anchor. The correction makes it likelier,
    by returning tables that push winners over the cap.
+
+### The owner's rulings at the fourth review stop — 9 October 2026
+
+Given on run 2 and its tripwire. Recorded as given, before anything was
+done about them.
+
+**THE DECISION: ONE LAST CORRECTION ROUND, THEN TUNE AND CLOSE.** Step 6
+gets this one correction round and no other. After it, the grid runs
+under the protocol already fixed, and step 6 closes with whatever the
+protocol selects. **Any further defect of mechanism found after this
+point is recorded as carried forward, with its evidence, and does not
+reopen the step**; a crash or a failing test is fixed as always. Reasons:
+the Design commits in advance to reporting the evaluation whatever it
+says (section 12); step 10 measures generated SQL rather than retrieved
+tables; eight build steps remain. A retrieval stage that is honest about
+its limits serves the project better than one still being corrected.
+
+**RULING 1: THE ORPHANED SET-ASIDE.** Approved as proposed. A table is
+set aside only for a winner that is still an anchor after the cap. Test
+it on fixtures, including that a table set aside for a winner the cap
+then cuts is not lost. Mutations as before.
+
+**RULING 2: ANCHOR AMBIGUITY BECOMES INFORMATION, NOT A WARNING. Ruling c
+is revised.** Run 2 shows that "not joined" is necessary but not
+sufficient for two tables to be alternatives, and that a warning firing
+on three questions in four tells the reader nothing (DD-21). A correct
+definition of alternatives, for example by structural similarity, is real
+design work and is not done in a hurry. So:
+
+- The close calls the Retriever makes are recorded in the result with
+  their scores and rivals, as FR-41 asks, and are shown quietly.
+- No `anchor_ambiguity` warning is raised at step 6. The loud warning
+  stays where the signed Design put it: arbitrary path selection (DD-21,
+  FR-45).
+- Question 8 will now disagree, and questions 9 and 13 continue to. Their
+  expectations stand, unchanged. **The `anchor_ambiguity` category was
+  introduced by the evaluation set at step 5, not by the signed Design.**
+- A structural definition of alternatives is carried forward (item 55),
+  with run 2's 21 warnings and the rival-pair list as its evidence.
+
+**RULING 3: OVER-RETRIEVAL GETS NO RULING OF ITS OWN.** The partner rule
+is correct: partners are not alternatives. Whether a partner becomes an
+anchor is the anchor cut's job, and the cut is already in the grid. That
+is what the grid is for.
+
+**ORDER.**
+1. Rulings 1 and 2, tested on fixtures first, with mutations.
+2. Predictions for run 3, committed before it.
+3. Run 3, "baseline after the fourth stop", at the Design's defaults.
+4. The grid (alpha and anchor cut), every run logged, under the
+   keep-rule.
+5. Stop and report: the selected settings, the full log, and step 6's
+   final numbers (strict agreement, questions with every expected table
+   present, surplus tables, warnings raised). The owner reviews them
+   before the close.
 
 ### Tuning log
 
@@ -5182,3 +5234,21 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     stays frozen. Under T-04 and DR-16 the only remedy is to delete a
     badly posed question and state the deletion; that decision is the
     owner's and is deferred to step 10.
+55. **A structural definition of "alternatives"** (fourth review stop,
+    step 6). Ruling c wanted a warning when a word of the question could
+    as well have meant another table. Two definitions were tried: any two
+    tables within the margin for a term (run 1: the warning on 15 of 16
+    questions, 46 warnings, and expected tables set aside for their own
+    partners), and any two such tables not directly joined (run 2: 12 of
+    16, 21 warnings). Of run 2's 21, 11 were between sibling channels,
+    sales against sales or returns against returns, and 10 between tables
+    nobody would call alternatives for one role, such as `inventory`
+    against `store` for "stock". "Not joined" is necessary and not
+    sufficient. The evidence is run 2's entry in the tuning log and the
+    rival-pair list of run 1 above it. A candidate, untested: two tables
+    are alternatives when they are joined to the same tables, which is
+    true of the three sales tables and false of `inventory` and `store`.
+    Until this is designed, `anchor_ambiguity` is information in the
+    result and not a warning, and questions 8, 9 and 13, which expect it,
+    disagree. The category was introduced by the evaluation set at step
+    5, not by the signed Design.
