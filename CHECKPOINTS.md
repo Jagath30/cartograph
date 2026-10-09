@@ -7270,6 +7270,63 @@ different causes.
   about a choice that did not reach the answer interrupts for nothing.
   Carried forward to steps 8 and 9 (item 64).
 
+### The held-out evaluation set, created and frozen — 9 October 2026
+
+After the close of step 7 and before any retrieval change. HEAD was
+`7a3b9cf`, clean and level with `origin/main`.
+
+**What it is.** `backend/eval/heldout.yaml`: twelve questions, H1 to H12,
+each with the tables and the joins a correct answer uses. H9 cannot be
+answered from the warehouse and is expected to be declined; H5 needs one
+table and no join; H4 joins a return to its sale on a key of two columns.
+The set judges tables, joins and declines only. No question carries a
+warning, and none is expected.
+
+**Provenance.** Drafted by Claude in a Cowork session on 9 October 2026,
+after step 7 closed and before any retrieval change, from the schema alone
+with no retrieval output consulted. Approved by Jagath Manjunath. Reported
+beside the original set at step 10.
+
+**THE RULE.** `heldout.yaml` is never run, embedded, sent to a model or
+used to choose any setting before step 10. Retrieval and prompt work may
+not open it. Its first run is step 10.
+
+**The freeze.** sha256
+`14e1441e5c9717c519c00410ad27c1bf9b78caf07184141064dffc2377f806fe`, pinned
+in `backend/tests/core/test_heldout.py`. The file was committed alone in
+`2db2709`, before its loader or any test existed, as `b723ddd` committed
+`questions.yaml`. An expectation is never adjusted to make a check pass;
+the expectations are the owner's to correct.
+
+**How it was written.** The building session copied the owner's twelve
+into the representation of `questions.yaml` and qualified each column with
+its table. TPC-DS prefixes make every column name unique (checked: no
+column name occurs in two tables), so that chose nothing. Two differences
+from `questions.yaml`, both decided by the owner when the session stopped
+to ask: a question holds only `id`, `question`, `tables` and `joins`, with
+no warning, check or step; and since `questions.yaml` marks a decline only
+by its warning, H9 carries `decline: true`.
+
+**Checked before the commit, and again by the tests.** Against the DDL
+and the generated overlay, with no database: every table exists, every
+join column exists, and every join is one of the 107 edges, both column
+pairs of H4's key included. The generated warehouse declares no foreign
+key of its own (FR-43), so the overlay is the whole of the graph's edges
+and nothing was left for a database to confirm. All twelve passed; no
+expectation was changed. No retrieval run, embedding call or model call
+touched any of the twelve questions in this session.
+
+**The loader** is its own module, `app/core/heldout.py`; `eval_set.py`,
+`eval_step6.py` and `questions.yaml` are untouched. Nothing in the
+application imports it before step 10.
+
+**KNOWN LIMIT, to report at step 10.** Two summaries joined on a
+dimension attribute (two channel CTEs joined on `i_category`, say) read as
+diverged, because the attribute is in no path class. It is symmetric
+across modes. Question 6 of the original set is exposed to it; the
+held-out set deliberately has no two-channel comparison. Carried forward
+as item 66.
+
 ### To dissect, step 7
 
 - why the validator and the checker are committed before the first model
@@ -7647,3 +7704,10 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     declared preference per pair would not reach it: the tie is between
     two places to attach, which a preference cannot decide (step 6,
     piece 4).
+66. **Two summaries joined on a dimension attribute read as diverged**
+    (found when the held-out set was frozen, for step 10). Two channel
+    CTEs joined on `i_category`, say: the attribute is in no path class,
+    so the comparison of joins reads the SQL as diverged from the joins
+    selected. It is symmetric across modes. Question 6 of the original
+    set is exposed to it; the held-out set deliberately has no
+    two-channel comparison. Report it at step 10.
