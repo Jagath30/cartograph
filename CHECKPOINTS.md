@@ -6538,6 +6538,170 @@ it.
 - `docker compose down` against `down -v`: which one a clean start means
   here, and what the other would have destroyed
 
+### The working record of step 7
+
+Opened 9 October 2026 as the step began, and kept as written: what was
+ruled before any code, each review stop, every paid call.
+
+**Where the work stands.**
+
+    0  the placeholder key renamed, alone             done (e3630d9)
+    1  this record                                    done
+    2  sqlglot; the model adapter and its fake; probe
+    3  SqlValidator                                   before any model SQL
+    4  ConformanceCheck, extraction and comparison    before any model SQL
+    5  PromptBuilder; the development questions       STOP 2
+    6  QueryExecutor, orchestrator, app.ask, dev runs STOP 3
+    7  smoke end to end; the close
+
+**Three rules this step adds, set by the owner.**
+
+1. **The instrument comes before the thing it measures.** ConformanceCheck
+   is a validation stage and step 10's evaluation instrument (DD-13,
+   DD-20). It and SqlValidator are written, tested on hand-written SQL and
+   committed before any model-generated SQL exists.
+2. **The evaluation set stays out of development.** No evaluation
+   question and no paraphrase of one goes to the model in this step, and
+   the prompt is never adjusted with an evaluation question's output in
+   view. Development uses eight separate questions, committed before the
+   first is sent and used for nothing else.
+3. **The SQL that executes is byte for byte the SQL that was validated
+   and checked.** Nothing rewrites it in between, not even to add a LIMIT.
+
+**Cost rules.** Every model call logs tokens and cost (NFR-14) from a
+dated price table in config, and sets a maximum output length. Retries are
+capped at two per question (NFR-15). Paid tests need `RUN_PAID_TESTS=1`;
+CI never calls a model. Step 7's model spend stays under $1; a ledger
+keeps the running total and the development runner refuses past $0.50.
+
+**Checked before the plan.** HEAD `88d31dc`, tagged, clean, level with
+origin. Smoke: 30 passed, 0 failed, 2 skipped. The warehouse role on the
+live database carries `statement_timeout=30s` and
+`default_transaction_read_only=on` (NFR-11, read from `pg_roles`).
+
+**The model, as confirmed on developers.openai.com on 9 October 2026.**
+`gpt-6-luna`: $0.10 per million input tokens, $0.01 cached input, $0.50
+output; structured outputs; Chat Completions and Responses; reasoning
+effort `none` offered; no dated snapshot and no shutdown date.
+`gpt-5.6-luna`: $0.20 and $1.20. `gpt-5-mini-2025-08-07` shuts down 11
+December 2026. The GPT-6 guide: "When reasoning effort is not `none`,
+remove `temperature`, `top_p`, and `top_logprobs`"; Sol and Luna support
+`none`. **Not on any page:** a sentence saying Luna accepts a temperature
+at `none`, what happens to one sent at another effort, or whether this
+account may use the model. The probe answers those. Chosen: `gpt-6-luna`,
+effort `none`, temperature 0, through Chat Completions. With no dated
+snapshot, every attempt records the model ID the API returned beside the
+one asked for.
+
+### The owner's rulings at the first review stop of step 7 — 9 October 2026
+
+Given on the plan, before any code. The plan is approved with these.
+
+1. **Provider error bodies, both adapters.** Nothing from a provider's
+   error body is repeated, logged, stored or put in a trace, with one
+   exception: the error code, and only when it is in a fixed table of
+   known codes (`invalid_api_key`, `insufficient_quota`,
+   `rate_limit_exceeded`, `model_not_found` and the like). Anything else
+   is recorded as `other`. OpenAI answers 429 for a rate limit and for
+   exhausted credit alike, and the two must be told apart without
+   repeating anything not listed. The embedding adapter of step 6 is
+   brought to this rule in its own commit. *What it did before:* it never
+   repeated a message or a body, and it repeated the provider's `code`
+   whenever that looked like a code (`[a-z0-9_]{1,60}`), which is
+   provider-supplied text and not a fixed one.
+2. **AMENDMENT TO DD-14, owed to the Design.** The model's reply has two
+   fields, `status` (`sql` or `not_answerable`) and `sql`, and no reason
+   field: the model still explains nothing. A reply that contradicts
+   itself is malformed. A question with no anchors ends as
+   `not_answerable` without a model call, as a question whose anchors
+   cannot be connected already did. **FR-42 as written wants detection
+   before generation; the pre-generation floor was withdrawn at step 6, so
+   at step 7 the main detection happens inside generation: one model call
+   is spent and nothing executes.** *A limit, recorded:* the model judges
+   the tables it was shown and not the warehouse, and at the step 6
+   defaults four of fifteen evaluation questions lack an expected table.
+   The decline therefore reads "cannot be answered from the tables
+   retrieved", never "from this schema".
+3. **The prompt holds the full step 6 subgraph**: the tree's tables, then
+   tables on tied alternatives within the bound. The general rules (one
+   SELECT, qualified columns, JSON only) are written once and are used
+   unchanged in both evaluation modes at step 10; anything about the join
+   section lives with the join section.
+4. **What ends a question and what is retried.** The read-only class is
+   terminal: more than one statement, a root that is not a SELECT, DML or
+   DDL anywhere, SELECT INTO, COPY, FOR UPDATE or FOR SHARE. Functions
+   have two tiers: a short named list of side-effect or time-wasting
+   functions (`pg_sleep`, `set_config`, `pg_terminate_backend`, file and
+   large-object functions, `dblink`, advisory locks, `nextval`, `setval`
+   and the like) is terminal like a write; a function merely not on the
+   allowlist is retryable, with a message naming it. References are
+   checked against the whole snapshot (FR-20), not the subgraph.
+5. **CTEs: extraction is extended into them** (option 2), falling back
+   without asking to flat-only extraction with no prompt instruction and a
+   reported denominator (option 3) if it is not solidly tested by stop 2.
+   Asking the model for flat SQL (option 1) is rejected: a CTE per fact
+   table is the correct way to compare two channels, and the instruction
+   would push the model into a fan-out to suit the checker. Set
+   operations stay `not_checked`. The extractor is also run over the 99
+   TPC-DS benchmark queries before stop 2: never committed, counted by
+   `not_checked` reason with parse failures apart, and read as a stress
+   test, not an estimate.
+6. **CLARIFICATION OF DD-13, owed to the Design: comparison by meaning.**
+   The owner revised his own earlier ruling that `ss_item_sk = cs_item_sk`
+   is a join outside the path. Joining two facts to `item`, and joining
+   them to each other on the item key, are one join; Postgres treats them
+   as one equivalence class.
+   - Equivalence classes are built from the SQL's inner-join and
+     top-level WHERE equalities, and separately from the path's edges.
+   - A path edge is present when each of its column pairs falls within
+     one SQL class.
+   - A SQL equality is foreign when the path's classes do not imply it.
+   - An outer join's condition takes no part in transitivity and must
+     match a path pair directly.
+   - A composite edge only partly present is a wrong join: diverged.
+   - A table in FROM with no join condition is a cross join: diverged.
+   - **Precedence: diverged first**, whenever a confidently extracted
+     join is foreign, even if another part is `not_checked`; then
+     `not_checked`; then incomplete; then conforms. At step 10
+     `not_checked` leaves the denominator, so putting it first would drop
+     known-wrong answers and not count them. Findings list everything.
+7. **AMENDMENT TO DD-15, owed to the Design: a divergence never triggers
+   a retry.** The SQL executes and the divergence is flagged (DD-13,
+   correction 1). DD-15 lists divergence as retryable; retrying coaches
+   compliance, by DD-15's own warning, and at step 10 would raise path
+   correctness in retrieval mode alone. Neither does `incomplete` or
+   `not_checked`. Retried, at most twice a question over all kinds: a
+   syntax error, an unknown reference, a function not on the allowlist, a
+   malformed reply. An execution error is not retried. **A reply cut off
+   by the output cap is its own recorded cause and is not retried**: at
+   temperature 0 it would be cut off the same way.
+8. **Execution.** The warehouse connection only; the role's timeout is
+   read at connect and a zero refuses to run; rows are read to a cap plus
+   one with a truncated flag, by a stream that must stop the server
+   sending, measured on an unaggregated `store_sales` query.
+9. **Smoke's second check has Postgres as its witness**: `EXPLAIN (FORMAT
+   JSON)` without ANALYZE on the executed string, its Hash Cond, Merge
+   Cond, Join Filter and Index Cond read as equivalence classes and
+   compared with the trace's. It witnesses the smoke question only and is
+   never part of the evaluation. If it disagrees because the planner
+   rewrote a join and not because of a bug, smoke falls back to the hash
+   match alone and the reason is recorded.
+10. **Development questions.** Eight; none on an evaluation question's
+    topic; at least two with two or more joins, at most one with no
+    join, one the schema cannot answer. At stop 3 the report says how
+    often the model named a table that was not in its prompt.
+
+**Owed to the Design, in one place.** DD-13: comparison by equivalence
+class, the outer-join and composite exceptions, the unjoined table, and
+the precedence (ruling 6). DD-14: the two-field reply (ruling 2). DD-15:
+no retry on divergence, and none on a cut-off reply (ruling 7). DD-12's
+amendment from step 6 is still owed as well.
+
+### To dissect, step 7
+
+- why the validator and the checker are committed before the first model
+  call, and what the history proves by it
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
