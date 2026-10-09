@@ -143,6 +143,9 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
     print(f"{'':<12}from the schema alone, before any question was embedded. Not tuned.")
     print(f"{'floor':<12}WITHDRAWN by the owner's ruling after run 0 (it declined all sixteen). Nothing replaces it:")
     print(f"{'':<12}a question is declined only when its anchors cannot be connected (DD-10).")
+    print(f"{'rivals':<12}CORRECTED by the owner's ruling after run 1: two tables joined by a foreign key, either")
+    print(f"{'':<12}way round, are partners and are never set aside for one another. A \"partners\" line lists the")
+    print(f"{'':<12}tables that reached the cut, that no term nominates, and that this rule alone kept.")
     print(f"{'snapshot':<12}{stored.id}, sha256 {stored.hash}; embedded with {stored.embedding_model}")
 
     statuses: list[str] = []
@@ -210,6 +213,16 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
         _line("anchors", f"{len(retrieval.anchors)}: "
                          + (", ".join(f"{a} {retrieval.score_of(a):.3f}" for a in retrieval.anchors) or "none"))  # fmt: skip
         _line("set aside", aside or "none")
+        above_cut = {*retrieval.anchors, *bound.excluded_by_cap, *bound.set_aside_as_rivals}
+        nominated = {term.chosen_table for term in retrieval.terms}
+        kept = "; ".join(
+            f"{partner.rival} (joined to {partner.chosen}, which \"{partner.term}\" chose: "
+            f"{partner.chosen_score:.3f} against {partner.rival_score:.3f})"
+            for term in retrieval.terms
+            for partner in term.partners
+            if partner.chosen in above_cut and partner.rival in above_cut and partner.rival not in nominated
+        )
+        _line("partners", kept or "none")
         _line("cap cut", ", ".join(bound.excluded_by_cap) or "none")
 
         tree = located.tree

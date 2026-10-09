@@ -368,6 +368,103 @@ def test_the_cap_applies_after_rivals_are_set_aside() -> None:
 
 
 # --------------------------------------------------------------------------
+# Partners (the correction to ruling c at the third review stop)
+# --------------------------------------------------------------------------
+
+# Which tables a foreign key joins directly, either way round. In the
+# miniature a return refers to its sale, and a sale to its shop.
+JOINED = {"sales": frozenset({"returns", "shop"}), "returns": frozenset({"sales"}), "shop": frozenset({"sales"})}
+# The same schema without the key from a return to its sale.
+APART = {"sales": frozenset({"shop"}), "returns": frozenset(), "shop": frozenset({"sales"})}
+
+
+def test_two_tables_joined_by_a_foreign_key_are_partners_and_never_rivals() -> None:
+    """ "amount" is best matched in sales and almost as well in returns.
+    One refers to the other: an answer about one routinely needs both, so
+    they are not alternatives for one role. Neither is set aside."""
+    settings = _settings(alpha=1.0, anchor_cut=0.5)
+    retrieval = retrieve("q", QUESTION, (AMOUNT, REGION), settings, partners=JOINED)
+
+    assert retrieval.rivals == ()
+    assert retrieval.anchors == ("sales", "shop", "returns")
+    assert retrieval.anchor_bound.set_aside_as_rivals == ()
+
+
+def test_a_partner_within_the_margin_is_recorded_as_one() -> None:
+    """Nothing is dropped silently: the term still says returns was within
+    the margin, and that it was left alone because the two are joined."""
+    (term,) = retrieve("q", QUESTION, (AMOUNT,), DEFAULTS, partners=JOINED).terms
+    assert term.rivals == ()
+    (partner,) = term.partners
+    assert (partner.term, partner.chosen, partner.rival) == ("amount", "sales", "returns")
+    assert partner.rival_score == pytest.approx(0.9833, abs=1e-4)
+
+
+def test_two_tables_not_joined_and_close_in_score_are_still_rivals() -> None:
+    """The same scores, the same margin, and no key between the two: one is
+    chosen and the other set aside, exactly as before the correction."""
+    settings = _settings(alpha=1.0, anchor_cut=0.5)
+    retrieval = retrieve("q", QUESTION, (AMOUNT, REGION), settings, partners=APART)
+
+    assert [(rival.chosen, rival.rival) for rival in retrieval.rivals] == [("sales", "returns")]
+    assert retrieval.terms[0].partners == ()
+    assert retrieval.anchors == ("sales", "shop")
+    assert retrieval.anchor_bound.set_aside_as_rivals == ("returns",)
+
+
+def test_the_key_may_point_either_way() -> None:
+    """A partner is a partner whichever of the two holds the foreign key,
+    and whichever of the two the term chose."""
+    reversed_scores = (
+        Term("amount", "word"),
+        _scores(("sales.amount", 0.68, 1.0), ("returns.amount", 0.70, 1.0), ("shop.region", 0.10, 0.0)),
+    )
+    for term in (AMOUNT, reversed_scores):
+        for joined in ({"sales": frozenset({"returns"})}, {"returns": frozenset({"sales"})}):
+            (result,) = retrieve("q", QUESTION, (term,), DEFAULTS, partners=joined).terms
+            assert result.rivals == ()
+            assert len(result.partners) == 1
+
+
+def test_one_term_can_have_a_partner_and_a_rival() -> None:
+    """Three tables within the margin of one another for one term. The one
+    joined to the choice is kept; the one that is not is still set aside."""
+    term = (
+        Term("amount", "word"),
+        _scores(("sales.amount", 1.0, 0.0), ("returns.amount", 0.95, 0.0), ("shop.region", 0.9, 0.0), ("shop", 0.0, 0.0)),
+    )
+    joined = {"sales": frozenset({"shop"}), "shop": frozenset({"sales"})}
+    retrieval = retrieve("q", QUESTION, (term,), _settings(alpha=1.0, anchor_cut=0.5), partners=joined)
+
+    (result,) = retrieval.terms
+    assert [rival.rival for rival in result.rivals] == ["returns"]
+    assert [partner.rival for partner in result.partners] == ["shop"]
+    assert retrieval.anchors == ("sales", "shop")
+    assert retrieval.anchor_bound.set_aside_as_rivals == ("returns",)
+
+
+def test_a_partner_of_one_terms_choice_is_still_set_aside_as_the_rival_of_anothers() -> None:
+    """Being joined to one table protects a table from that table only.
+    returns is joined to sales, which "amount" chose, and is not joined to
+    shop, which "place" chose with returns within the margin. Nothing
+    nominates returns, so it is set aside, for shop."""
+    place = (
+        Term("place", "word"),
+        _scores(("sales.amount", 0.0, 0.0), ("returns.amount", 0.95, 0.0), ("shop.region", 1.0, 0.0)),
+    )
+    retrieval = retrieve("q", QUESTION, (AMOUNT, place), _settings(alpha=1.0, anchor_cut=0.5), partners=JOINED)
+
+    assert [(rival.chosen, rival.rival) for rival in retrieval.rivals] == [("shop", "returns")]
+    assert retrieval.anchor_bound.set_aside_as_rivals == ("returns",)
+
+
+def test_handed_no_partners_no_two_tables_are_joined() -> None:
+    assert retrieve("q", QUESTION, (AMOUNT,), DEFAULTS).terms == retrieve(
+        "q", QUESTION, (AMOUNT,), DEFAULTS, partners={}
+    ).terms
+
+
+# --------------------------------------------------------------------------
 # What the PathFinder will be handed
 # --------------------------------------------------------------------------
 

@@ -37,13 +37,26 @@ RIVALS (ruling c, FR-41). Every term nominates one table: the one holding
 its best-scoring element, by the term's own combined score, equal scores
 going to the name that sorts first. No threshold is involved: a term
 always has a best element, and that element's table is its nominee. Any
-other table within the margin of the nominee, for that term, is a rival:
-the term could as well have meant it. A table that is in contention only
-as a rival -- no term nominates it -- is not made an anchor beside the
-table that beat it, and the bound records that too. Whether the reader
-must be warned is not decided here: it depends on whether the rival ends
-up in the join tree anyway, and the tree is not this component's (DD-01).
-Every rival is handed on.
+other table within the margin of the nominee, for that term, AND NOT
+JOINED TO IT, is a rival: the term could as well have meant it. A table
+that is in contention only as a rival -- no term nominates it -- is not
+made an anchor beside the table that beat it, and the bound records that
+too. Whether the reader must be warned is not decided here: it depends on
+whether the rival ends up in the join tree anyway, and the tree is not
+this component's (DD-01). Every rival is handed on.
+
+PARTNERS, NEVER RIVALS (the owner's correction at the third review stop).
+Two tables directly joined by a foreign key, in either direction, are
+partners. One refers to the other, so an answer about one routinely needs
+both: they are not alternatives for the same role, and neither is ever set
+aside for the other. As first built, any two tables close in score for a
+term were rivals; run 1 set aside a sale for its own store, and the
+ambiguity warning fired on 15 questions of 16. The rule is structural: it
+uses nothing about the kind of table and nothing from any question. This
+component has no graph (DD-01), so which tables are joined is handed in,
+as plain data, like the scores. A partner within the margin is recorded on
+the term beside its rivals; it is protected from that term's choice only,
+and may still be the rival of a table it is not joined to.
 
 NO DECLINE HAPPENS HERE. As first built, a question whose best raw
 similarity was at or below a floor was declined here, and a term at or
@@ -175,7 +188,11 @@ class TermResult:
     chosen_element: str
     # The term's best elements, best first: (element, combined score).
     considered: tuple[tuple[str, float], ...]
+    # Tables within the margin of the choice and not joined to it.
     rivals: tuple[Rival, ...]
+    # Tables within the margin of the choice and joined to it by a foreign
+    # key: never rivals. Recorded so that nothing is left out silently.
+    partners: tuple[Rival, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -283,16 +300,20 @@ def retrieve(
     scores: tuple[RawScore, ...],
     terms: tuple[tuple[Term, tuple[RawScore, ...]], ...],
     settings: Settings,
+    partners: dict[str, frozenset[str]] | None = None,
 ) -> Retrieval:
     """`scores` is every element scored against the whole question; `terms`
-    is each term with every element scored against it alone."""
+    is each term with every element scored against it alone; `partners` is
+    each table with the tables a foreign key joins it to directly. Handed
+    none, no two tables are joined."""
     if not scores:
         raise ValueError("nothing was scored: the schema has no elements")
+    partners = partners or {}
 
     candidates = rank(scores, settings.alpha)
     tables = table_scores(candidates)
     best_raw = max(score.semantic for score in scores)
-    term_results = tuple(_term(term, term_scores, settings) for term, term_scores in terms)
+    term_results = tuple(_term(term, term_scores, settings, partners) for term, term_scores in terms)
 
     above_cut = [entry.table for entry in tables if entry.score >= settings.anchor_cut]
 
@@ -323,20 +344,26 @@ def retrieve(
     )  # fmt: skip
 
 
-def _term(term: Term, scores: tuple[RawScore, ...], settings: Settings) -> TermResult:
+def _term(
+    term: Term, scores: tuple[RawScore, ...], settings: Settings, partners: dict[str, frozenset[str]]
+) -> TermResult:
     candidates = rank(scores, settings.alpha)
     tables = table_scores(candidates)
     chosen = tables[0]
-    rivals = tuple(
-        Rival(term.text, chosen.table, chosen.best, chosen.score, other.table, other.best, other.score)
-        for other in tables[1:]
-        if chosen.score - other.score < settings.margin
-    )
+    within_margin = [other for other in tables[1:] if chosen.score - other.score < settings.margin]
+
+    def joined(other: TableScore) -> bool:
+        return other.table in partners.get(chosen.table, ()) or chosen.table in partners.get(other.table, ())
+
+    def record(other: TableScore) -> Rival:
+        return Rival(term.text, chosen.table, chosen.best, chosen.score, other.table, other.best, other.score)
+
     return TermResult(
         term,
         best_raw=max(score.semantic for score in scores),
         chosen_table=chosen.table,
         chosen_element=chosen.best,
         considered=tuple((candidate.element, candidate.combined) for candidate in candidates[:CONSIDERED]),
-        rivals=rivals,
+        rivals=tuple(record(other) for other in within_margin if not joined(other)),
+        partners=tuple(record(other) for other in within_margin if joined(other)),
     )

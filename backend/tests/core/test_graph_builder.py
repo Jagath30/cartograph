@@ -17,6 +17,7 @@ from app.core.graph_builder import (
     build_graph,
     column_nodes,
     foreign_key_edges,
+    joined_tables,
     table_nodes,
 )
 from app.core.snapshot import Column, ForeignKey, PrimaryKey, Table
@@ -190,6 +191,31 @@ def test_a_duplicated_table_or_column_or_an_orphan_is_refused(small_snapshot) ->
     for broken in (twice_table, twice_column, orphan, bad_key):
         with pytest.raises(ValueError):
             build_graph(broken)
+
+
+# --------------------------------------------------------------------------
+# Which tables a foreign key joins directly
+# --------------------------------------------------------------------------
+
+
+def test_joined_tables_are_those_with_a_foreign_key_between_them_either_way(small_snapshot) -> None:
+    joined = joined_tables(build_graph(small_snapshot))
+
+    assert joined == {
+        "catalog_sales": {"customer_address"},
+        "customer": {"customer_address", "store_sales"},
+        "customer_address": {"catalog_sales", "customer", "store_sales"},
+        "store": {"store_sales"},
+        "store_sales": {"customer", "customer_address", "store"},
+    }
+    # Two joins apart is not joined: a store and an address meet only
+    # through a sale.
+    assert "customer_address" not in joined["store"]
+
+
+def test_a_table_with_no_foreign_key_is_joined_to_nothing(small_snapshot) -> None:
+    alone = replace(small_snapshot, tables=small_snapshot.tables + (Table("reason"),))
+    assert joined_tables(build_graph(alone))["reason"] == frozenset()
 
 
 # --------------------------------------------------------------------------

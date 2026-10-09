@@ -118,3 +118,16 @@ def foreign_key_edges(graph: nx.DiGraph) -> list[tuple[str, str, dict]]:
     """Every foreign key edge as (referencing column, referenced column,
     attributes). The has_column edges are left out."""
     return [(start, end, data) for start, end, data in graph.edges(data=True) if data["kind"] == FOREIGN_KEY]
+
+
+def joined_tables(graph: nx.DiGraph) -> dict[str, frozenset[str]]:
+    """table -> the tables a foreign key joins it to directly, whichever of
+    the two holds the key. Every table is present; one with no foreign key
+    maps to nothing."""
+    joined: dict[str, set[str]] = {table: set() for table in table_nodes(graph)}
+    for start, end, _ in foreign_key_edges(graph):
+        from_table, to_table = graph.nodes[start]["table"], graph.nodes[end]["table"]
+        if from_table != to_table:
+            joined[from_table].add(to_table)
+            joined[to_table].add(from_table)
+    return {table: frozenset(others) for table, others in joined.items()}

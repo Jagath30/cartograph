@@ -7,7 +7,9 @@ here so that the order is written once and tested, and so that whatever
 calls it -- a command today, the orchestrator at step 7 -- cannot run the
 three slightly differently.
 
-  1. retrieve     scores -> anchors and rivals
+  1. retrieve     scores -> anchors and rivals. It is told which tables
+                  the graph joins directly: those are partners, and are
+                  never set aside for one another
   2. build_tree   anchors -> one tree, or a decline (anchors that cannot
                   be connected)
   3. explain_tree the tree -> sentences and warnings
@@ -25,6 +27,7 @@ from dataclasses import dataclass
 import networkx as nx
 
 from app.core.explainer import TreeExplanation, explain_tree
+from app.core.graph_builder import joined_tables
 from app.core.join_tree import (
     ANCHORS_NOT_CONNECTED,
     DEFAULT_SUBGRAPH_BOUND,
@@ -75,7 +78,7 @@ def locate(
     max_joins: int = DEFAULT_MAX_JOINS,
     subgraph_bound: int = DEFAULT_SUBGRAPH_BOUND,
 ) -> Located:
-    retrieval = retrieve(question, scores, terms, settings)
+    retrieval = retrieve(question, scores, terms, settings, partners=joined_tables(graph))
     tree = build_tree(
         graph,
         retrieval.anchors,

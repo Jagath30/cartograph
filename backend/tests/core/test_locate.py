@@ -124,6 +124,24 @@ def test_a_rival_set_aside_and_absent_from_the_tree_warns_anchor_ambiguity(graph
     assert located.warning_codes == {"anchor_ambiguity"}
 
 
+def test_a_table_joined_to_the_one_a_term_chose_is_kept_and_nothing_warns(graph) -> None:
+    """One term, "shop", is best matched in store and almost as well in
+    store_sales, and nothing else nominates store_sales. A sale refers to
+    its store: the two are partners, not alternatives, so both are anchors
+    and no ambiguity is reported. Had the graph's joins not reached the
+    Retriever, store_sales would have been set aside."""
+    question = _scores(graph, store=1.0, store_sales=0.9, customer__c_customer_sk=0.0)
+    shop = _scores(graph, store=1.0, store_sales=0.9, customer__c_customer_sk=0.0)
+    located = locate("q", question, ((Term("shop", "word"), shop),), graph, SETTINGS)
+
+    assert located.retrieval.anchors == ("store", "store_sales")
+    assert located.retrieval.anchor_bound.set_aside_as_rivals == ()
+    assert located.retrieval.rivals == ()
+    assert [partner.rival for partner in located.retrieval.terms[0].partners] == ["store_sales"]
+    assert located.tree.ambiguities == ()
+    assert located.warning_codes == frozenset()
+
+
 def test_a_rival_that_never_reached_the_cut_is_not_a_choice_and_does_not_warn(graph) -> None:
     """store is within the margin of customer_address for the term, but on
     the whole question it is nowhere near an anchor. Nothing was set aside."""

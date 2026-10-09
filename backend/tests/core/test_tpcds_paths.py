@@ -20,7 +20,7 @@ import pytest
 from tpcds_files import OVERLAY, ddl_snapshot
 
 from app.core.explainer import explain
-from app.core.graph_builder import build_graph, table_nodes
+from app.core.graph_builder import build_graph, joined_tables, table_nodes
 from app.core.overlay import apply_overlay, parse_overlay
 from app.core.path_finder import find_paths
 
@@ -47,6 +47,22 @@ def every_pair_before():
 
 def lengths(result) -> dict[int, int]:
     return dict(sorted(Counter(path.length for path in result.discovered).items()))
+
+
+def test_on_tpcds_a_fact_is_joined_to_its_dimensions_and_siblings_are_not_joined(graph) -> None:
+    """The examples of the ruling itself, from the committed DDL and
+    overlay: the three sales channels are not joined to one another, nor
+    are the two demographics tables; a sale is joined to its store, and a
+    return to its sale."""
+    joined = joined_tables(graph)
+
+    channels = ("store_sales", "catalog_sales", "web_sales")
+    for one in channels:
+        assert not joined[one] & set(channels)
+    assert "customer_demographics" not in joined["household_demographics"]
+    assert "store" in joined["store_sales"] and "store_sales" in joined["store"]
+    assert "store_sales" in joined["store_returns"] and "store_returns" in joined["store_sales"]
+    assert sum(len(others) for others in joined.values()) == 2 * 82
 
 
 # --------------------------------------------------------------------------
