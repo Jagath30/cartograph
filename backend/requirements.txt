@@ -1,4 +1,4 @@
-# Pinned from the first successful build. Intent: fastapi, uvicorn[standard], pydantic-settings, psycopg[binary], redis, pytest, httpx, pyyaml, networkx, alembic, sqlalchemy
+# Pinned from the first successful build. Intent: fastapi, uvicorn[standard], pydantic-settings, psycopg[binary], redis, pytest, httpx, pyyaml, networkx, alembic, sqlalchemy, sqlglot
 alembic==1.20.0
 annotated-doc==0.0.5
 annotated-types==0.8.0
@@ -28,6 +28,7 @@ python-dotenv==1.2.3
 PyYAML==6.0.3
 redis==8.1.0
 SQLAlchemy==2.1.4
+sqlglot==30.21.0
 starlette==1.6.0
 typing-inspection==0.4.4
 typing_extensions==4.16.0
