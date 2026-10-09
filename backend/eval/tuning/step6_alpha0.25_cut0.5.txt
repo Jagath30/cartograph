@@ -1,0 +1,818 @@
+
+====================================================================================================
+STEP 6: retrieval and the join tree, judged on the tree as a whole
+====================================================================================================
+settings    alpha 0.25; anchor cut 0.5, cap 5; subgraph bound 10; routes of up to 3 joins
+fixed       margin 0.117098 (for this alpha). From eval/calibration.json, computed 2026-10-08
+            from the schema alone, before any question was embedded. Not tuned.
+floor       WITHDRAWN by the owner's ruling after run 0 (it declined all sixteen). Nothing replaces it:
+            a question is declined only when its anchors cannot be connected (DD-10).
+rivals      CORRECTED by the owner's ruling after run 1: two tables joined by a foreign key, either
+            way round, are partners and are never set aside for one another. A "partners" line lists the
+            tables that reached the cut, that no term nominates, and that were kept for this reason alone.
+            REVISED at the fourth review stop: a table is set aside only for a winner that is still an
+            anchor after the cap; and a close call is shown as information ("close call"), never raised
+            as the warning anchor_ambiguity. Questions 8, 9 and 13 expect that warning and keep expecting it.
+snapshot    1, sha256 4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4302547; embedded with text-embedding-3-small
+
+ 1  How much did each store sell last year?
+    step 5: MATCH    |    step 6: DISAGREES  -- differs in: tables, joins, warnings
+    best raw   0.4616 (store_sales.ss_quantity)  (information only)
+    terms      much -> web_page; store -> store; sell -> store; last -> date_dim; year -> date_dim; store sell
+                 -> store; sell last -> date_dim; last year -> date_dim
+    tables     date_dim 0.804 (by date_dim), customer 0.596 (by customer), store_sales 0.585 (by ss_store_sk),
+                 store 0.558 (by store), store_returns 0.556 (by store_returns), catalog_returns 0.426 (by
+                 catalog_returns)
+    columns    date_dim.d_same_day_ly 0.637 [sem 0.225, key 0.024], store_sales.ss_store_sk 0.585 [sem 0.422,
+                 key 0.017], store_sales.ss_quantity 0.579 [sem 0.462, key 0.015], store_sales.ss_net_profit
+                 0.576 [sem 0.457, key 0.015]
+    partners   store_returns (joined to store, which "store" chose: 0.995 against 0.953); store_sales (joined
+                 to store, which "sell" chose: 0.250 against 0.246); store_returns (joined to store, which
+                 "sell" chose: 0.250 against 0.177); store_returns (joined to store, which "store sell" chose:
+                 0.946 against 0.937); store_sales (joined to store, which "store sell" chose: 0.946 against
+                 0.922)
+    cap cut    none
+    attached   0  date_dim: the seed
+    attached   1  store_sales to date_dim by store_sales.ss_sold_date_sk=date_dim.d_date_sk  [shortest]
+    attached   2  store to store_sales by store_sales.ss_store_sk=store.s_store_sk  [question_evidence, 2 tied;
+                 evidence 0.533 against 0.250, margin 0.117]
+    attached   3  store_returns to date_dim by store_returns.sr_returned_date_sk=date_dim.d_date_sk
+                 [alphabetical, 3 tied; evidence 0.508 against 0.495, margin 0.117]
+    tree       date_dim, store_sales, store, store_returns
+    expected   store_sales, store, date_dim
+               missing: none; extra: store_returns
+    joins      store_returns.sr_returned_date_sk = date_dim.d_date_sk
+               store_sales.ss_sold_date_sk = date_dim.d_date_sk
+               store_sales.ss_store_sk = store.s_store_sk
+    exp. joins store_sales.ss_store_sk = store.s_store_sk
+               store_sales.ss_sold_date_sk = date_dim.d_date_sk
+    warnings   many_to_many, multi_anchor; expected: none
+               multi_anchor: I had no basis for where to join store returns. It is 1 join from date dimension
+                 and equally from store and store sales, and nothing declares which is meant. Used: Each store
+                 returns row has one date dimension, through its returned date surrogate key. Equally valid:
+                 Each store returns row has one store, through its store surrogate key. Equally valid: Each
+                 store returns row has one store sales, through its item surrogate key and ticket number
+                 (asserted in the overlay, not declared by the database).
+               many_to_many: This answer joins store returns and store sales through date dimension. One date
+                 dimension row has many rows of each, so every row of one is paired with every row of the other
+                 that shares it: rows multiply, and sums and counts over them are inflated.
+    close call "sell" in the question could as well mean customer. store was used: it scored 0.250 against
+                 0.147, too close to tell apart. customer is not part of this answer.
+    checks     MATCH store_sales to store; MATCH store_sales to date_dim  (information only)
+
+ 2  Which states are our catalog customers billed in?
+    step 5: MISMATCH    |    step 6: DISAGREES  -- differs in: tables, joins, warnings
+    best raw   0.4785 (catalog_sales.cs_net_paid_inc_ship_tax)  (information only)
+    terms      states -> web_site; catalog -> catalog_page; customers -> customer; billed -> catalog_sales;
+                 catalog customers -> catalog_sales; customers billed -> catalog_sales
+    tables     catalog_sales 0.945 (by cs_bill_cdemo_sk), customer_address 0.740 (by ca_state), catalog_returns
+                 0.696 (by cr_refunded_cdemo_sk), web_sales 0.601 (by ws_bill_cdemo_sk), catalog_page 0.505 (by
+                 catalog_page), customer 0.462 (by customer)
+    columns    catalog_sales.cs_bill_cdemo_sk 0.945 [sem 0.393, key 0.049], catalog_sales.cs_bill_customer_sk
+                 0.944 [sem 0.393, key 0.049], customer_address.ca_state 0.740 [sem 0.434, key 0.034],
+                 catalog_sales.cs_bill_addr_sk 0.730 [sem 0.419, key 0.034]
+    partners   catalog_returns (joined to catalog_sales, which "catalog customers" chose: 1.000 against 0.986)
+    cap cut    none
+    attached   0  catalog_sales: the seed
+    attached   1  customer_address to catalog_sales by
+                 catalog_sales.cs_bill_addr_sk=customer_address.ca_address_sk  [question_evidence, 2 tied;
+                 evidence 0.730 against 0.484, margin 0.117]
+    attached   2  catalog_returns to catalog_sales by catalog_returns.cr_item_sk=catalog_sales.cs_item_sk /
+                 catalog_returns.cr_order_number=catalog_sales.cs_order_number  [alphabetical, 3 tied; evidence
+                 0.459 against 0.426, margin 0.117]
+    attached   3  catalog_page to catalog_returns by
+                 catalog_returns.cr_catalog_page_sk=catalog_page.cp_catalog_page_sk  [alphabetical, 2 tied;
+                 evidence 0.494 against 0.468, margin 0.117]
+    tree       catalog_sales, customer_address, catalog_returns, catalog_page
+    expected   catalog_sales, customer_address
+               missing: none; extra: catalog_page, catalog_returns
+    joins      catalog_returns.cr_catalog_page_sk = catalog_page.cp_catalog_page_sk
+               catalog_returns.cr_item_sk = catalog_sales.cs_item_sk and catalog_returns.cr_order_number =
+                 catalog_sales.cs_order_number
+               catalog_sales.cs_bill_addr_sk = customer_address.ca_address_sk
+    exp. joins catalog_sales.cs_bill_addr_sk = customer_address.ca_address_sk
+    warnings   multi_anchor; expected: none
+               multi_anchor: I had no basis for where to join catalog returns. It is 1 join from catalog sales
+                 and equally from customer address, and nothing declares which is meant. Used: Each catalog
+                 returns row has one catalog sales, through its item surrogate key and order number (asserted
+                 in the overlay, not declared by the database). Equally valid: Each catalog returns row has one
+                 customer address, through its refunded address surrogate key. Equally valid: Each catalog
+                 returns row has one customer address, through its returning address surrogate key.
+               multi_anchor: I had no basis for where to join catalog page. It is 1 join from catalog returns
+                 and equally from catalog sales, and nothing declares which is meant. Used: Each catalog page
+                 row has many catalog returns rows, through their catalog page surrogate key. Equally valid:
+                 Each catalog page row has many catalog sales rows, through their catalog page surrogate key.
+    close call "billed" in the question could as well mean web sales. catalog sales was used: it scored 0.938
+                 against 0.935, too close to tell apart. web sales is not part of this answer.
+    checks     MATCH catalog_sales to customer_address  (information only)
+
+ 3  Where are our catalog customers located?
+    step 5: MATCH    |    step 6: DISAGREES  -- differs in: tables, joins, warnings
+    best raw   0.4559 (catalog_sales.cs_ship_cdemo_sk)  (information only)
+    terms      catalog -> catalog_page; customers -> customer; located -> customer_address; catalog customers
+                 -> catalog_sales; customers located -> customer_address
+    tables     catalog_sales 1.000 (by cs_ship_cdemo_sk), catalog_returns 0.996 (by cr_returning_cdemo_sk),
+                 customer_address 0.976 (by customer_address), catalog_page 0.726 (by catalog_page), customer
+                 0.667 (by customer), customer_demographics 0.596 (by customer_demographics)
+    columns    catalog_sales.cs_ship_cdemo_sk 1.000 [sem 0.456, key 0.046],
+                 catalog_returns.cr_returning_cdemo_sk 0.996 [sem 0.449, key 0.046],
+                 catalog_sales.cs_ship_customer_sk 0.986 [sem 0.434, key 0.046], catalog_sales.cs_bill_cdemo_sk
+                 0.982 [sem 0.427, key 0.046]
+    partners   customer_demographics (joined to customer, which "customers" chose: 0.975 against 0.896);
+                 catalog_returns (joined to catalog_sales, which "catalog customers" chose: 1.000 against
+                 0.986)
+    cap cut    customer_demographics, promotion
+    attached   0  catalog_sales: the seed
+    attached   1  catalog_returns to catalog_sales by catalog_returns.cr_item_sk=catalog_sales.cs_item_sk /
+                 catalog_returns.cr_order_number=catalog_sales.cs_order_number  [shortest]
+    attached   2  customer_address to catalog_returns by
+                 catalog_returns.cr_refunded_addr_sk=customer_address.ca_address_sk  [alphabetical, 4 tied;
+                 evidence 0.657 against 0.642, margin 0.117]
+    attached   3  catalog_page to catalog_returns by
+                 catalog_returns.cr_catalog_page_sk=catalog_page.cp_catalog_page_sk  [alphabetical, 2 tied;
+                 evidence 0.697 against 0.674, margin 0.117]
+    attached   4  customer to catalog_returns by catalog_returns.cr_refunded_customer_sk=customer.c_customer_sk
+                 [alphabetical, 5 tied; evidence 0.780 against 0.775, margin 0.117]
+    tree       catalog_sales, catalog_returns, customer_address, catalog_page, customer
+    expected   catalog_sales, customer_address
+               missing: none; extra: catalog_page, catalog_returns, customer
+    joins      catalog_returns.cr_catalog_page_sk = catalog_page.cp_catalog_page_sk
+               catalog_returns.cr_item_sk = catalog_sales.cs_item_sk and catalog_returns.cr_order_number =
+                 catalog_sales.cs_order_number
+               catalog_returns.cr_refunded_addr_sk = customer_address.ca_address_sk
+               catalog_returns.cr_refunded_customer_sk = customer.c_customer_sk
+    exp. joins one of: catalog_sales.cs_bill_addr_sk = customer_address.ca_address_sk  |
+                 catalog_sales.cs_ship_addr_sk = customer_address.ca_address_sk
+    warnings   arbitrary_choice, multi_anchor; expected: arbitrary_choice
+               arbitrary_choice: I had no basis for this choice. 2 routes of 1 join connect customer address
+                 and catalog returns, and nothing declares which is meant. Used: Each customer address row has
+                 many catalog returns rows, through their refunded address surrogate key. Equally valid: Each
+                 customer address row has many catalog returns rows, through their returning address surrogate
+                 key.
+               multi_anchor: I had no basis for where to join customer address. It is 1 join from catalog
+                 returns and equally from catalog sales, and nothing declares which is meant. Used: Each
+                 customer address row has many catalog returns rows, through their refunded address surrogate
+                 key. Equally valid: Each customer address row has many catalog sales rows, through their bill
+                 address surrogate key. Equally valid: Each customer address row has many catalog sales rows,
+                 through their ship address surrogate key.
+               multi_anchor: I had no basis for where to join catalog page. It is 1 join from catalog returns
+                 and equally from catalog sales, and nothing declares which is meant. Used: Each catalog page
+                 row has many catalog returns rows, through their catalog page surrogate key. Equally valid:
+                 Each catalog page row has many catalog sales rows, through their catalog page surrogate key.
+               arbitrary_choice: I had no basis for this choice. 2 routes of 1 join connect customer and
+                 catalog returns, and nothing declares which is meant. Used: Each customer row has many catalog
+                 returns rows, through their refunded customer surrogate key. Equally valid: Each customer row
+                 has many catalog returns rows, through their returning customer surrogate key.
+               multi_anchor: I had no basis for where to join customer. It is 1 join from catalog returns and
+                 equally from catalog sales and customer address, and nothing declares which is meant. Used:
+                 Each customer row has many catalog returns rows, through their refunded customer surrogate
+                 key. Equally valid: Each customer row has many catalog sales rows, through their bill customer
+                 surrogate key. Equally valid: Each customer row has many catalog sales rows, through their
+                 ship customer surrogate key. Equally valid: Each customer row has one customer address,
+                 through its current address surrogate key.
+    checks     MISMATCH catalog_sales to customer_address  (information only)
+
+ 4  What were the top-selling item categories on the web in Q4 2002?
+    step 5: MISMATCH    |    step 6: DISAGREES  -- differs in: tables, joins, warnings
+    best raw   0.4186 (web_sales)  (information only)
+    terms      top -> item; selling -> web_sales; item -> item; categories -> item; web -> web_page; q4 ->
+                 date_dim; 2002 -> customer; top selling -> store_sales; selling item -> item; item categories
+                 -> item; q4 2002 -> date_dim
+    tables     item 0.902 (by item), web_sales 0.841 (by ws_item_sk), web_returns 0.795 (by wr_item_sk),
+                 web_site 0.527 (by web_mkt_class), web_page 0.526 (by web_page), catalog_sales 0.442 (by
+                 cs_item_sk)
+    columns    web_sales.ws_item_sk 0.841 [sem 0.356, key 0.017], web_returns.wr_item_sk 0.795 [sem 0.285, key
+                 0.017], item.i_category 0.746 [sem 0.208, key 0.017], item.i_category_id 0.734 [sem 0.189, key
+                 0.017]
+    partners   web_returns (joined to item, which "top" chose: 0.250 against 0.157); web_returns (joined to
+                 web_sales, which "selling" chose: 0.250 against 0.156); web_returns (joined to web_page, which
+                 "web" chose: 0.974 against 0.928)
+    cap cut    none
+    attached   0  item: the seed
+    attached   1  web_sales to item by web_sales.ws_item_sk=item.i_item_sk  [shortest]
+    attached   2  web_returns to web_sales by web_returns.wr_item_sk=web_sales.ws_item_sk /
+                 web_returns.wr_order_number=web_sales.ws_order_number  [question_evidence, 2 tied; evidence
+                 0.644 against 0.446, margin 0.117]
+    attached   3  web_page to web_returns by web_returns.wr_web_page_sk=web_page.wp_web_page_sk  [alphabetical,
+                 2 tied; evidence 0.594 against 0.528, margin 0.117]
+    tree       item, web_sales, web_returns, web_page
+    expected   web_sales, item, date_dim
+               missing: date_dim; extra: web_page, web_returns
+    joins      web_returns.wr_item_sk = web_sales.ws_item_sk and web_returns.wr_order_number =
+                 web_sales.ws_order_number
+               web_returns.wr_web_page_sk = web_page.wp_web_page_sk
+               web_sales.ws_item_sk = item.i_item_sk
+    exp. joins web_sales.ws_item_sk = item.i_item_sk
+               web_sales.ws_sold_date_sk = date_dim.d_date_sk
+    warnings   multi_anchor; expected: none
+               multi_anchor: I had no basis for where to join web page. It is 1 join from web returns and
+                 equally from web sales, and nothing declares which is meant. Used: Each web page row has many
+                 web returns rows, through their web page surrogate key. Equally valid: Each web page row has
+                 many web sales rows, through their web page surrogate key.
+    close call "top" in the question could as well mean web site. item was used: it scored 0.250 against 0.232,
+                 too close to tell apart. web site is not part of this answer.
+               "web" in the question could as well mean web site. web page was used: it scored 0.974 against
+                 0.924, too close to tell apart. web site is not part of this answer.
+    checks     MATCH web_sales to item; MISMATCH web_sales to date_dim  (information only)
+
+ 5  What reasons do customers give when returning items to stores?
+    step 5: MATCH    |    step 6: DISAGREES  -- differs in: tables, joins
+    best raw   0.4831 (store_returns)  (information only)
+    terms      reasons -> reason; customers -> customer; give -> promotion; returning -> store_returns; items
+                 -> item; stores -> store; customers give -> customer; returning items -> store_returns
+    tables     store_returns 0.956 (by sr_reason_sk), catalog_returns 0.757 (by catalog_returns), web_returns
+                 0.644 (by wr_returning_cdemo_sk), store_sales 0.625 (by ss_item_sk), reason 0.476 (by reason),
+                 store 0.438 (by store)
+    columns    store_returns.sr_reason_sk 0.956 [sem 0.397, key 0.035], store_returns.sr_customer_sk 0.942 [sem
+                 0.369, key 0.035], store_returns.sr_cdemo_sk 0.938 [sem 0.361, key 0.035],
+                 store_returns.sr_item_sk 0.932 [sem 0.350, key 0.035]
+    partners   none
+    cap cut    none
+    attached   0  store_returns: the seed
+    attached   1  store_sales to store_returns by store_returns.sr_item_sk=store_sales.ss_item_sk /
+                 store_returns.sr_ticket_number=store_sales.ss_ticket_number  [shortest]
+    tree       store_returns, store_sales
+    expected   store_returns, reason
+               missing: reason; extra: store_sales
+    joins      store_returns.sr_item_sk = store_sales.ss_item_sk and store_returns.sr_ticket_number =
+                 store_sales.ss_ticket_number
+    exp. joins store_returns.sr_reason_sk = reason.r_reason_sk
+    warnings   none; expected: none
+    close call "returning" in the question could as well mean web returns. store returns was used: it scored
+                 1.000 against 0.996, too close to tell apart. web returns is not part of this answer.
+               "returning" in the question could as well mean catalog returns. store returns was used: it
+                 scored 1.000 against 0.991, too close to tell apart. catalog returns is not part of this
+                 answer.
+    checks     MISMATCH store_returns to reason  (information only)
+
+ 6  How does store revenue compare with catalog revenue for the same items?
+    step 5: MISMATCH    |    step 6: DISAGREES  -- differs in: tables, joins, warnings
+    best raw   0.5330 (catalog_sales.cs_net_profit)  (information only)
+    terms      store -> store; revenue -> store_sales; compare -> promotion; catalog -> catalog_page; items ->
+                 item; store revenue -> store_sales; revenue compare -> web_sales; catalog revenue ->
+                 catalog_page
+    tables     catalog_returns 0.980 (by cr_store_credit), catalog_sales 0.963 (by cs_item_sk), store_sales
+                 0.947 (by ss_item_sk), store_returns 0.913 (by sr_item_sk), catalog_page 0.667 (by
+                 catalog_page), store 0.605 (by store)
+    columns    catalog_returns.cr_store_credit 0.980 [sem 0.495, key 0.027], catalog_sales.cs_item_sk 0.963
+                 [sem 0.461, key 0.027], catalog_returns.cr_item_sk 0.951 [sem 0.438, key 0.027],
+                 store_sales.ss_item_sk 0.947 [sem 0.431, key 0.027]
+    partners   store_returns (joined to store, which "store" chose: 0.995 against 0.953); store_returns (joined
+                 to store_sales, which "revenue" chose: 0.250 against 0.225); store_returns (joined to
+                 store_sales, which "store revenue" chose: 0.944 against 0.932)
+    cap cut    none
+    attached   0  store_sales: the seed
+    attached   1  store_returns to store_sales by store_returns.sr_item_sk=store_sales.ss_item_sk /
+                 store_returns.sr_ticket_number=store_sales.ss_ticket_number  [shortest]
+    attached   2  store to store_returns by store_returns.sr_store_sk=store.s_store_sk  [alphabetical, 2 tied;
+                 evidence 0.643 against 0.608, margin 0.117]
+    attached   3  item to store_returns by store_returns.sr_item_sk=item.i_item_sk  [alphabetical, 2 tied;
+                 evidence 0.947 against 0.913, margin 0.117]
+    attached   4  catalog_page to item by catalog_returns.cr_catalog_page_sk=catalog_page.cp_catalog_page_sk /
+                 catalog_returns.cr_item_sk=item.i_item_sk  [alphabetical, 8 tied; evidence 0.695 against
+                 0.688, margin 0.117]
+    tree       store_sales, store_returns, store, item, catalog_page, catalog_returns
+    expected   store_sales, catalog_sales, item
+               missing: catalog_sales; extra: catalog_page, catalog_returns, store, store_returns
+    joins      catalog_returns.cr_catalog_page_sk = catalog_page.cp_catalog_page_sk
+               catalog_returns.cr_item_sk = item.i_item_sk
+               store_returns.sr_item_sk = item.i_item_sk
+               store_returns.sr_item_sk = store_sales.ss_item_sk and store_returns.sr_ticket_number =
+                 store_sales.ss_ticket_number
+               store_returns.sr_store_sk = store.s_store_sk
+    exp. joins store_sales.ss_item_sk = item.i_item_sk
+               catalog_sales.cs_item_sk = item.i_item_sk
+    warnings   arbitrary_choice, many_to_many, multi_anchor; expected: many_to_many
+               multi_anchor: I had no basis for where to join store. It is 1 join from store returns and
+                 equally from store sales, and nothing declares which is meant. Used: Each store row has many
+                 store returns rows, through their store surrogate key. Equally valid: Each store row has many
+                 store sales rows, through their store surrogate key.
+               multi_anchor: I had no basis for where to join item. It is 1 join from store returns and equally
+                 from store sales, and nothing declares which is meant. Used: Each item row has many store
+                 returns rows, through their item surrogate key. Equally valid: Each item row has many store
+                 sales rows, through their item surrogate key.
+               arbitrary_choice: I had no basis for this choice. 2 routes of 2 joins connect catalog page and
+                 item, and nothing declares which is meant. Used: Each catalog page row has many catalog
+                 returns rows, through their catalog page surrogate key; then each catalog returns row has one
+                 item, through its item surrogate key. Equally valid: Each catalog page row has many catalog
+                 sales rows, through their catalog page surrogate key; then each catalog sales row has one
+                 item, through its item surrogate key.
+               multi_anchor: I had no basis for where to join catalog page. It is 2 joins from item and equally
+                 from store and store returns and store sales, and nothing declares which is meant. Used: Each
+                 catalog page row has many catalog returns rows, through their catalog page surrogate key; then
+                 each catalog returns row has one item, through its item surrogate key. Equally valid: Each
+                 catalog page row has one date dimension, through its end date surrogate key; then each date
+                 dimension row has many store rows, through their closed date surrogate key. Equally valid:
+                 Each catalog page row has one date dimension, through its start date surrogate key; then each
+                 date dimension row has many store rows, through their closed date surrogate key. Equally
+                 valid: Each catalog page row has one date dimension, through its end date surrogate key; then
+                 each date dimension row has many store returns rows, through their returned date surrogate
+                 key. Equally valid: Each catalog page row has one date dimension, through its start date
+                 surrogate key; then each date dimension row has many store returns rows, through their
+                 returned date surrogate key. Equally valid: Each catalog page row has one date dimension,
+                 through its end date surrogate key; then each date dimension row has many store sales rows,
+                 through their sold date surrogate key. Equally valid: Each catalog page row has one date
+                 dimension, through its start date surrogate key; then each date dimension row has many store
+                 sales rows, through their sold date surrogate key.
+               many_to_many: This answer joins catalog returns and store returns through item. One item row has
+                 many rows of each, so every row of one is paired with every row of the other that shares it:
+                 rows multiply, and sums and counts over them are inflated.
+    close call "revenue" in the question could as well mean catalog sales. store sales was used: it scored
+                 0.250 against 0.221, too close to tell apart. catalog sales is not part of this answer.
+    checks     MISMATCH store_sales to item; MISMATCH catalog_sales to item; MISMATCH store_sales to
+                 catalog_sales  (information only)
+
+ 7  Which warehouses held the least stock of each item at the latest inventory date?
+    step 5: MATCH    |    step 6: AGREES
+    best raw   0.4484 (inventory)  (information only)
+    terms      warehouses -> warehouse; held -> inventory; least -> income_band; stock -> inventory; item ->
+                 item; latest -> date_dim; inventory -> inventory; date -> date_dim; warehouses held ->
+                 warehouse; least stock -> inventory; latest inventory -> inventory; inventory date ->
+                 inventory
+    tables     item 0.927 (by item), inventory 0.858 (by inv_warehouse_sk), warehouse 0.658 (by warehouse),
+                 store 0.522 (by store), date_dim 0.505 (by date_dim), web_sales 0.475 (by ws_warehouse_sk)
+    columns    inventory.inv_warehouse_sk 0.858 [sem 0.414, key 0.017], inventory.inv_date_sk 0.833 [sem 0.377,
+                 key 0.017], item.i_rec_end_date 0.829 [sem 0.265, key 0.019], inventory.inv_item_sk 0.826 [sem
+                 0.366, key 0.017]
+    partners   none
+    cap cut    none
+    attached   0  item: the seed
+    attached   1  inventory to item by inventory.inv_item_sk=item.i_item_sk  [shortest]
+    attached   2  warehouse to inventory by inventory.inv_warehouse_sk=warehouse.w_warehouse_sk  [shortest]
+    attached   3  date_dim to inventory by inventory.inv_date_sk=date_dim.d_date_sk  [shortest]
+    tree       item, inventory, warehouse, date_dim
+    expected   inventory, warehouse, item, date_dim
+               missing: none; extra: none
+    joins      inventory.inv_date_sk = date_dim.d_date_sk
+               inventory.inv_item_sk = item.i_item_sk
+               inventory.inv_warehouse_sk = warehouse.w_warehouse_sk
+    exp. joins inventory.inv_warehouse_sk = warehouse.w_warehouse_sk
+               inventory.inv_item_sk = item.i_item_sk
+               inventory.inv_date_sk = date_dim.d_date_sk
+    warnings   none; expected: none
+    close call "held" in the question could as well mean store. inventory was used: it scored 0.250 against
+                 0.153, too close to tell apart. store is not part of this answer.
+    checks     MATCH inventory to warehouse; MATCH inventory to item; MATCH inventory to date_dim  (information
+                 only)
+
+ 8  Did our promotions increase sales?
+    step 5: NOT EVALUABLE AT STEP 5    |    step 6: DISAGREES  -- differs in: warnings
+    best raw   0.4086 (promotion)  (information only)
+    terms      promotions -> promotion; increase -> store_sales; sales -> store_sales; promotions increase ->
+                 promotion; increase sales -> store_sales
+    tables     store_sales 0.985 (by ss_promo_sk), web_sales 0.961 (by ws_promo_sk), catalog_sales 0.960 (by
+                 cs_promo_sk), promotion 0.725 (by promotion), customer 0.469 (by c_first_sales_date_sk),
+                 customer_demographics 0.137 (by cd_purchase_estimate)
+    columns    store_sales.ss_promo_sk 0.985 [sem 0.385, key 0.046], web_sales.ws_promo_sk 0.961 [sem 0.346,
+                 key 0.046], catalog_sales.cs_promo_sk 0.960 [sem 0.344, key 0.046],
+                 store_sales.ss_ext_sales_price 0.678 [sem 0.368, key 0.028]
+    partners   none
+    cap cut    none
+    attached   0  store_sales: the seed
+    attached   1  promotion to store_sales by store_sales.ss_promo_sk=promotion.p_promo_sk  [shortest]
+    tree       store_sales, promotion
+    expected   promotion + one of store_sales, catalog_sales, web_sales
+               missing: none; extra: none
+    joins      store_sales.ss_promo_sk = promotion.p_promo_sk
+    exp. joins one of: store_sales.ss_promo_sk = promotion.p_promo_sk  |  catalog_sales.cs_promo_sk =
+                 promotion.p_promo_sk  |  web_sales.ws_promo_sk = promotion.p_promo_sk
+    warnings   none; expected: anchor_ambiguity
+    close call "increase" in the question could as well mean web sales. store sales was used: it scored 0.250
+                 against 0.236, too close to tell apart. web sales is not part of this answer.
+               "increase" in the question could as well mean catalog sales. store sales was used: it scored
+                 0.250 against 0.220, too close to tell apart. catalog sales is not part of this answer.
+
+ 9  What is the average number of dependents in households that shop at our stores?
+    step 5: EXPECTED FAILURE CONFIRMED    |    step 6: DISAGREES  -- differs in: tables, joins, warnings
+    best raw   0.5088 (household_demographics.hd_dep_count)  (information only)
+    terms      average -> item; number -> store; dependents -> customer_demographics; households ->
+                 household_demographics; shop -> store; stores -> store; average number -> call_center
+    tables     store 0.886 (by store), household_demographics 0.856 (by hd_dep_count), store_sales 0.824 (by
+                 ss_hdemo_sk), store_returns 0.806 (by sr_hdemo_sk), customer_demographics 0.593 (by
+                 customer_demographics), catalog_sales 0.464 (by cs_ship_hdemo_sk)
+    columns    household_demographics.hd_dep_count 0.856 [sem 0.509, key 0.023], store_sales.ss_hdemo_sk 0.824
+                 [sem 0.443, key 0.023], store_returns.sr_hdemo_sk 0.806 [sem 0.404, key 0.023],
+                 store.s_number_employees 0.802 [sem 0.396, key 0.023]
+    partners   store_sales (joined to store, which "number" chose: 0.861 against 0.771); store_sales (joined to
+                 store, which "shop" chose: 0.250 against 0.222); store_returns (joined to store, which "shop"
+                 chose: 0.250 against 0.190); store_returns (joined to store, which "stores" chose: 0.994
+                 against 0.959); store_sales (joined to store, which "stores" chose: 0.994 against 0.883)
+    cap cut    none
+    attached   0  store: the seed
+    attached   1  store_sales to store by store_sales.ss_store_sk=store.s_store_sk  [shortest]
+    attached   2  household_demographics to store_sales by
+                 store_sales.ss_hdemo_sk=household_demographics.hd_demo_sk  [shortest]
+    attached   3  store_returns to household_demographics by
+                 store_returns.sr_hdemo_sk=household_demographics.hd_demo_sk  [alphabetical, 3 tied; evidence
+                 0.663 against 0.618, margin 0.117]
+    attached   4  customer_demographics to store_returns by
+                 store_returns.sr_cdemo_sk=customer_demographics.cd_demo_sk  [alphabetical, 2 tied; evidence
+                 0.521 against 0.504, margin 0.117]
+    tree       store, store_sales, household_demographics, store_returns, customer_demographics
+    expected   store_sales, household_demographics
+               missing: none; extra: customer_demographics, store, store_returns
+    joins      store_returns.sr_cdemo_sk = customer_demographics.cd_demo_sk
+               store_returns.sr_hdemo_sk = household_demographics.hd_demo_sk
+               store_sales.ss_hdemo_sk = household_demographics.hd_demo_sk
+               store_sales.ss_store_sk = store.s_store_sk
+    exp. joins store_sales.ss_hdemo_sk = household_demographics.hd_demo_sk
+    warnings   many_to_many, multi_anchor; expected: anchor_ambiguity
+               multi_anchor: I had no basis for where to join store returns. It is 1 join from household
+                 demographics and equally from store and store sales, and nothing declares which is meant.
+                 Used: Each store returns row has one household demographics, through its household
+                 demographics surrogate key. Equally valid: Each store returns row has one store, through its
+                 store surrogate key. Equally valid: Each store returns row has one store sales, through its
+                 item surrogate key and ticket number (asserted in the overlay, not declared by the database).
+               multi_anchor: I had no basis for where to join customer demographics. It is 1 join from store
+                 returns and equally from store sales, and nothing declares which is meant. Used: Each customer
+                 demographics row has many store returns rows, through their customer demographics surrogate
+                 key. Equally valid: Each customer demographics row has many store sales rows, through their
+                 customer demographics surrogate key.
+               many_to_many: This answer joins store returns and store sales through household demographics.
+                 One household demographics row has many rows of each, so every row of one is paired with every
+                 row of the other that shares it: rows multiply, and sums and counts over them are inflated.
+    checks     MATCH store_sales to household_demographics  (information only)
+
+10  Which web site sells most, and by which shipping method?
+    step 5: MATCH    |    step 6: DISAGREES  -- differs in: tables, joins, warnings
+    best raw   0.4475 (web_sales.ws_ext_ship_cost)  (information only)
+    terms      web -> web_page; site -> web_site; sells -> store_sales; shipping -> ship_mode; method -> item;
+                 web site -> web_site; site sells -> web_site; shipping method -> ship_mode
+    tables     web_sales 0.984 (by web_sales), web_site 0.895 (by web_site), web_returns 0.878 (by
+                 wr_return_ship_cost), catalog_sales 0.570 (by catalog_sales), ship_mode 0.547 (by ship_mode),
+                 web_page 0.504 (by web_page)
+    columns    web_sales.ws_ext_ship_cost 0.896 [sem 0.448, key 0.027], web_sales.ws_net_paid_inc_ship_tax
+                 0.896 [sem 0.447, key 0.027], web_sales.ws_net_paid_inc_ship 0.895 [sem 0.445, key 0.027],
+                 web_site.web_mkt_class 0.881 [sem 0.291, key 0.030]
+    partners   web_returns (joined to web_page, which "web" chose: 0.974 against 0.928); web_sales (joined to
+                 web_page, which "web" chose: 0.974 against 0.917); web_sales (joined to ship_mode, which
+                 "shipping" chose: 0.990 against 0.927); catalog_sales (joined to ship_mode, which "shipping"
+                 chose: 0.990 against 0.897); web_sales (joined to ship_mode, which "shipping method" chose:
+                 0.984 against 0.923); catalog_sales (joined to ship_mode, which "shipping method" chose: 0.984
+                 against 0.895)
+    cap cut    web_page
+    attached   0  web_sales: the seed
+    attached   1  web_site to web_sales by web_sales.ws_web_site_sk=web_site.web_site_sk  [shortest]
+    attached   2  web_returns to web_sales by web_returns.wr_item_sk=web_sales.ws_item_sk /
+                 web_returns.wr_order_number=web_sales.ws_order_number  [shortest]
+    attached   3  ship_mode to web_sales by web_sales.ws_ship_mode_sk=ship_mode.sm_ship_mode_sk  [shortest]
+    attached   4  catalog_sales to ship_mode by catalog_sales.cs_ship_mode_sk=ship_mode.sm_ship_mode_sk
+                 [shortest]
+    tree       web_sales, web_site, web_returns, ship_mode, catalog_sales
+    expected   web_sales, web_site, ship_mode
+               missing: none; extra: catalog_sales, web_returns
+    joins      catalog_sales.cs_ship_mode_sk = ship_mode.sm_ship_mode_sk
+               web_returns.wr_item_sk = web_sales.ws_item_sk and web_returns.wr_order_number =
+                 web_sales.ws_order_number
+               web_sales.ws_ship_mode_sk = ship_mode.sm_ship_mode_sk
+               web_sales.ws_web_site_sk = web_site.web_site_sk
+    exp. joins web_sales.ws_web_site_sk = web_site.web_site_sk
+               web_sales.ws_ship_mode_sk = ship_mode.sm_ship_mode_sk
+    warnings   many_to_many; expected: none
+               many_to_many: This answer joins catalog sales and web sales through ship mode. One ship mode row
+                 has many rows of each, so every row of one is paired with every row of the other that shares
+                 it: rows multiply, and sums and counts over them are inflated.
+    checks     MATCH web_sales to web_site; MATCH web_sales to ship_mode  (information only)
+
+11  How do store sales break down by fiscal quarter?
+    step 5: MATCH    |    step 6: DISAGREES  -- differs in: tables, joins
+    best raw   0.4849 (store_sales.ss_net_profit)  (information only)
+    terms      store -> store; sales -> store_sales; break -> store; fiscal -> date_dim; quarter -> date_dim;
+                 store sales -> store_sales; sales break -> store_sales; fiscal quarter -> date_dim
+    tables     store_sales 0.938 (by store_sales), date_dim 0.877 (by date_dim), catalog_sales 0.564 (by
+                 catalog_sales), store 0.557 (by store), web_sales 0.552 (by web_sales), store_returns 0.534
+                 (by sr_store_credit)
+    columns    store_sales.ss_sales_price 0.919 [sem 0.454, key 0.032], store_sales.ss_ext_sales_price 0.919
+                 [sem 0.454, key 0.032], store_sales.ss_net_profit 0.907 [sem 0.485, key 0.030],
+                 store_sales.ss_ext_tax 0.907 [sem 0.484, key 0.030]
+    partners   store_returns (joined to store, which "store" chose: 0.995 against 0.953)
+    cap cut    none
+    attached   0  store_sales: the seed
+    attached   1  date_dim to store_sales by store_sales.ss_sold_date_sk=date_dim.d_date_sk  [shortest]
+    attached   2  store to store_sales by store_sales.ss_store_sk=store.s_store_sk  [question_evidence, 2 tied;
+                 evidence 0.672 against 0.262, margin 0.117]
+    attached   3  store_returns to store_sales by store_returns.sr_item_sk=store_sales.ss_item_sk /
+                 store_returns.sr_ticket_number=store_sales.ss_ticket_number  [question_evidence, 3 tied;
+                 evidence 0.652 against 0.467, margin 0.117]
+    tree       store_sales, date_dim, store, store_returns
+    expected   store_sales, date_dim
+               missing: none; extra: store, store_returns
+    joins      store_returns.sr_item_sk = store_sales.ss_item_sk and store_returns.sr_ticket_number =
+                 store_sales.ss_ticket_number
+               store_sales.ss_sold_date_sk = date_dim.d_date_sk
+               store_sales.ss_store_sk = store.s_store_sk
+    exp. joins store_sales.ss_sold_date_sk = date_dim.d_date_sk
+    warnings   none; expected: none
+    close call "sales" in the question could as well mean web sales. store sales was used: it scored 0.995
+                 against 0.988, too close to tell apart. web sales is not part of this answer.
+               "sales" in the question could as well mean catalog sales. store sales was used: it scored 0.995
+                 against 0.980, too close to tell apart. catalog sales is not part of this answer.
+    checks     MATCH store_sales to date_dim  (information only)
+
+12  Which call centres handle the most catalog returns?
+    step 5: MATCH    |    step 6: DISAGREES  -- differs in: tables, joins, warnings
+    best raw   0.5091 (catalog_returns)  (information only)
+    terms      call -> call_center; centres -> call_center; handle -> promotion; catalog -> catalog_page;
+                 returns -> store_returns; call centres -> call_center; centres handle -> call_center; catalog
+                 returns -> catalog_returns
+    tables     catalog_returns 0.995 (by cr_call_center_sk), catalog_sales 0.705 (by cs_call_center_sk),
+                 store_returns 0.512 (by store_returns), web_returns 0.508 (by web_returns), call_center 0.494
+                 (by call_center), catalog_page 0.485 (by catalog_page)
+    columns    catalog_returns.cr_call_center_sk 0.995 [sem 0.499, key 0.043],
+                 catalog_returns.cr_return_ship_cost 0.777 [sem 0.445, key 0.032],
+                 catalog_returns.cr_store_credit 0.775 [sem 0.489, key 0.030],
+                 catalog_returns.cr_return_amt_inc_tax 0.772 [sem 0.436, key 0.032]
+    partners   none
+    cap cut    none
+    attached   0  catalog_returns: the seed
+    attached   1  catalog_sales to catalog_returns by catalog_returns.cr_item_sk=catalog_sales.cs_item_sk /
+                 catalog_returns.cr_order_number=catalog_sales.cs_order_number  [shortest]
+    attached   2  store_returns to catalog_returns by
+                 catalog_returns.cr_refunded_customer_sk=customer.c_customer_sk /
+                 store_returns.sr_customer_sk=customer.c_customer_sk  [alphabetical, 24 tied; evidence 0.426
+                 against 0.425, margin 0.117]
+    tree       catalog_returns, catalog_sales, store_returns, customer
+    bound      dropped anchors: none; alternatives left out: time_dim
+    expected   catalog_returns, call_center
+               missing: call_center; extra: catalog_sales, customer, store_returns
+    joins      catalog_returns.cr_item_sk = catalog_sales.cs_item_sk and catalog_returns.cr_order_number =
+                 catalog_sales.cs_order_number
+               catalog_returns.cr_refunded_customer_sk = customer.c_customer_sk
+               store_returns.sr_customer_sk = customer.c_customer_sk
+    exp. joins catalog_returns.cr_call_center_sk = call_center.cc_call_center_sk
+    warnings   arbitrary_choice, many_to_many, multi_anchor; expected: none
+               arbitrary_choice: I had no basis for this choice. 12 routes of 2 joins connect store returns and
+                 catalog returns, and nothing declares which is meant. Used: Each store returns row has one
+                 customer, through its customer surrogate key; then each customer row has many catalog returns
+                 rows, through their refunded customer surrogate key. Equally valid: Each store returns row has
+                 one customer, through its customer surrogate key; then each customer row has many catalog
+                 returns rows, through their returning customer surrogate key. Equally valid: Each store
+                 returns row has one customer address, through its address surrogate key; then each customer
+                 address row has many catalog returns rows, through their refunded address surrogate key.
+                 Equally valid: Each store returns row has one customer address, through its address surrogate
+                 key; then each customer address row has many catalog returns rows, through their returning
+                 address surrogate key. Equally valid: Each store returns row has one customer demographics,
+                 through its customer demographics surrogate key; then each customer demographics row has many
+                 catalog returns rows, through their refunded customer demographics surrogate key. Equally
+                 valid: Each store returns row has one customer demographics, through its customer demographics
+                 surrogate key; then each customer demographics row has many catalog returns rows, through
+                 their returning customer demographics surrogate key. Equally valid: Each store returns row has
+                 one date dimension, through its returned date surrogate key; then each date dimension row has
+                 many catalog returns rows, through their returned date surrogate key. Equally valid: Each
+                 store returns row has one household demographics, through its household demographics surrogate
+                 key; then each household demographics row has many catalog returns rows, through their
+                 refunded household demographics surrogate key. Equally valid: Each store returns row has one
+                 household demographics, through its household demographics surrogate key; then each household
+                 demographics row has many catalog returns rows, through their returning household demographics
+                 surrogate key. Equally valid: Each store returns row has one item, through its item surrogate
+                 key; then each item row has many catalog returns rows, through their item surrogate key.
+                 Equally valid: Each store returns row has one reason, through its reason surrogate key; then
+                 each reason row has many catalog returns rows, through their reason surrogate key. Equally
+                 valid: Each store returns row has one time dimension, through its return time surrogate key;
+                 then each time dimension row has many catalog returns rows, through their returned time
+                 surrogate key.
+               multi_anchor: I had no basis for where to join store returns. It is 2 joins from catalog returns
+                 and equally from catalog sales, and nothing declares which is meant. Used: Each store returns
+                 row has one customer, through its customer surrogate key; then each customer row has many
+                 catalog returns rows, through their refunded customer surrogate key. Equally valid: Each store
+                 returns row has one customer, through its customer surrogate key; then each customer row has
+                 many catalog sales rows, through their bill customer surrogate key. Equally valid: Each store
+                 returns row has one customer, through its customer surrogate key; then each customer row has
+                 many catalog sales rows, through their ship customer surrogate key. Equally valid: Each store
+                 returns row has one customer address, through its address surrogate key; then each customer
+                 address row has many catalog sales rows, through their bill address surrogate key. Equally
+                 valid: Each store returns row has one customer address, through its address surrogate key;
+                 then each customer address row has many catalog sales rows, through their ship address
+                 surrogate key. Equally valid: Each store returns row has one customer demographics, through
+                 its customer demographics surrogate key; then each customer demographics row has many catalog
+                 sales rows, through their bill customer demographics surrogate key. Equally valid: Each store
+                 returns row has one customer demographics, through its customer demographics surrogate key;
+                 then each customer demographics row has many catalog sales rows, through their ship customer
+                 demographics surrogate key. Equally valid: Each store returns row has one date dimension,
+                 through its returned date surrogate key; then each date dimension row has many catalog sales
+                 rows, through their ship date surrogate key. Equally valid: Each store returns row has one
+                 date dimension, through its returned date surrogate key; then each date dimension row has many
+                 catalog sales rows, through their sold date surrogate key. Equally valid: Each store returns
+                 row has one household demographics, through its household demographics surrogate key; then
+                 each household demographics row has many catalog sales rows, through their bill household
+                 demographics surrogate key. Equally valid: Each store returns row has one household
+                 demographics, through its household demographics surrogate key; then each household
+                 demographics row has many catalog sales rows, through their ship household demographics
+                 surrogate key. Equally valid: Each store returns row has one item, through its item surrogate
+                 key; then each item row has many catalog sales rows, through their item surrogate key. Equally
+                 valid: Each store returns row has one time dimension, through its return time surrogate key;
+                 then each time dimension row has many catalog sales rows, through their sold time surrogate
+                 key.
+               many_to_many: This answer joins catalog returns and store returns through customer. One customer
+                 row has many rows of each, so every row of one is paired with every row of the other that
+                 shares it: rows multiply, and sums and counts over them are inflated.
+    close call "returns" in the question could as well mean web returns. store returns was used: it scored
+                 0.993 against 0.986, too close to tell apart. web returns is not part of this answer.
+    checks     MISMATCH catalog_returns to call_center  (information only)
+
+13  What do customers in the highest income band spend most on?
+    step 5: NOT EVALUABLE AT STEP 5    |    step 6: DISAGREES  -- differs in: tables, joins, warnings
+    best raw   0.4113 (income_band.ib_upper_bound)  (information only)
+    terms      customers -> customer; highest -> income_band; income -> income_band; band -> income_band; spend
+                 -> store; highest income -> income_band; income band -> income_band; band spend -> income_band
+    tables     income_band 0.955 (by ib_income_band_sk), household_demographics 0.780 (by hd_income_band_sk),
+                 customer_demographics 0.553 (by cd_purchase_estimate), customer 0.539 (by customer),
+                 customer_address 0.466 (by ca_zip), web_sales 0.436 (by ws_bill_cdemo_sk)
+    columns    income_band.ib_income_band_sk 0.955 [sem 0.343, key 0.033], income_band.ib_upper_bound 0.939
+                 [sem 0.411, key 0.030], income_band.ib_lower_bound 0.919 [sem 0.381, key 0.030],
+                 household_demographics.hd_income_band_sk 0.780 [sem 0.379, key 0.024]
+    partners   customer_demographics (joined to customer, which "customers" chose: 0.975 against 0.896);
+                 household_demographics (joined to income_band, which "highest" chose: 0.250 against 0.138)
+    cap cut    none
+    attached   0  income_band: the seed
+    attached   1  household_demographics to income_band by
+                 household_demographics.hd_income_band_sk=income_band.ib_income_band_sk  [only_path]
+    attached   2  customer to household_demographics by
+                 customer.c_current_hdemo_sk=household_demographics.hd_demo_sk  [shortest]
+    attached   3  customer_demographics to customer by
+                 customer.c_current_cdemo_sk=customer_demographics.cd_demo_sk  [shortest]
+    tree       income_band, household_demographics, customer, customer_demographics
+    expected   income_band, household_demographics, item + one of store_sales, catalog_sales, web_sales
+               missing: item, one of store_sales/catalog_sales/web_sales; extra: customer,
+                 customer_demographics
+    joins      customer.c_current_cdemo_sk = customer_demographics.cd_demo_sk
+               customer.c_current_hdemo_sk = household_demographics.hd_demo_sk
+               household_demographics.hd_income_band_sk = income_band.ib_income_band_sk
+    exp. joins household_demographics.hd_income_band_sk = income_band.ib_income_band_sk
+               one of: store_sales.ss_hdemo_sk = household_demographics.hd_demo_sk  |
+                 catalog_sales.cs_bill_hdemo_sk = household_demographics.hd_demo_sk  |
+                 web_sales.ws_bill_hdemo_sk = household_demographics.hd_demo_sk
+               one of: store_sales.ss_item_sk = item.i_item_sk  |  catalog_sales.cs_item_sk = item.i_item_sk  |
+                 web_sales.ws_item_sk = item.i_item_sk
+    warnings   none; expected: anchor_ambiguity
+    checks     MATCH household_demographics to income_band  (information only)
+
+14  Are the items returned most often also the ones that were on promotion?
+    step 5: EXPECTED FAILURE CONFIRMED    |    step 6: DISAGREES  -- differs in: tables, joins, warnings
+    best raw   0.3992 (promotion)  (information only)
+    terms      items -> item; returned -> web_returns; often -> time_dim; also -> promotion; ones -> item;
+                 promotion -> promotion; items returned -> web_returns; often also -> item
+    tables     promotion 0.987 (by p_item_sk), store_returns 0.941 (by sr_item_sk), catalog_returns 0.915 (by
+                 cr_item_sk), web_returns 0.909 (by wr_item_sk), item 0.624 (by item), store_sales 0.552 (by
+                 ss_promo_sk)
+    columns    promotion.p_item_sk 0.987 [sem 0.380, key 0.023], store_returns.sr_item_sk 0.941 [sem 0.312, key
+                 0.023], catalog_returns.cr_item_sk 0.915 [sem 0.272, key 0.023], web_returns.wr_item_sk 0.909
+                 [sem 0.264, key 0.023]
+    partners   web_sales (joined to promotion, which "also" chose: 0.250 against 0.218); catalog_sales (joined
+                 to promotion, which "also" chose: 0.250 against 0.212); store_sales (joined to promotion,
+                 which "also" chose: 0.250 against 0.191); web_sales (joined to item, which "ones" chose: 0.250
+                 against 0.155); web_sales (joined to item, which "often also" chose: 0.250 against 0.240);
+                 catalog_sales (joined to item, which "often also" chose: 0.250 against 0.211); store_sales
+                 (joined to item, which "often also" chose: 0.250 against 0.199)
+    cap cut    web_sales
+    attached   0  promotion: the seed
+    attached   1  item to promotion by promotion.p_item_sk=item.i_item_sk  [shortest]
+    attached   2  web_returns to item by web_returns.wr_item_sk=item.i_item_sk  [shortest]
+    attached   3  store_sales to item by store_sales.ss_item_sk=item.i_item_sk  [alphabetical, 2 tied; evidence
+                 0.597 against 0.542, margin 0.117]
+    attached   4  catalog_sales to item by catalog_sales.cs_item_sk=item.i_item_sk  [alphabetical, 2 tied;
+                 evidence 0.591 against 0.536, margin 0.117]
+    tree       promotion, item, web_returns, store_sales, catalog_sales
+    expected   store_returns, store_sales, promotion, item
+               missing: store_returns; extra: catalog_sales, web_returns
+    joins      catalog_sales.cs_item_sk = item.i_item_sk
+               promotion.p_item_sk = item.i_item_sk
+               store_sales.ss_item_sk = item.i_item_sk
+               web_returns.wr_item_sk = item.i_item_sk
+    exp. joins store_returns.sr_item_sk = store_sales.ss_item_sk and store_returns.sr_ticket_number =
+                 store_sales.ss_ticket_number
+               store_sales.ss_promo_sk = promotion.p_promo_sk
+               one of: store_returns.sr_item_sk = item.i_item_sk  |  store_sales.ss_item_sk = item.i_item_sk
+    warnings   many_to_many, multi_anchor; expected: multi_anchor
+               multi_anchor: I had no basis for where to join store sales. It is 1 join from item and equally
+                 from promotion, and nothing declares which is meant. Used: Each store sales row has one item,
+                 through its item surrogate key. Equally valid: Each store sales row has one promotion, through
+                 its promotion surrogate key.
+               multi_anchor: I had no basis for where to join catalog sales. It is 1 join from item and equally
+                 from promotion, and nothing declares which is meant. Used: Each catalog sales row has one
+                 item, through its item surrogate key. Equally valid: Each catalog sales row has one promotion,
+                 through its promotion surrogate key.
+               many_to_many: This answer joins catalog sales and promotion and store sales and web returns
+                 through item. One item row has many rows of each, so every row of one is paired with every row
+                 of the other that shares it: rows multiply, and sums and counts over them are inflated.
+    close call "returned" in the question could as well mean store returns. web returns was used: it scored
+                 0.992 against 0.988, too close to tell apart. store returns is not part of this answer.
+               "returned" in the question could as well mean catalog returns. web returns was used: it scored
+                 0.992 against 0.987, too close to tell apart. catalog returns is not part of this answer.
+    checks     MISMATCH store_returns to store_sales; MISMATCH store_sales to promotion; MISMATCH store_returns
+                 to item; MISMATCH store_sales to item  (information only)
+
+15  Which customers abandoned their carts?
+    step 5: NOT EVALUABLE AT STEP 5    |    step 6: DISAGREES  -- differs in: decline
+    best raw   0.3356 (customer_demographics)  (information only)
+    terms      customers -> customer; abandoned -> warehouse; carts -> catalog_returns; customers abandoned ->
+                 customer
+    tables     customer 0.943 (by customer), customer_demographics 0.909 (by customer_demographics),
+                 customer_address 0.868 (by ca_zip), web_returns 0.753 (by wr_refunded_cdemo_sk), web_sales
+                 0.752 (by ws_ship_cdemo_sk), catalog_returns 0.751 (by cr_refunded_cdemo_sk)
+    columns    customer.c_preferred_cust_flag 0.932 [sem 0.292, key 0.028], customer.c_customer_id 0.901 [sem
+                 0.254, key 0.028], customer.c_current_cdemo_sk 0.901 [sem 0.254, key 0.028],
+                 customer_demographics.cd_purchase_estimate 0.896 [sem 0.320, key 0.025]
+    partners   customer_demographics (joined to customer, which "customers" chose: 0.975 against 0.896);
+                 catalog_sales (joined to catalog_returns, which "carts" chose: 0.250 against 0.235);
+                 customer_demographics (joined to catalog_returns, which "carts" chose: 0.250 against 0.153);
+                 customer_demographics (joined to customer, which "customers abandoned" chose: 0.893 against
+                 0.871); customer_address (joined to customer, which "customers abandoned" chose: 0.893 against
+                 0.843)
+    cap cut    web_page
+    attached   0  customer: the seed
+    attached   1  customer_demographics to customer by
+                 customer.c_current_cdemo_sk=customer_demographics.cd_demo_sk  [shortest]
+    attached   2  customer_address to customer by customer.c_current_addr_sk=customer_address.ca_address_sk
+                 [shortest]
+    attached   3  catalog_returns to customer by catalog_returns.cr_refunded_customer_sk=customer.c_customer_sk
+                 [alphabetical, 6 tied; evidence 0.808 against 0.800, margin 0.117]
+    attached   4  catalog_sales to catalog_returns by catalog_returns.cr_item_sk=catalog_sales.cs_item_sk /
+                 catalog_returns.cr_order_number=catalog_sales.cs_order_number  [alphabetical, 7 tied; evidence
+                 0.803 against 0.797, margin 0.117]
+    tree       customer, customer_demographics, customer_address, catalog_returns, catalog_sales
+    expected   DECLINE: the warehouse cannot answer this
+    warnings   arbitrary_choice, multi_anchor; expected: decline
+               arbitrary_choice: I had no basis for this choice. 2 routes of 1 join connect catalog returns and
+                 customer, and nothing declares which is meant. Used: Each catalog returns row has one
+                 customer, through its refunded customer surrogate key. Equally valid: Each catalog returns row
+                 has one customer, through its returning customer surrogate key.
+               multi_anchor: I had no basis for where to join catalog returns. It is 1 join from customer and
+                 equally from customer address and customer demographics, and nothing declares which is meant.
+                 Used: Each catalog returns row has one customer, through its refunded customer surrogate key.
+                 Equally valid: Each catalog returns row has one customer address, through its refunded address
+                 surrogate key. Equally valid: Each catalog returns row has one customer address, through its
+                 returning address surrogate key. Equally valid: Each catalog returns row has one customer
+                 demographics, through its refunded customer demographics surrogate key. Equally valid: Each
+                 catalog returns row has one customer demographics, through its returning customer demographics
+                 surrogate key.
+               multi_anchor: I had no basis for where to join catalog sales. It is 1 join from catalog returns
+                 and equally from customer and customer address and customer demographics, and nothing declares
+                 which is meant. Used: Each catalog sales row has many catalog returns rows, through their item
+                 surrogate key and order number (asserted in the overlay, not declared by the database).
+                 Equally valid: Each catalog sales row has one customer, through its bill customer surrogate
+                 key. Equally valid: Each catalog sales row has one customer, through its ship customer
+                 surrogate key. Equally valid: Each catalog sales row has one customer address, through its
+                 bill address surrogate key. Equally valid: Each catalog sales row has one customer address,
+                 through its ship address surrogate key. Equally valid: Each catalog sales row has one customer
+                 demographics, through its bill customer demographics surrogate key. Equally valid: Each
+                 catalog sales row has one customer demographics, through its ship customer demographics
+                 surrogate key.
+    close call "carts" in the question could as well mean web sales. catalog returns was used: it scored 0.250
+                 against 0.173, too close to tell apart. web sales is not part of this answer.
+               "carts" in the question could as well mean web returns. catalog returns was used: it scored
+                 0.250 against 0.166, too close to tell apart. web returns is not part of this answer.
+               "carts" in the question could as well mean store sales. catalog returns was used: it scored
+                 0.250 against 0.165, too close to tell apart. store sales is not part of this answer.
+               "carts" in the question could as well mean store returns. catalog returns was used: it scored
+                 0.250 against 0.161, too close to tell apart. store returns is not part of this answer.
+
+16  Which customers buy through which of our web pages?
+    step 5: MISMATCH    |    step 6: DISAGREES  -- differs in: tables, joins
+    best raw   0.4054 (web_sales.ws_bill_cdemo_sk)  (information only)
+    terms      customers -> customer; buy -> household_demographics; web -> web_page; pages -> web_page;
+                 customers buy -> customer; web pages -> web_page
+    tables     web_page 0.981 (by wp_customer_sk), web_sales 0.747 (by ws_web_page_sk), web_returns 0.709 (by
+                 wr_returning_cdemo_sk), catalog_page 0.499 (by catalog_page), customer 0.495 (by customer),
+                 customer_demographics 0.479 (by customer_demographics)
+    columns    web_page.wp_customer_sk 0.981 [sem 0.375, key 0.053], web_page.wp_web_page_sk 0.763 [sem 0.294,
+                 key 0.041], web_page.wp_web_page_id 0.762 [sem 0.292, key 0.041], web_sales.ws_web_page_sk
+                 0.747 [sem 0.391, key 0.036]
+    partners   web_returns (joined to web_page, which "web" chose: 0.974 against 0.928); web_sales (joined to
+                 web_page, which "web" chose: 0.974 against 0.917)
+    cap cut    none
+    attached   0  web_page: the seed
+    attached   1  web_sales to web_page by web_sales.ws_web_page_sk=web_page.wp_web_page_sk  [shortest]
+    attached   2  web_returns to web_page by web_returns.wr_web_page_sk=web_page.wp_web_page_sk
+                 [question_evidence, 2 tied; evidence 0.726 against 0.488, margin 0.117]
+    tree       web_page, web_sales, web_returns
+    expected   web_sales, web_page, customer
+               missing: customer; extra: web_returns
+    joins      web_returns.wr_web_page_sk = web_page.wp_web_page_sk
+               web_sales.ws_web_page_sk = web_page.wp_web_page_sk
+    exp. joins web_sales.ws_web_page_sk = web_page.wp_web_page_sk
+               web_sales.ws_bill_customer_sk = customer.c_customer_sk
+    warnings   many_to_many; expected: not judged (see_note)
+               many_to_many: This answer joins web returns and web sales through web page. One web page row has
+                 many rows of each, so every row of one is paired with every row of the other that shares it:
+                 rows multiply, and sums and counts over them are inflated.
+    checks     MATCH web_sales to web_page; MISMATCH web_sales to customer; EXPECTED FAILURE CONFIRMED web_page
+                 to customer  (information only)
+
+----------------------------------------------------------------------------------------------------
+step 5      16 questions: 7 match  (pairwise PathFinder, handed the expected tables; unchanged, see above)
+step 6      16 questions: 1 agree, 15 disagree  (retrieval and the tree, judged whole)
+            These are different instruments. The two counts are not added and not compared as a score.
+part        declined or not, as expected  15 of 16 judged
+part        tables as expected             2 of 15 judged
+part        joins as expected              2 of 15 judged
+part        warnings as expected           3 of 14 judged
+diagnostic  every expected table in the tree: 8 of 15; no table beyond the expected: 2 of 15
+            tables beyond the expected, over all questions: 28
+warnings    raised, questions each: arbitrary_choice 4, many_to_many 7, multi_anchor 9
+close calls 19 on 11 questions (information, not a warning)
+anchors     per question: 1:4, 2:4, 3:5, 4:4, 5:2, 6:5, 7:4, 8:2, 9:5, 10:5, 11:4, 12:3, 13:4, 14:5, 15:5, 16:3
+timing      scoring (embedding lookups and both searches) median 134 ms, largest 180 ms; retrieval and tree median 96 ms, largest 149 ms
+            external embedding calls, not in the figures' budget (NFR-02) but in them here: 0 ms in all
+cost        embedded now: 0 texts, 0 tokens, $0.00000000; everything else came from the cache
+note        With 16 questions a difference of one is noise.
