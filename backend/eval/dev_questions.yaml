@@ -28,11 +28,13 @@ questions:
 
   - id: d3
     question: Which catalog pages brought in the most orders?
-    exercises: one join with a single key; the smoke check's question
+    exercises: one join with a single key
 
   - id: d4
     question: How do purchases on the web split by the buyer's level of education?
-    exercises: one join, billing against shipping customer demographics
+    exercises: >-
+      one join, billing against shipping customer demographics; the smoke
+      check's question
 
   - id: d5
     question: What share of the money taken on the web was later refunded?
