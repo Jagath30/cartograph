@@ -70,6 +70,9 @@ GOOD = [
     "SELECT EXTRACT(year FROM d_date), DATE_TRUNC('month', d_date), d_date + INTERVAL '1 day' FROM date_dim",
     "SELECT c_last_name || ', ' || c_first_name FROM customer WHERE c_last_name ILIKE 'a%' AND c_birth_year BETWEEN 1970 AND 1980",
     "SELECT COUNT(*) FILTER (WHERE ss_quantity > 1), COUNT(DISTINCT ss_customer_sk) FROM store_sales",
+    # Unquoted names are folded to lower case, as Postgres folds them.
+    "SELECT S.S_STORE_NAME, SUM(SS.SS_NET_PAID) FROM STORE_SALES AS SS JOIN STORE AS S ON SS.SS_STORE_SK = S.S_STORE_SK GROUP BY S.S_STORE_NAME",
+    "SELECT S_Store_Name FROM Store",
     # A string that looks like a second statement is one string.
     "SELECT 'a; DROP TABLE store' AS text FROM store",
     "SELECT s_store_name FROM store -- ; DROP TABLE store",
@@ -242,6 +245,8 @@ UNKNOWN = [
     ("WITH c AS (SELECT s_store_sk AS k FROM store) SELECT c.s_store_sk FROM c", ["unknown_column"]),
     ("SELECT d.b FROM (SELECT s_store_sk AS a FROM store) AS d", ["unknown_column"]),
     ("SELECT s_store_name FROM store WHERE s_store_sk IN (SELECT ss_nope FROM store_sales)", ["unknown_column"]),
+    # A subquery in FROM does not see the tables beside it.
+    ("SELECT 1 FROM store AS s, (SELECT s.s_store_sk AS k FROM item) AS d", ["unknown_column"]),
     # The system catalogs are not the warehouse.
     ("SELECT relname FROM pg_class", ["unknown_table", "unknown_column"]),
     ("SELECT c.relname FROM pg_catalog.pg_class AS c", ["schema_not_allowed"]),
