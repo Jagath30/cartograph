@@ -2071,6 +2071,112 @@ the tag `checkpoint-06-retrieval`. Commits on `main`; nothing is pushed
 until the owner has looked; `step2-backup` is never pushed, and
 `git push --all` and `git push --tags` are never used.
 
+### Ruling 1, first part: the rival pairs of run 1 — 9 October 2026
+
+Made by the session that carries out the third-stop rulings, before any
+code changed. Read from `backend/eval/baseline_step6_run1.txt`, the `set
+aside` lines, and from the committed overlay, which holds all 107 foreign
+keys and joins 82 pairs of tables directly. Nothing was scored and no
+question was run to make it. Each line: the table set aside, the table a
+term chose instead, the term, the two scores, and whether a foreign key
+joins the two directly, in either direction.
+
+    Q1   store_returns for store                 "store"              0.991 0.949  JOINED
+         store_returns for store_sales           "store sell"         0.939 0.919  JOINED
+    Q2   web_sales for catalog_sales             "billed"             0.875 0.869  not joined
+         catalog_returns for catalog_sales       "catalog customers"  1.000 0.972  JOINED
+         web_sales for catalog_sales             "customers billed"   0.903 0.889  not joined
+    Q3   customer_demographics for customer      "customers"          0.950 0.914  JOINED
+         catalog_returns for catalog_sales       "catalog customers"  1.000 0.972  JOINED
+    Q4   web_site for item                       "top"                0.500 0.465  not joined
+         catalog_sales for web_sales             "selling"            0.500 0.469  not joined
+         web_site for web_page                   "web"                0.959 0.930  not joined
+         web_returns for web_page                "web"                0.959 0.857  JOINED
+    Q5   web_returns for store_returns           "returning"          1.000 0.991  not joined
+         catalog_returns for store_returns       "returning"          1.000 0.982  not joined
+         web_returns for store_returns           "returning items"    0.899 0.861  not joined
+         catalog_returns for store_returns       "returning items"    0.899 0.843  not joined
+    Q6   store_returns for store                 "store"              0.991 0.949  JOINED
+         store_returns for store_sales           "revenue"            0.500 0.449  JOINED
+         catalog_returns for store_sales         "revenue"            0.500 0.441  not joined
+         store_returns for store_sales           "store revenue"      0.939 0.908  JOINED
+         catalog_returns for catalog_sales       "catalog revenue"    0.927 0.899  JOINED
+    Q7   store for inventory                     "stock"              0.500 0.431  not joined
+         catalog_sales for inventory             "stock"              0.500 0.398  not joined
+         store_sales for inventory               "stock"              0.500 0.397  not joined
+         store_sales for inventory               "least stock"        0.500 0.411  not joined
+    Q8   web_sales for store_sales               "increase"           0.500 0.471  not joined
+         catalog_sales for store_sales           "increase"           0.500 0.440  not joined
+         web_sales for store_sales               "sales"              0.990 0.976  not joined
+         catalog_sales for store_sales           "sales"              0.990 0.960  not joined
+         catalog_sales for store_sales           "increase sales"     0.949 0.899  not joined
+         web_sales for store_sales               "increase sales"     0.949 0.887  not joined
+    Q9   store_sales for store                   "shop"               0.500 0.444  JOINED
+         catalog_sales for store                 "shop"               0.500 0.407  not joined
+         store_returns for store                 "stores"             0.989 0.963  JOINED
+         store_sales for store                   "stores"             0.989 0.883  JOINED
+         catalog_returns for web_sales           "average number"     0.867 0.804  not joined
+         catalog_sales for web_sales             "average number"     0.867 0.803  not joined
+         store_sales for web_sales               "average number"     0.867 0.799  not joined
+    Q10  none
+    Q11  store_returns for store                 "store"              0.991 0.949  JOINED
+         web_sales for store_sales               "sales"              0.990 0.976  not joined
+         catalog_sales for store_sales           "sales"              0.990 0.960  not joined
+         catalog_sales for store_sales           "sales break"        0.978 0.945  not joined
+         web_sales for store_sales               "sales break"        0.978 0.940  not joined
+    Q12  web_returns for store_returns           "returns"            0.986 0.973  not joined
+    Q13  customer_demographics for customer      "customers"          0.950 0.914  JOINED
+    Q14  store_returns for web_returns           "returned"           0.984 0.976  not joined
+         catalog_returns for web_returns         "returned"           0.984 0.973  not joined
+         web_sales for promotion                 "also"               0.500 0.436  JOINED
+         catalog_sales for promotion             "also"               0.500 0.425  JOINED
+         store_returns for web_returns           "items returned"     0.858 0.854  not joined
+         catalog_returns for web_returns         "items returned"     0.858 0.817  not joined
+         web_sales for item                      "often also"         0.500 0.479  JOINED
+         catalog_sales for item                  "often also"         0.500 0.422  JOINED
+         store_sales for item                    "often also"         0.500 0.398  JOINED
+    Q15  catalog_sales for catalog_returns       "carts"              0.500 0.469  JOINED
+         customer_address for customer_demographics
+                                                 "customers abandoned" 0.864 0.807 not joined
+         web_returns for customer_demographics   "customers abandoned" 0.864 0.770 JOINED
+    Q16  web_site for web_page                   "web"                0.959 0.930  not joined
+         web_returns for web_page                "web"                0.959 0.857  JOINED
+         catalog_page for web_page               "pages"              0.978 0.945  not joined
+         web_sales for customer_demographics     "customers buy"      0.894 0.795  JOINED
+
+    60 lines: 24 joined, 36 not joined
+    33 distinct pairs of (chosen, set aside): 14 joined, 19 not joined
+
+**What the list says.**
+- **The three expected tables that run 1 lost were each lost to a table
+  they are joined to, in part.** Question 16's `web_sales` was set aside
+  for `customer_demographics` alone, and they are joined. Question 14's
+  `store_sales` was set aside for `item` alone, joined. Question 9's
+  `store_sales` was set aside for `store`, twice, joined, **and also for
+  `web_sales`, which is not joined**. So the correction as ruled gives
+  back two of the three for certain and leaves question 9's in doubt.
+  Question 14's `store_returns` was set aside for `web_returns` only: not
+  joined, a sibling channel, exactly what the ruling keeps as a rival.
+- **The joined pairs are a fact with its dimension, or a return with its
+  sale.** `store_returns` and `store`, `store_sales` and `store`,
+  `catalog_returns` and `catalog_sales`, `customer_demographics` and
+  `customer`, a sales table and `item` or `promotion`.
+- **The not-joined pairs are mostly siblings**, as the ruling expects:
+  sales channel against sales channel (15 lines), returns against returns
+  (9). The rest are a mixed bag that no reader would call alternatives
+  for one role: `store_sales` or `catalog_sales` or `store` against
+  `inventory` for "stock", `web_site` against `item` for "top",
+  `catalog_returns` against `web_sales` for "average number". They stay
+  rivals under the ruling, which draws the line at adjacency and nowhere
+  else.
+- **A limit of this list.** The report prints a pair only when the table
+  that won is an anchor. The Retriever sets a table aside when the winner
+  reached the cut, which is a wider condition: a winner the cap then cut
+  still set its rival aside, and no line shows that pair. Four questions
+  had a cap cut in run 1 (3, 6, 10, 15). In each, every table set aside
+  appears above at least once, so no table is unexplained; pairs may be
+  missing.
+
 ### Tuning log
 
 Every run of `python -m app.show_eval --step6`, with what changed, the
