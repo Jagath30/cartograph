@@ -6635,9 +6635,22 @@ below.
   `tests/core/test_sql_validator.py` from `3a9a2ea` and in
   `tests/core/test_conformance.py` from `ccb9e91`. The rule was that no
   benchmark query text is committed. Both now hold a statement of our
-  own in the same style, and the tests assert the same things of it. The
-  old text is still in those two commits' history; what is done about
-  that is the owner's decision, and the tag waits on it.
+  own in the same style, and the tests assert the same things of it
+  (`9f503fd`). The old text is in the history from `3a9a2ea` until
+  `9f503fd` removed it.
+  **History was deliberately not rewritten: the owner's ruling, 9
+  October 2026.** His reasons. The rule's purpose was not to publish the
+  benchmark's query set; four abridged lines of query 3 used as a test
+  example do not do that, and DuckDB's open-source `tpcds` extension
+  ships all 99 queries for anyone to list. Rewriting would replace the
+  hashes that show the ConformanceCheck and the SqlValidator were
+  committed before any model SQL existed, and a rewrite is exactly the
+  operation that could fake that order: the authentic history is worth
+  more than removing four lines. And the check did its job: it caught
+  the fragment, and the tree no longer holds it. The pre-push checks
+  otherwise found nothing in the 17 commits since `88d31dc`: no `.env`,
+  no `tpcds_ri.sql`, nothing under `data/`, no ledger or cache, no
+  key-shaped string.
 
 **Owed to the Design.** Recorded here so that none is lost; the Design
 document is not edited in the build.
