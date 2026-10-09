@@ -97,3 +97,31 @@ runs the sixteen questions of the frozen evaluation set
 them and where it does not. At the settings in use it holds every expected
 table for 11 of 15 questions and brings 34 tables too many; it agrees
 strictly with none. `CHECKPOINTS.md` has the whole record.
+
+## Asking a question
+
+    docker compose exec backend python -m app.ask "How do purchases on the web split by the buyer's level of education?"
+
+puts one question through the whole pipeline and prints its answer and its
+trace: the tables the model was shown and the joins selected for it, each
+attempt, the SQL that ran, the joins that SQL really made beside the ones
+selected, and the first rows. It is a paid call to the model
+(`gpt-6-luna`), a few hundredths of a cent, written to a spend ledger; the
+last line gives the running total.
+
+What the pipeline guarantees, and what it only reports:
+
+- The SQL is parsed and refused unless it is one read-only SELECT over
+  tables and columns the schema holds. A write, or a function known for a
+  side effect, ends the question; the model is not asked again. The
+  warehouse role could not write in any case.
+- The SQL that runs is byte for byte the SQL that was checked.
+- The joins the SQL makes are read out of it and compared with the joins
+  selected. If they differ the query still runs and the trace says
+  **diverged**, naming the joins. A model that takes another route is
+  reported, not corrected.
+- When the tables retrieved do not hold the answer the model says so, and
+  the reply is "cannot be answered from the tables retrieved". That is a
+  statement about the tables it was shown, not about the warehouse.
+
+Nothing is stored yet: the trace is printed and gone.

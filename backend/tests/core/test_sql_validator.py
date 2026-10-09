@@ -51,11 +51,12 @@ GOOD = [
     """SELECT s.s_store_name, SUM(ss.ss_net_paid) AS paid
        FROM store_sales AS ss JOIN store AS s ON ss.ss_store_sk = s.s_store_sk
        GROUP BY s.s_store_name ORDER BY paid DESC LIMIT 10""",
-    # The benchmark's own style: comma joins, unqualified columns.
-    """select d_year, i_brand_id, sum(ss_ext_sales_price) sum_agg
-       from date_dim, store_sales, item
-       where d_date_sk = ss_sold_date_sk and ss_item_sk = i_item_sk and i_manufact_id = 128 and d_moy = 11
-       group by d_year, i_brand_id order by d_year, sum_agg desc limit 100""",
+    # The benchmark's house style, in a statement of our own: comma joins,
+    # unqualified columns, lower case.
+    """select s_city, d_qoy, sum(ss_net_paid) paid
+       from store, store_sales, date_dim
+       where s_store_sk = ss_store_sk and ss_sold_date_sk = d_date_sk and d_year = 2000 and s_state = 'TN'
+       group by s_city, d_qoy order by s_city, paid desc limit 50""",
     """WITH per_item AS (SELECT ss_item_sk AS item_sk, SUM(ss_net_paid) AS paid FROM store_sales GROUP BY ss_item_sk)
        SELECT i.i_category, SUM(p.paid) FROM per_item AS p JOIN item AS i ON i.i_item_sk = p.item_sk GROUP BY i.i_category""",
     "SELECT x.n FROM (SELECT COUNT(*) AS n FROM customer) AS x",

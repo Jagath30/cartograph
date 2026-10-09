@@ -6538,6 +6538,157 @@ it.
 - `docker compose down` against `down -v`: which one a clean start means
   here, and what the other would have destroyed
 
+## checkpoint-07-generation — 9 October 2026
+
+**What works now that did not before.** A question in English gets an
+answer from the warehouse. `docker compose exec backend python -m app.ask
+"..."` retrieves the tables and their join tree as step 6 left them,
+renders them as a prompt (CREATE TABLE with readable names, then the
+selected joins as conditions), asks `gpt-6-luna` for one SELECT in a
+two-field JSON reply, parses that SQL and refuses anything that is not a
+read-only SELECT over the schema, reads the joins the SQL really makes
+and compares them with the joins selected, runs it as the SELECT-only
+role under the role's own timeout, and prints the rows with a trace of
+all of it. The trace is assembled in memory by an orchestrator that every
+stage reports to and none can bypass. On the first real run, four of
+eight development questions were answered, one of them by joins other
+than the ones selected, which the trace said; and four were declined, one
+because the warehouse holds no such thing and three because retrieval had
+not brought a table the answer needs. 939 tests pass in the container and
+2 paid ones skip; 881 pass and 60 skip with both database URLs and the
+key unset. Smoke from a clean start: 32 passed, 0 failed, 0 skipped: the
+two lines that waited since step 1 are real. All of step 7 cost
+$0.0023: 22 model calls and one small batch of embeddings.
+
+**The instrument came before the thing it measures.** The SqlValidator
+(`3a9a2ea`) and the ConformanceCheck (`ccb9e91`, final form `d5594e5`)
+were written, tested on hand-written SQL, mutated and committed before
+any model had written a statement for them to judge; the executor and
+orchestrator (`bb72a4a`) and the commands (`6bc3387`) likewise. The
+history shows the order. From `d5594e5` the three modules
+`sql_reading.py`, `sql_validator.py` and `conformance.py` are frozen like
+the two judgements before them: the ConformanceCheck is step 10's
+measuring instrument, and a change made after seeing model SQL would be
+shaped by it.
+
+**The numbers.**
+
+    development questions, run 1        4 answered, 4 declined
+      declined rightly                  1 (no such thing in the warehouse)
+      declined for a table not brought  3 of 7 answerable
+    conformance of the 4 answered       3 incomplete, 1 diverged, 0 conforms
+    retries, validator rejections,
+      replies cut off                   none
+    tables named outside the prompt     none, in any reply
+    two runs at temperature 0           5 of 8 questions the same SQL
+                                        and outcome; the joins never
+                                        differed where there were joins
+    stream stopped after 1,000 rows     88 ms (16.6 s to read it all)
+    the 99 TPC-DS benchmark queries     99 parsed, none refused by the
+      as a stress test                  validator, 49 read with nothing
+                                        unchecked
+    model calls                         22, on gpt-6-luna at reasoning
+                                        effort none, temperature 0
+    spend                               $0.002305 on the model, $0.000003
+                                        on embeddings
+
+**Findings.** Each is recorded where it was found, in the working record
+below.
+
+- **The decline is honest and is about the tables shown.** FR-42 asks
+  for "cannot be answered from this schema", detected before generation.
+  The system detects inside generation and can only say "from the tables
+  retrieved". Three of seven answerable questions were declined for a
+  table retrieval missed, each for a different cause: a score 0.008
+  under the cut; the rival rule setting aside the second-best table of
+  24; a word that is a value in the data and in no description (item
+  62).
+- **A divergence on a real case, reported and not corrected.** d7: the
+  tree hung two dimensions on `catalog_returns`, by the alphabet; the
+  model joined them to `catalog_sales`; the SQL ran; the trace says
+  diverged and names both joins. Under DD-15 as the Design wrote it, the
+  model would have been argued into the returns table.
+- **The alphabet is not neutral on this schema.** `X_returns` sorts
+  before `X_sales` in every channel. Nine dimensions hang on a returns
+  table by the alphabet in the step 6 evaluation report's sixteen trees,
+  with the sales table beside it each time (item 65).
+- **Temperature 0 does not repeat.** One question changed its measure
+  between two runs and one changed from answered to not answerable. A
+  single run is not a result (item 63).
+- **Warnings are about the tree, not the answer.** A question that
+  joined nothing carried three (item 64).
+- **Comparison is by meaning.** The owner's ruling at the first stop
+  that `ss_item_sk = cs_item_sk` was a join outside the path was revised
+  by him at the second: joining two facts through `item` and joining
+  them directly are one join, and the check now reasons in equivalence
+  classes, as Postgres does.
+- **Faults of the build, found by a check.** A statement that is not a
+  SELECT read as "no joins", which would have been called conforms; an
+  unresolved join condition also reported as a cross join; five
+  mutations that survived, three for want of a test; `query_to_xml`,
+  which runs SQL handed to it as a string and would have hidden a
+  `pg_sleep` from any parser; the embedder repeating whatever code-shaped
+  string a provider sent.
+- **A fault of mine, found by the pre-push check and not before.** Two
+  tests held a statement that was an abridgement of TPC-DS benchmark
+  query 3, written as an example of "the benchmark's own style": in
+  `tests/core/test_sql_validator.py` from `3a9a2ea` and in
+  `tests/core/test_conformance.py` from `ccb9e91`. The rule was that no
+  benchmark query text is committed. Both now hold a statement of our
+  own in the same style, and the tests assert the same things of it. The
+  old text is still in those two commits' history; what is done about
+  that is the owner's decision, and the tag waits on it.
+
+**Owed to the Design.** Recorded here so that none is lost; the Design
+document is not edited in the build.
+
+- **DD-12**, from step 6: question evidence may break a path tie.
+- **DD-13**, a clarification: comparison by equivalence class; an outer
+  join's condition and a UNION branch's take no part in transitivity; a
+  two-column key half present is a wrong join; an unjoined source is a
+  cross join, a one-row source excepted; UNION and UNION ALL are read
+  branch by branch; **diverged wins over not_checked**, then incomplete,
+  then conforms.
+- **DD-14**, an amendment: the reply has two fields, `status` and `sql`,
+  so that the model can say a question is not answerable. No reason
+  field. A self-contradicting reply is malformed.
+- **DD-15**, an amendment: a divergence never triggers a retry; nor does
+  incomplete, not_checked, or a reply cut off by the output cap.
+  Everything failing `read_only` is terminal, a named list of
+  side-effect functions with it.
+- **FR-42 and IR-05**: the question-not-answerable response is worded
+  "from the tables retrieved", and is reached after a model call unless
+  there are no anchors or they cannot be joined.
+- **Section 12**: the evaluation's method says one run at temperature 0.
+  The model does not repeat at temperature 0.
+
+**To dissect.** The list is kept whole under "To dissect, step 7" below.
+The ones to start with:
+- `sql_reading.py`: a select, a source, a body; `resolve` and `trace` on
+  one CTE by hand
+- the four consequences of comparison by meaning, each on paper
+- why an outer join's condition, and a UNION branch's, are kept out of
+  the classes
+- the precedence of the four outcomes, and why diverged is first
+- the seal on `ValidatedSql`, and the one path from the model's text to
+  the database
+- `Orchestrator.answer`: the one `finish`, the retry loop, and the three
+  things that are never retried
+- d7 of development run 1, whole: the tree, the prompt, the SQL, the
+  verdict
+- why the instrument was committed before the first question, and what
+  that buys at step 10
+
+**Next single deliverable.** Step 8: the trace assembled, persisted and
+served. Migrations for `users`, `queries` and `traces` with `user_id`
+from the first, the JSONB body with its extracted columns, and the API
+that returns it. Three things step 7 hands it: the trace's `paths`
+section was designed for one selected path and the system selects a
+tree; a warning can now be marked as having touched the answer or not;
+and a decline's trace should list the tables shown. **Before step 10,
+for the owner:** whether a retrieval pass comes first (item 62), how many
+runs the evaluation takes (item 63), and relative dates (item 60).
+
 ### The working record of step 7
 
 Opened 9 October 2026 as the step began, and kept as written: what was
@@ -6550,9 +6701,9 @@ ruled before any code, each review stop, every paid call.
     2  sqlglot; the model adapter and its fake; probe done (c3b0320)
     3  SqlValidator                                   done (3a9a2ea), before any model SQL
     4  ConformanceCheck, extraction and comparison    done (ccb9e91), before any model SQL
-    5  PromptBuilder; the development questions       done; STOPPED FOR THE OWNER (stop 2)
-    6  QueryExecutor, orchestrator, app.ask, dev runs done; STOPPED FOR THE OWNER (stop 3)
-    7  smoke end to end; the close                    smoke lines written and green; the close waits
+    5  PromptBuilder; the development questions       done; reviewed at stop 2
+    6  QueryExecutor, orchestrator, app.ask, dev runs done; reviewed at stop 3
+    7  smoke end to end; the close                    done
 
 **Three rules this step adds, set by the owner.**
 
@@ -7011,14 +7162,15 @@ report the shipping key where the SQL uses the billing key, PIPELINE
 passed and WITNESS failed, naming both; restored, both passed. Each smoke
 run is one paid model call, about $0.00005.
 
-**Paid calls, all of step 7.**
+**Paid calls, all of step 7** (the fifth smoke run is the close's, from
+a clean start).
 
     the probe            1 call        52 in     11 out   $0.000011
     development run 1    8 calls   14,864 in    382 out   $0.001677
     development run 2    8 calls   14,864 in    292 out   $0.000366
-    smoke, four times    4 calls    6,176 in    280 out   $0.000203
+    smoke, five times    5 calls                          $0.000251
     embedding, 50 texts                                   $0.000003
-    total               21 model calls                    $0.002260
+    total               22 model calls                    $0.002308
 
 **Suite.** 939 pass in the container and 2 paid tests skip; 881 pass and
 60 skip with both database URLs and the key unset.

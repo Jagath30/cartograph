@@ -65,14 +65,15 @@ def test_an_explicit_join_is_read_with_its_aliases_resolved() -> None:
 
 
 def test_a_comma_join_with_where_equalities_is_read_the_same_way() -> None:
-    """Correction 9: the benchmark's own queries have no JOIN keyword."""
-    sql = """select d_year, i_brand_id, sum(ss_ext_sales_price)
-             from date_dim, store_sales, item
-             where d_date_sk = ss_sold_date_sk and ss_item_sk = i_item_sk and i_manufact_id = 128 and d_moy = 11
-             group by d_year, i_brand_id"""
-    assert joins(sql) == {"date_dim.d_date_sk = store_sales.ss_sold_date_sk", "item.i_item_sk = store_sales.ss_item_sk"}
+    """Correction 9: the benchmark's own queries have no JOIN keyword. The
+    statement is ours, in that style."""
+    sql = """select s_city, d_qoy, sum(ss_net_paid) paid
+             from store, store_sales, date_dim
+             where s_store_sk = ss_store_sk and ss_sold_date_sk = d_date_sk and d_year = 2000 and s_state = 'TN'
+             group by s_city, d_qoy"""
+    assert joins(sql) == {"date_dim.d_date_sk = store_sales.ss_sold_date_sk", "store.s_store_sk = store_sales.ss_store_sk"}
     assert reasons(sql) == set()
-    assert outcome(sql, SS_DATE, SS_ITEM) == "conforms"
+    assert outcome(sql, SS_DATE, SS_STORE) == "conforms"
 
 
 def test_the_two_sides_of_an_equality_may_be_written_either_way_round() -> None:
