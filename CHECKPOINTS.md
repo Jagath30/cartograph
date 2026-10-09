@@ -677,12 +677,15 @@ No tag yet. This section is the step's working record: where it stands,
 what was decided before any code, and every tuning run. It becomes
 `checkpoint-06-retrieval` when the step closes.
 
-**Where the work stands.** Pieces 0 to 9 are committed. The floor was
-withdrawn by the owner at the second review stop. Run 1, the baseline
-after that ruling, is made and recorded: 1 agrees, 15 disagree. The work
-is STOPPED FOR THE OWNER'S REVIEW of it. No tuning run has been made and
-no parameter has moved. THE STEP 6 JUDGEMENT IS FROZEN like the step 5
-one.
+**Where the work stands.** Pieces 0 to 9 are committed. Run 1, the
+baseline after the floor was withdrawn, was reviewed by the owner at the
+third review stop: 1 agrees, 15 disagree, 14 of them on having the wrong
+tables. HIS RULINGS ARE RECORDED AND NOT YET CARRIED OUT: correct the
+rival definition (ruling 1), record run 2, then tune by the fixed
+protocol (ruling 2), then stop before the close. A fresh session does
+this; "For the session that carries out the third-stop rulings", below,
+is written for it. No tuning run has been made and no parameter has
+moved. THE STEP 6 JUDGEMENT IS FROZEN like the step 5 one.
 
     0  this record                                  done
     1  the step 6 judgement                         done; reviewed; frozen
@@ -694,7 +697,7 @@ one.
     7  embedding adapter                            done
     8  SemanticIndex                                done
     9  runner, step 6 baseline at Design defaults   done; OWNER REVIEW
-    10 tuning runs, each logged below               after the review of run 1
+    10 rival correction, run 2, then tuning runs    next; a fresh session; OWNER REVIEW before the close
     11 close: smoke, suite, runner, tag
 
 The pure core (2 to 4) is written before anything that can produce a real
@@ -1783,6 +1786,290 @@ every tie it meets, or none of them, that is the same shift between how
 names score and how questions score, showing up in the other threshold.
 It is then reported as that, and the margin is not adjusted. Run 1's
 record counts the ties evidence met, decided and left.
+
+### Run 1 as a compact diagnosis — 9 October 2026
+
+Asked for by the owner before ruling, and made without changing anything:
+read from the recorded run 1 and recomputed from cached vectors at no
+cost. Each line: expected tables -> tree tables; expected joins found in
+the tree; expected warning -> warnings raised; the first reason it
+disagrees.
+
+    Q1   store_sales, store, date_dim -> those + catalog_returns.
+         joins wrong (2 of 2 expected present, 1 extra).
+         none -> anchor_ambiguity, many_to_many.              WRONG TABLES
+    Q2   catalog_sales, customer_address -> those + catalog_page, customer.
+         joins wrong (1 of 1 present, 2 extra).
+         none -> anchor_ambiguity, arbitrary_choice, multi_anchor.
+                                                              WRONG TABLES
+    Q3   catalog_sales, customer_address -> those + catalog_page, customer,
+         promotion. joins wrong (1 of 1 present, 3 extra).
+         arbitrary_choice -> anchor_ambiguity, arbitrary_choice,
+         multi_anchor.                                        WRONG TABLES
+    Q4   web_sales, item, date_dim -> web_sales, item, web_page.
+         joins wrong (1 of 2 present, 1 extra).
+         none -> anchor_ambiguity.                            WRONG TABLES
+    Q5   store_returns, reason -> those + store_sales.
+         joins wrong (1 of 1 present, 1 extra).
+         none -> anchor_ambiguity.                            WRONG TABLES
+    Q6   store_sales, catalog_sales, item -> those + catalog_page, store.
+         joins wrong (2 of 2 present, 2 extra).
+         many_to_many -> anchor_ambiguity, many_to_many.      WRONG TABLES
+    Q7   inventory, warehouse, item, date_dim -> inventory, item,
+         warehouse, web_sales, catalog_returns.
+         joins wrong (2 of 3 present, 2 extra).
+         none -> anchor_ambiguity, many_to_many.              WRONG TABLES
+    Q8   promotion + one sales table -> store_sales, promotion.
+         joins right. anchor_ambiguity -> anchor_ambiguity.   AGREES
+    Q9   store_sales, household_demographics -> household_demographics,
+         customer, customer_demographics, web_sales, store, date_dim.
+         joins wrong (0 of 1 present, 5 extra).
+         anchor_ambiguity -> anchor_ambiguity, arbitrary_choice,
+         many_to_many, multi_anchor.                          WRONG TABLES
+    Q10  web_sales, web_site, ship_mode -> those + web_returns,
+         catalog_sales, catalog_returns.
+         joins wrong (2 of 2 present, 3 extra).
+         none -> many_to_many.                                WRONG TABLES
+    Q11  store_sales, date_dim -> those + store.
+         joins wrong (1 of 1 present, 1 extra).
+         none -> anchor_ambiguity.                            WRONG TABLES
+    Q12  catalog_returns, call_center -> those + catalog_sales,
+         catalog_page, store_returns, date_dim.
+         joins wrong (1 of 1 present, 4 extra).
+         none -> anchor_ambiguity, arbitrary_choice, many_to_many,
+         multi_anchor.                                        WRONG TABLES
+    Q13  income_band, household_demographics, item + one sales table ->
+         income_band, household_demographics, customer, web_sales.
+         joins wrong (1 of 3 present, 2 extra).
+         anchor_ambiguity -> anchor_ambiguity, arbitrary_choice,
+         multi_anchor.                                        WRONG TABLES
+    Q14  store_returns, store_sales, promotion, item -> promotion, item,
+         web_returns. joins wrong (0 of 3 present, 2 extra).
+         multi_anchor -> anchor_ambiguity, many_to_many.      WRONG TABLES
+    Q15  decline -> not declined; a tree of customer_demographics,
+         customer, web_sales, catalog_returns, store_returns. DECLINE
+    Q16  web_sales, web_page, customer -> web_page, customer,
+         customer_demographics, catalog_sales, customer_address.
+         joins wrong (0 of 2 present, 4 extra).
+         not judged -> anchor_ambiguity, arbitrary_choice, many_to_many,
+         multi_anchor.                                        WRONG TABLES
+
+    totals   WRONG TABLES 14; RIGHT TABLES WRONG JOINS 0; RIGHT JOINS
+             WRONG WARNING 0; DECLINE 1; agrees 1
+
+    anchors  Q1 4, Q2 4, Q3 5, Q4 3, Q5 3, Q6 5, Q7 5, Q8 2, Q9 5, Q10 5,
+             Q11 3, Q12 5, Q13 4, Q14 3, Q15 5, Q16 5
+
+    extra only, nothing missing (8): Q1, Q2, Q3, Q5, Q6, Q10, Q11, Q12
+    missing and extra (6):
+      Q4   missing date_dim (never reached the cut); extra web_page
+      Q7   missing date_dim (never reached the cut); extra web_sales,
+           catalog_returns
+      Q9   missing store_sales (SET ASIDE as a rival: "shop" chose store);
+           extra customer, customer_demographics, web_sales, store, date_dim
+      Q13  missing item (never reached the cut); extra customer
+      Q14  missing store_returns and store_sales (BOTH SET ASIDE as
+           rivals); extra web_returns
+      Q16  missing web_sales (SET ASIDE as a rival); extra
+           customer_demographics, catalog_sales, customer_address
+
+    tables set aside, per question, as the Retriever recorded them:
+      Q1  store_returns              Q2  catalog_returns, web_sales
+      Q3  catalog_returns, customer_demographics
+      Q4  web_returns, web_site, catalog_sales
+      Q5  catalog_returns, web_returns
+      Q6  catalog_returns, store_returns
+      Q7  store, catalog_sales, store_sales
+      Q8  web_sales, catalog_sales   Q9  store_sales, store_returns,
+                                         catalog_sales, catalog_returns
+      Q10 none                       Q11 catalog_sales, web_sales,
+                                         store_returns
+      Q12 web_returns                Q13 customer_demographics
+      Q14 store_returns, catalog_returns, store_sales, catalog_sales,
+          web_sales
+      Q15 customer_address, web_returns, catalog_sales
+      Q16 web_sales, web_returns, catalog_page, web_site
+
+    cut by the cap: Q3 web_sales, web_returns, store_returns, store_sales;
+      Q6 web_sales, promotion; Q10 ship_mode, store_returns; Q15
+      store_sales, web_page
+
+    the margin   evidence met 21 ties, decided 10 (gaps 0.11 to 0.34),
+                 left 11 to the alphabet (gaps 0.001 to 0.085)
+
+*What I did not expect, as reported.* The rival mechanism removed tables
+the answer needs, in Q9, Q14 and Q16. Every failure is at the first gate,
+so no verdict yet speaks for joins or warnings. Over-retrieval, where T-03
+predicted under-retrieval. The word "catalog" pulls in `catalog_page` in
+Q2, Q3, Q6 and Q12. `anchor_ambiguity` on 15 of 16; only Q10 lacks it.
+Q1's accepted risk did not happen. Q16 took `wp_customer_sk` with no
+warning on that join. In Q10 the cap cut `ship_mode`, an expected table,
+and the graph put it back as the bridge between two extra anchors. Q8's
+agreement is weak evidence: two anchors, the fewest of any question, and
+its expected warning is the one that fires almost everywhere.
+
+### The owner's rulings at the third review stop — 9 October 2026
+
+Given on run 1 and its diagnosis. Recorded as given. **Nothing in these
+rulings has been carried out: the session that received them was told to
+record, commit and stop. A fresh session carries them out.**
+
+**What run 1 shows. Findings.**
+
+1. **Precision, not recall.** 14 of 16 fail at the first gate, and 8 of
+   those 14 are wrong only by addition: every expected table and join is
+   present. T-03 predicted tables would be hard to find; the enriched
+   descriptions of DD-08 found them, and the risk inverted into
+   over-retrieval.
+2. **The evidence rule works.** It met 21 ties, decided 10 with gaps of
+   0.11 to 0.34, and left 11 with gaps of 0.001 to 0.085; the margin,
+   0.107, sits between the two groups. Question 1's accepted risk did not
+   happen because evidence chose the date of sale. **The margin
+   watch-point is answered: not falsified.**
+3. **The rival mechanism contradicts its own purpose.** Ruling c concerns
+   a choice between alternatives. As built, any two tables close in score
+   for one term become rivals, so an expected table is set aside in
+   questions 9, 14 and 16, and `anchor_ambiguity` fires on 15 of 16
+   questions. A warning that fires almost everywhere carries no
+   information, which DD-21 exists to prevent. **This is a design defect,
+   not a tuning matter.**
+4. **Question 14 names no sales channel, yet its expectation assumes
+   store.** That is a flaw in how the question was drafted, not in the
+   system. The set stays frozen. Under T-04 the only remedy is to delete
+   a badly posed question and say so; **that decision is deferred to step
+   10** and recorded here so it is not forgotten (carried forward, item
+   54).
+5. **Question 16's `wp_customer_sk` went silent again**, because
+   `web_sales` was set aside and nothing was left to tie with.
+6. **Question 8's agreement is weak evidence.**
+
+**RULING 1: correct the rival definition before any tuning.**
+
+- **First,** from the recorded run 1, list every rival pair that set a
+  table aside, and say for each whether the two tables are directly
+  joined by a foreign key.
+- **The correction.** Two tables directly joined by a foreign key, in
+  either direction, are **partners and never rivals**. One refers to the
+  other, so an answer about one routinely needs both; they are not
+  alternatives for the same role. Rivals are only tables **not** directly
+  joined, such as the three sales channels, or household and customer
+  demographics. The rule is structural and general: it uses nothing about
+  the kind of table and nothing from any question.
+- **Why before tuning.** Tuning around a known defect produces settings
+  that are invalid once it is fixed: the same reasoning that moved
+  Alembic to step 6.
+- **Test it on fixtures:** adjacent tables are never set aside; two
+  non-adjacent tables close in score still are.
+- **Before re-running, write into CHECKPOINTS.md which questions are
+  predicted to change and how, and the `anchor_ambiguity` rate expected.**
+  Then run, and record the result as **run 2, "baseline after the rival
+  ruling"**, at the Design's defaults.
+
+**RULING 2: then tune, by the protocol already fixed.**
+
+- Run the grid fixed in piece 0 (alpha: 0, 0.25, 0.5, 0.75, 1; anchor
+  cut: 0.3, 0.4, 0.5, 0.6, 0.7), logging every run, under the keep-rule:
+  improves at least two questions, worsens none, neighbours agree.
+- **Tripwire.** If run 2 shows any mechanism contradicting its own
+  definition, as the rival mechanism did, stop and report instead of
+  tuning.
+- Otherwise, **stop before the close** and report the chosen settings
+  with the full log. The owner reviews them before the tag.
+
+### For the session that carries out the third-stop rulings
+
+Written so that a session with no history can do it. Read this section,
+then the rulings above, then the piece records it points to.
+
+**State of the repository at the commit carrying this entry.** On `main`,
+nothing pushed. Pieces 0 to 9 of step 6 are done. The floor is withdrawn.
+Runs 0 and 1 are in the tuning log in full. No tuning run has been made
+and no parameter has moved. The stack: `docker compose up -d`; tests run
+inside the container (`docker compose exec -T backend pytest`); nothing is
+installed on the host. 422 tests in the container, of which the one paid
+test skips.
+
+**What is frozen, and may not change without the owner's ruling.**
+- `backend/eval/questions.yaml` (sha256 pinned in
+  `tests/core/test_eval_set.py`).
+- `backend/app/core/eval_set.py`: `judge`, `judge_question`.
+- `backend/app/core/eval_step6.py`: the step 6 judgement.
+- `backend/eval/calibration.json`: the margin. It is read by the runner
+  and is never an argument. Its `floor` entry is history and is not used.
+- The step 5 report: `tests/test_step5_report_unchanged.py` compares it
+  byte for byte with `backend/eval/baseline_step5.txt`.
+
+**The key.** `OPENAI_API_KEY` is in `.env`, which git ignores; it expires
+9 October 2027. Never print it, never open or display `.env`, never run
+`docker compose config`, `docker inspect`, `env`, `printenv` or `set`.
+Check presence only. Every vector the evaluation needs is already cached
+under `backend/eval/.cache/`, so runs 2 onward should embed nothing and
+cost nothing; the report's `cost` line says so each time.
+
+**Where the rival mechanism lives.**
+- `backend/app/core/retriever.py`: `_term` builds a term's `rivals` (any
+  other table within the margin of the nominee); `retrieve` computes
+  `beaten` and `set_aside_as_rivals`. The Retriever is handed scores and
+  no graph, so it does not know today which tables are joined.
+- `backend/app/core/locate.py`: `set_aside` turns the Retriever's rivals
+  into what the tree is told; `locate` is where the graph and the
+  retrieval meet.
+- `backend/app/core/join_tree.py`: `ambiguities`, a table set aside and
+  absent from the finished tree; `explain_tree` in
+  `backend/app/core/explainer.py` turns each into `anchor_ambiguity`.
+- Tests: `tests/core/test_retriever.py` (section "Rivals"),
+  `tests/core/test_locate.py`, `tests/core/test_join_tree.py`.
+- For "directly joined by a foreign key, in either direction":
+  `linked_tables` in `backend/app/core/calibration.py` already computes
+  exactly that from a snapshot. Where the knowledge of adjacency enters
+  the Retriever is a design choice the carrying-out session makes and
+  records; the core must stay pure (the import allowlist is enforced by
+  `test_nothing_in_the_core_imports_anything_that_does_io`).
+
+**The order ruling 1 requires, and why each step is where it is.**
+1. List the rival pairs of run 1 that set a table aside, each marked
+   joined or not joined. From the recorded run: the per-question lists are
+   in the diagnosis above, and `backend/eval/baseline_step6_run1.txt` has
+   each one with its term and scores on the `set aside` lines. Record the
+   list in CHECKPOINTS.md.
+2. Write the fixture tests for the corrected rule, see them fail, then
+   change the code, then mutate it to see the tests can fail.
+3. **Before running anything on the evaluation set**, write the
+   predictions into CHECKPOINTS.md and commit them: which questions will
+   change and how, and the expected `anchor_ambiguity` rate. A prediction
+   written after the run is worth nothing.
+4. Run: `docker compose exec -T backend python -m app.show_eval --step6`.
+   Record it in the tuning log as run 2, "baseline after the rival
+   ruling", in full, with the predictions set against what happened.
+5. Check the tripwire of ruling 2 before any grid run.
+
+**The tuning protocol, as fixed in piece 0 and unchanged.** Defaults:
+alpha 0.5, anchor cut 0.5, anchor cap 5, subgraph bound 10, max joins 3.
+Grid: `--alpha` over 0, 0.25, 0.5, 0.75, 1 and `--cut` over 0.3, 0.4, 0.5,
+0.6, 0.7. The margin follows alpha from the calibration file. The cap is
+fixed; the bound changes only if the log shows it binding. Every run is
+logged with what changed, the parameter values and the full step 6
+report. Keep-rule: a setting replaces a default only if it improves at
+least two questions, worsens none, and its neighbours in the grid move
+the same way. Each logged run records how many anchors each question
+received, and the wide-table bias (ruling f) and the keyword half's
+table-row bias (piece 8) are watched. With sixteen questions a difference
+of one is noise, and every report says so.
+
+**Tuning rules that bind throughout.** No rule, weight, keyword, synonym
+or special case that exists only to make one question pass. No naming
+entry derived from the wording of the evaluation questions. No overlay
+relationship removed, weakened or reordered. The margin is never adjusted.
+A disagreement with an expectation or a judging rule is reported and the
+work stops; it is never worked around.
+
+**Still owed at the close of step 6** (after the owner has reviewed the
+chosen settings): the `show_retrieval "question"` command; a smoke line
+for the stored and embedded snapshot; smoke from a clean start; the full
+suite in the container; the runner; this file's checkpoint entry; and
+the tag `checkpoint-06-retrieval`. Commits on `main`; nothing is pushed
+until the owner has looked; `step2-backup` is never pushed, and
+`git push --all` and `git push --tags` are never used.
 
 ### Tuning log
 
@@ -3449,3 +3736,9 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     not, written by the owner, used for nothing else, and frozen before
     use. Until then FR-42 at retrieval rests on disconnection alone, and
     its main mechanism is step 7's question-not-answerable code.
+54. Question 14 of the evaluation set names no sales channel, yet its
+    expected tables assume the store channel (third review stop, step 6).
+    A flaw in how the question was drafted, not in the system. The set
+    stays frozen. Under T-04 and DR-16 the only remedy is to delete a
+    badly posed question and state the deletion; that decision is the
+    owner's and is deferred to step 10.
