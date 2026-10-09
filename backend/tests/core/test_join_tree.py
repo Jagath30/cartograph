@@ -468,29 +468,58 @@ def test_a_bound_that_cut_nothing_says_so(graph) -> None:
 
 
 # --------------------------------------------------------------------------
-# A rival that is not in the tree (ruling c)
+# A rival that is not in the tree (ruling c, revised at the fourth review
+# stop: a close call is information in the result, not a warning)
 # --------------------------------------------------------------------------
 
 
-def test_a_rival_set_aside_and_absent_from_the_tree_is_an_ambiguity(graph) -> None:
+def test_a_rival_set_aside_and_absent_from_the_tree_is_a_close_call_and_not_a_warning(graph) -> None:
     aside = (SetAside("address", "customer_address", "store", 0.9, 0.85),)
     tree = _tree(graph, "store_sales", "customer_address", set_aside=aside)
     assert tree.ambiguities == aside
 
     explanation = explain_tree(tree, graph)
-    assert explanation.codes == {"anchor_ambiguity"}
-    (warning,) = explanation.warnings
-    assert '"address"' in warning.text and "could as well mean store" in warning.text
-    assert "0.900" in warning.text and "0.850" in warning.text
+    assert explanation.codes == frozenset()
+    assert explanation.warnings == ()
+    (call,) = explanation.close_calls
+    assert (call.term, call.chosen, call.rival) == ("address", "customer_address", "store")
+    assert (call.chosen_score, call.rival_score) == (0.9, 0.85)
+    assert '"address"' in call.text and "could as well mean store" in call.text
+    assert "0.900" in call.text and "0.850" in call.text
 
 
-def test_a_rival_that_is_in_the_tree_anyway_changes_nothing_and_does_not_warn(graph) -> None:
+def test_no_explanation_of_a_tree_ever_carries_the_anchor_ambiguity_code(graph) -> None:
+    """Every rival there could be, set aside at once. The loud warnings are
+    the Design's (DD-21): this one is not among them."""
+    aside = tuple(
+        SetAside("word", chosen, rival, 0.9, 0.85)
+        for chosen in ("store_sales", "customer_address")
+        for rival in ("store", "customer", "catalog_sales")
+    )
+    explanation = explain_tree(_tree(graph, "store_sales", "customer_address", set_aside=aside), graph)
+    assert len(explanation.close_calls) == 6
+    assert "anchor_ambiguity" not in explanation.codes
+    assert "anchor_ambiguity" not in route_codes(
+        _tree(graph, "store_sales", "customer_address", set_aside=aside), "store_sales", "customer_address"
+    )
+
+
+def test_a_close_call_does_not_hide_a_real_warning(graph) -> None:
+    """catalog_sales reaches customer_address by two keys and the alphabet
+    chooses: that warning is raised exactly as without the close call."""
+    aside = (SetAside("address", "customer_address", "store", 0.9, 0.85),)
+    explanation = explain_tree(_tree(graph, "catalog_sales", "customer_address", set_aside=aside), graph)
+    assert explanation.codes == {"arbitrary_choice"}
+    assert len(explanation.close_calls) == 1
+
+
+def test_a_rival_that_is_in_the_tree_anyway_changes_nothing_and_is_not_a_close_call(graph) -> None:
     """Choosing it would not give a different tree: it is already there."""
     aside = (SetAside("address", "customer_address", "store_sales", 0.9, 0.85),)
     tree = _tree(graph, "store", "customer_address", set_aside=aside)
     assert "store_sales" in tree.tables and "store_sales" not in tree.anchors
     assert tree.ambiguities == ()
-    assert "anchor_ambiguity" not in explain_tree(tree, graph).codes
+    assert explain_tree(tree, graph).close_calls == ()
 
 
 def test_a_rival_of_a_table_that_is_not_in_the_tree_does_not_warn(graph) -> None:

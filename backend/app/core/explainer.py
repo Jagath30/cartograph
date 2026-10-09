@@ -35,14 +35,23 @@ Alternatives that merely exist do not warn. If the shortest path stood
 alone, the reason says how many routes there were and that is all.
 
 A JOIN TREE (step 6) is explained by `explain_tree`, attachment by
-attachment, with the same sentences and the same four warnings, and two
-more that only exist once a question has been read:
+attachment, with the same sentences and the same four warnings, and one
+more that only exists once a question has been read:
 
   multi_anchor            an anchor could attach to the tree at two
                           different tables equally well, and only the
                           alphabet chose where.
-  anchor_ambiguity        a word of the question could as well have meant
-                          another table, which is not part of this answer.
+
+A CLOSE CALL IS NOT A WARNING. Where a word of the question could as well
+have meant another table, which was set aside and is not part of the
+answer, the explanation records it in `close_calls`, with the word, both
+tables and both scores (FR-41). It was a warning, `anchor_ambiguity`, as
+first built. Run 1 raised it on 15 questions of 16 and run 2, after
+joined tables stopped being rivals, on 12: a warning that fires almost
+everywhere tells the reader nothing (DD-21). The owner revised ruling c at
+the fourth review stop: until "alternatives" has a structural definition,
+close calls are information, shown quietly, and the loud warnings are the
+ones the Design names. No code path here raises `anchor_ambiguity`.
 
 `route_codes` says which warnings concern the path between two tables
 within a tree: those raised about any join on it, and many_to_many when
@@ -58,9 +67,7 @@ from app.core.join_tree import ANCHORS_NOT_CONNECTED, Attachment, JoinTree
 from app.core.path_finder import MANY_TO_ONE, Join, Path, PathResult, Rule
 from app.core.snapshot import Source
 
-WarningCode = Literal[
-    "arbitrary_choice", "preference_not_applied", "many_to_many", "no_path", "multi_anchor", "anchor_ambiguity"
-]
+WarningCode = Literal["arbitrary_choice", "preference_not_applied", "many_to_many", "no_path", "multi_anchor"]
 
 
 @dataclass(frozen=True)
@@ -292,6 +299,19 @@ class ExplainedAttachment:
 
 
 @dataclass(frozen=True)
+class CloseCall:
+    """A word of the question that could as well have meant another table,
+    which is not part of the answer. Information, not a warning."""
+
+    term: str
+    chosen: str
+    rival: str
+    chosen_score: float
+    rival_score: float
+    text: str
+
+
+@dataclass(frozen=True)
 class TreeExplanation:
     declined: bool
     # In the order the anchors were attached.
@@ -299,6 +319,7 @@ class TreeExplanation:
     tables: tuple[str, ...]
     reason: str
     warnings: tuple[PathWarning, ...]
+    close_calls: tuple[CloseCall, ...] = ()
 
     @property
     def codes(self) -> frozenset[str]:
@@ -347,20 +368,22 @@ def explain_tree(tree: JoinTree, graph: nx.DiGraph) -> TreeExplanation:
             )
         )
 
+    close_calls = []
     for entry in tree.ambiguities:
         chosen, rival = _table(graph, entry.chosen), _table(graph, entry.rival)
-        warnings.append(
-            PathWarning(
-                "anchor_ambiguity",
+        close_calls.append(
+            CloseCall(
+                entry.term, entry.chosen, entry.rival, entry.chosen_score, entry.rival_score,
                 f'"{entry.term}" in the question could as well mean {rival}. {chosen} was used: it scored '
                 f"{entry.chosen_score:.3f} against {entry.rival_score:.3f}, too close to tell apart. "
-                f"{rival} is not part of this answer, and using it would give a different one.",
-                about=(entry.chosen, entry.rival),
+                f"{rival} is not part of this answer.",
             )
-        )
+        )  # fmt: skip
 
     names = ", ".join(_table(graph, table) for table in tree.tables)
-    return TreeExplanation(False, tuple(attachments), tree.tables, f"Joined: {names}.", tuple(warnings))
+    return TreeExplanation(
+        False, tuple(attachments), tree.tables, f"Joined: {names}.", tuple(warnings), tuple(close_calls)
+    )
 
 
 def route_codes(tree: JoinTree, start: str, end: str) -> tuple[str, ...]:

@@ -465,6 +465,92 @@ def test_handed_no_partners_no_two_tables_are_joined() -> None:
 
 
 # --------------------------------------------------------------------------
+# A table is set aside only for a winner that is still an anchor after the
+# cap (ruling 1 of the fourth review stop)
+# --------------------------------------------------------------------------
+
+# Five tables, scored so that alpha 1.0 leaves the typed numbers as they
+# are: "floor" is there only to be the 0.
+FIVE = _scores(
+    ("returns.amount", 1.0, 0.0),
+    ("item.name", 0.95, 0.0),
+    ("shop.region", 0.9, 0.0),
+    ("sales.amount", 0.8, 0.0),
+    ("depot.name", 0.5, 0.0),
+    ("floor", 0.0, 0.0),
+)
+
+
+def _choice(text: str, chosen: str, rival: str) -> tuple:
+    """A term best matched in `chosen`, with `rival` just behind it."""
+    return (Term(text, "word"), _scores((chosen, 1.0, 0.0), (rival, 0.95, 0.0), ("floor", 0.0, 0.0)))
+
+
+def test_a_table_set_aside_for_a_winner_the_cap_then_cuts_is_not_lost() -> None:
+    """ "store" chose depot, with returns within the margin. depot reaches
+    the cut and falls to the cap. Setting returns aside for it would keep
+    neither, and nothing would say so. returns is given back, and competes
+    under the cap by its score like any other table: here it is the best."""
+    settings = _settings(alpha=1.0, anchor_cut=0.5, anchor_cap=3)
+    retrieval = retrieve("q", FIVE, (_choice("store", "depot.name", "returns.amount"),), settings)
+
+    assert retrieval.anchors == ("returns", "item", "shop")
+    assert retrieval.anchor_bound.set_aside_as_rivals == ()
+    assert retrieval.anchor_bound.excluded_by_cap == ("sales", "depot")
+    # The close call itself is still on the term.
+    assert [(rival.chosen, rival.rival) for rival in retrieval.rivals] == [("depot", "returns")]
+
+
+def test_a_table_is_still_set_aside_for_a_winner_that_is_an_anchor() -> None:
+    """The same question with room for depot under the cap: depot is an
+    anchor, so returns is set aside for it, as before."""
+    settings = _settings(alpha=1.0, anchor_cut=0.5, anchor_cap=4)
+    retrieval = retrieve("q", FIVE, (_choice("store", "depot.name", "returns.amount"),), settings)
+
+    assert retrieval.anchors == ("item", "shop", "sales", "depot")
+    assert retrieval.anchor_bound.set_aside_as_rivals == ("returns",)
+
+
+def test_one_winner_that_is_an_anchor_is_enough_to_set_a_table_aside() -> None:
+    """returns is within the margin of depot, which the cap cuts, and of
+    item, which is an anchor. It stays set aside, for item."""
+    terms = (_choice("store", "depot.name", "returns.amount"), _choice("thing", "item.name", "returns.amount"))
+    retrieval = retrieve("q", FIVE, terms, _settings(alpha=1.0, anchor_cut=0.5, anchor_cap=3))
+
+    assert retrieval.anchors == ("item", "shop", "sales")
+    assert retrieval.anchor_bound.set_aside_as_rivals == ("returns",)
+    assert retrieval.anchor_bound.excluded_by_cap == ("depot",)
+
+
+def test_a_table_given_back_can_push_another_winner_over_the_cap_and_free_its_rival_too() -> None:
+    """The rule is applied until nothing changes. depot falls to the cap,
+    so returns comes back; returns is the best table and pushes shop over
+    the cap; shop was why sales was set aside, so sales comes back as well.
+    No table is left set aside for a table that is not an anchor."""
+    terms = (_choice("store", "depot.name", "returns.amount"), _choice("place", "shop.region", "sales.amount"))
+    retrieval = retrieve("q", FIVE, terms, _settings(alpha=1.0, anchor_cut=0.5, anchor_cap=2))
+
+    assert retrieval.anchors == ("returns", "item")
+    assert retrieval.anchor_bound.set_aside_as_rivals == ()
+    assert retrieval.anchor_bound.excluded_by_cap == ("shop", "sales", "depot")
+
+
+def test_whatever_is_set_aside_was_set_aside_for_an_anchor() -> None:
+    """The property itself, over every cap, for the two questions above."""
+    terms = (_choice("store", "depot.name", "returns.amount"), _choice("place", "shop.region", "sales.amount"))
+    for cap in range(1, 6):
+        retrieval = retrieve("q", FIVE, terms, _settings(alpha=1.0, anchor_cut=0.5, anchor_cap=cap))
+        for table in retrieval.anchor_bound.set_aside_as_rivals:
+            winners = {rival.chosen for rival in retrieval.rivals if rival.rival == table}
+            assert winners & set(retrieval.anchors), (cap, table)
+        # And nothing that reached the cut has gone missing.
+        bound = retrieval.anchor_bound
+        assert sorted((*retrieval.anchors, *bound.excluded_by_cap, *bound.set_aside_as_rivals)) == [
+            "depot", "item", "returns", "sales", "shop",
+        ]  # fmt: skip
+
+
+# --------------------------------------------------------------------------
 # What the PathFinder will be handed
 # --------------------------------------------------------------------------
 

@@ -146,6 +146,9 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
     print(f"{'rivals':<12}CORRECTED by the owner's ruling after run 1: two tables joined by a foreign key, either")
     print(f"{'':<12}way round, are partners and are never set aside for one another. A \"partners\" line lists the")
     print(f"{'':<12}tables that reached the cut, that no term nominates, and that were kept for this reason alone.")
+    print(f"{'':<12}REVISED at the fourth review stop: a table is set aside only for a winner that is still an")
+    print(f"{'':<12}anchor after the cap; and a close call is shown as information (\"close call\"), never raised")
+    print(f"{'':<12}as the warning anchor_ambiguity. Questions 8, 9 and 13 expect that warning and keep expecting it.")
     print(f"{'snapshot':<12}{stored.id}, sha256 {stored.hash}; embedded with {stored.embedding_model}")
 
     statuses: list[str] = []
@@ -155,6 +158,9 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
     none_extra: list[bool] = []
     score_ms: list[float] = []
     core_ms: list[float] = []
+    close_call_counts: list[int] = []
+    surplus = 0
+    raised_codes: list[str] = []
 
     for question in eval_set.questions:
         began = time.monotonic()
@@ -204,20 +210,14 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
         ))  # fmt: skip
 
         bound = retrieval.anchor_bound
-        # Every pair that set a table aside. The winner reached the cut; if
-        # the cap then cut it, the line says so, because then neither table
-        # is an anchor and no warning names the pair.
+        # Every pair that set a table aside. The winner is always an anchor.
         above_cut = {*retrieval.anchors, *bound.excluded_by_cap, *bound.set_aside_as_rivals}
         aside = "; ".join(
-            f"{rival.rival} (\"{rival.term}\" chose {rival.chosen}"
-            f"{'' if rival.chosen in retrieval.anchors else ', WHICH THE CAP THEN CUT'}: "
-            f"{rival.chosen_score:.3f} against {rival.rival_score:.3f})"
+            f"{rival.rival} (\"{rival.term}\" chose {rival.chosen}: {rival.chosen_score:.3f} against "
+            f"{rival.rival_score:.3f})"
             for rival in retrieval.rivals
-            if rival.rival in bound.set_aside_as_rivals and rival.chosen in above_cut
+            if rival.rival in bound.set_aside_as_rivals and rival.chosen in retrieval.anchors
         )
-        _line("anchors", f"{len(retrieval.anchors)}: "
-                         + (", ".join(f"{a} {retrieval.score_of(a):.3f}" for a in retrieval.anchors) or "none"))  # fmt: skip
-        _line("set aside", aside or "none")
         nominated = {term.chosen_table for term in retrieval.terms}
         kept = "; ".join(
             f"{partner.rival} (joined to {partner.chosen}, which \"{partner.term}\" chose: "
@@ -267,6 +267,7 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
             extra = sorted(found - expected) + sorted(found & set(question.tables_one_of))[1:]
             all_found.append(not missing)
             none_extra.append(not extra)
+            surplus += len(extra)
             _line("", f"missing: {', '.join(missing) or 'none'}; extra: {', '.join(extra) or 'none'}")
 
             if not located.declined:
@@ -278,11 +279,15 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
                 _line("exp. joins" if position == 0 else "", join)
 
         raised = sorted(located.warning_codes)
+        raised_codes += raised
         wanted = "not judged (see_note)" if question.warning == "see_note" else question.warning
         _line("warnings", f"{', '.join(raised) or 'none'}; expected: {wanted}")
         if not located.declined:
             for warning in located.explanation.warnings:
                 _line("", f"{warning.code}: {warning.text}")
+            close_call_counts.append(len(located.explanation.close_calls))
+            for position, call in enumerate(located.explanation.close_calls):
+                _line("close call" if position == 0 else "", call.text)
 
         if verdict.checks:
             _line("checks", "; ".join(
@@ -303,6 +308,11 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
         print(f"{'part':<12}{label:<30}{sum(parts[name]):>2} of {len(parts[name])} judged")
     print(f"{'diagnostic':<12}every expected table in the tree: {sum(all_found)} of {len(all_found)}; "
           f"no table beyond the expected: {sum(none_extra)} of {len(none_extra)}")  # fmt: skip
+    print(f"{'':<12}tables beyond the expected, over all questions: {surplus}")
+    print(f"{'warnings':<12}raised, questions each: "
+          + (", ".join(f"{code} {raised_codes.count(code)}" for code in sorted(set(raised_codes))) or "none"))  # fmt: skip
+    print(f"{'close calls':<12}{sum(close_call_counts)} on {sum(count > 0 for count in close_call_counts)} questions "
+          "(information, not a warning)")  # fmt: skip
     print(f"{'anchors':<12}per question: " + ", ".join(f"{number}:{anchors}" for number, anchors in anchor_counts))
     print(f"{'timing':<12}scoring (embedding lookups and both searches) median {statistics.median(score_ms):.0f} ms, "
           f"largest {max(score_ms):.0f} ms; retrieval and tree median {statistics.median(core_ms):.0f} ms, "

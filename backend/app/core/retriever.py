@@ -33,6 +33,13 @@ ANCHORS (DD-11, the anchor bound). A table is an anchor when its score for
 the whole question is at least the cut, up to the cap, best first. The
 bound records what the cap excluded.
 
+SET ASIDE ONLY FOR AN ANCHOR (the owner's ruling at the fourth review
+stop). A table is set aside only for a winner that is still an anchor
+after the cap. As first built the rivals were set aside and the cap
+applied afterwards, so a table could be set aside for a winner the cap
+then cut: run 2 lost store_sales that way, kept neither table, and said
+nothing. The cap and the rivals are now settled together (see `retrieve`).
+
 RIVALS (ruling c, FR-41). Every term nominates one table: the one holding
 its best-scoring element, by the term's own combined score, equal scores
 going to the name that sorts first. No threshold is involved: a term
@@ -203,6 +210,7 @@ class AnchorBound:
     excluded_by_cap: tuple[str, ...]
     # Tables at or above the cut that were in contention only as a term's
     # rival, and were not made anchors beside the table that beat them.
+    # Each was set aside for at least one table that is an anchor.
     set_aside_as_rivals: tuple[str, ...]
 
 
@@ -317,17 +325,32 @@ def retrieve(
 
     above_cut = [entry.table for entry in tables if entry.score >= settings.anchor_cut]
 
-    # A table is set aside when some term nominated a table that is itself
-    # in the running, this table was within the margin of it, and no term
-    # nominates this table in its own right.
+    # A table is set aside when some term nominated a table that is an
+    # anchor, this table was within the margin of it and not joined to it,
+    # and no term nominates this table in its own right.
+    #
+    # "Is an anchor" is read AFTER the cap, so the two are settled together.
+    # Start from every table at the cut as a possible winner; set aside the
+    # rivals of the winners; apply the cap; a winner the cap cut is no
+    # longer one, and whatever was set aside for it alone comes back and
+    # competes under the cap by its score. Repeat until nothing changes. It
+    # ends: tables only ever come back, so a winner once cut stays cut and
+    # the winners only shrink.
     nominated = {result.chosen_table for result in term_results if result.chosen_table}
-    beaten = {
-        rival.rival
+    close_calls = [
+        (rival.chosen, rival.rival)
         for result in term_results
         for rival in result.rivals
-        if rival.chosen in above_cut and rival.rival not in nominated
-    }
-    in_the_running = [table for table in above_cut if table not in beaten]
+        if rival.rival not in nominated
+    ]
+    winners = set(above_cut)
+    while True:
+        beaten = {rival for chosen, rival in close_calls if chosen in winners}
+        in_the_running = [table for table in above_cut if table not in beaten]
+        still_anchors = winners & set(in_the_running[: settings.anchor_cap])
+        if still_anchors == winners:
+            break
+        winners = still_anchors
 
     return Retrieval(
         question, settings,

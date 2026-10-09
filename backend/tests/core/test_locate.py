@@ -107,11 +107,12 @@ def test_no_table_at_the_cut_is_not_a_decline_and_has_no_tree_tables(graph) -> N
     assert located.tables == ()
 
 
-def test_a_rival_set_aside_and_absent_from_the_tree_warns_anchor_ambiguity(graph) -> None:
+def test_a_rival_set_aside_and_absent_from_the_tree_is_reported_quietly_and_does_not_warn(graph) -> None:
     """The question brings in store_sales, customer_address and store. One
     term, "address", is best matched in customer_address and almost as
     well in store; nothing else nominates store. It is set aside, it is
-    not in the tree, and the answer says so."""
+    not in the tree, and the result records the close call. It is not a
+    warning (ruling c as revised at the fourth review stop)."""
     question = _scores(graph, store_sales=1.0, customer_address=0.9, store=0.8, customer__c_customer_sk=0.0)
     address = _scores(graph, customer_address=1.0, store=0.9, customer__c_customer_sk=0.0)
     located = locate("q", question, ((Term("address", "word"), address),), graph, SETTINGS)
@@ -121,7 +122,9 @@ def test_a_rival_set_aside_and_absent_from_the_tree_warns_anchor_ambiguity(graph
     (aside,) = set_aside(located.retrieval)
     assert (aside.term, aside.chosen, aside.rival) == ("address", "customer_address", "store")
     assert located.tree.ambiguities == (aside,)
-    assert located.warning_codes == {"anchor_ambiguity"}
+    assert located.warning_codes == frozenset()
+    (call,) = located.explanation.close_calls
+    assert (call.term, call.chosen, call.rival) == ("address", "customer_address", "store")
 
 
 def test_a_table_joined_to_the_one_a_term_chose_is_kept_and_nothing_warns(graph) -> None:
