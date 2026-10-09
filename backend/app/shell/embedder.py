@@ -108,9 +108,14 @@ class MeteredEmbedder:
         self.texts = 0
         self.tokens = 0
         self.cost_usd = 0.0
+        # Time spent inside the wrapped embedder: for the real one, the
+        # external call, which NFR-02 excludes and NFR-01 counts.
+        self.seconds = 0.0
 
     def embed(self, texts: list[str]) -> Embedded:
+        began = time.monotonic()
         result = self._inner.embed(texts)
+        self.seconds += time.monotonic() - began
         self.texts += len(texts)
         self.tokens += result.tokens
         self.cost_usd += result.cost_usd

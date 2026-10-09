@@ -7,16 +7,17 @@ here so that the order is written once and tested, and so that whatever
 calls it -- a command today, the orchestrator at step 7 -- cannot run the
 three slightly differently.
 
-  1. retrieve     scores -> anchors, rivals, or a decline (nothing above
-                  the floor)
+  1. retrieve     scores -> anchors and rivals
   2. build_tree   anchors -> one tree, or a decline (anchors that cannot
                   be connected)
   3. explain_tree the tree -> sentences and warnings
 
-A QUESTION IS DECLINED (FR-42) for exactly two reasons, ruling d: no
-element scores above the floor, or the anchors cannot be connected within
-the hop limit. A question for which no table reaches the anchor cut is not
-declined: it has no tree, and says so.
+A QUESTION IS DECLINED at step 6 for exactly one reason: its anchors
+cannot be connected within the hop limit (DD-10). The second condition of
+ruling d, a floor on raw similarity, was withdrawn by the owner after the
+baseline falsified it; FR-42's main mechanism is step 7's
+question-not-answerable code (IR-05). A question for which no table
+reaches the anchor cut is not declined: it has no tree, and says so.
 """
 
 from dataclasses import dataclass
@@ -38,19 +39,18 @@ from app.core.retriever import RawScore, Retrieval, Settings, Term, retrieve
 @dataclass(frozen=True)
 class Located:
     retrieval: Retrieval
-    # None when retrieval declined before any tree could be built.
-    tree: JoinTree | None
-    explanation: TreeExplanation | None
+    tree: JoinTree
+    explanation: TreeExplanation
     declined: bool
     decline_reason: str | None
 
     @property
     def tables(self) -> tuple[str, ...]:
-        return self.tree.tables if self.tree and not self.declined else ()
+        return () if self.declined else self.tree.tables
 
     @property
     def warning_codes(self) -> frozenset[str]:
-        return self.explanation.codes if self.explanation and not self.declined else frozenset()
+        return frozenset() if self.declined else self.explanation.codes
 
 
 def set_aside(retrieval: Retrieval) -> tuple[SetAside, ...]:
@@ -76,9 +76,6 @@ def locate(
     subgraph_bound: int = DEFAULT_SUBGRAPH_BOUND,
 ) -> Located:
     retrieval = retrieve(question, scores, terms, settings)
-    if retrieval.declined:
-        return Located(retrieval, None, None, True, retrieval.decline_reason)
-
     tree = build_tree(
         graph,
         retrieval.anchors,

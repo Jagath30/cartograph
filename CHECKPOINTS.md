@@ -677,11 +677,11 @@ No tag yet. This section is the step's working record: where it stands,
 what was decided before any code, and every tuning run. It becomes
 `checkpoint-06-retrieval` when the step closes.
 
-**Where the work stands.** Pieces 0 to 9 are committed and the work is
-STOPPED FOR THE OWNER'S REVIEW of the step 6 baseline, before any tuning
-run. The baseline, at the Design's defaults: all sixteen questions are
-declined by the floor; 1 agrees, 15 disagree. See piece 9 and run 0 of
-the tuning log. THE STEP 6 JUDGEMENT IS FROZEN like the step 5 one.
+**Where the work stands.** Pieces 0 to 9 are committed. At the second
+review stop the owner withdrew the floor, which run 0 had falsified; the
+code now holds no floor and his rulings are recorded below. Run 1, the
+baseline after that ruling, is about to be made and reviewed. No tuning
+run has been made. THE STEP 6 JUDGEMENT IS FROZEN like the step 5 one.
 
     0  this record                                  done
     1  the step 6 judgement                         done; reviewed; frozen
@@ -1698,6 +1698,91 @@ see**, each recorded under its piece above:
 A second run of the baseline embedded nothing and printed the same report,
 the timing and cost lines apart.
 
+### The owner's rulings at the second review stop — 9 October 2026
+
+Given on pieces 2 to 9 and on run 0, before any tuning run.
+
+1. **The floor is withdrawn at step 6. A result, not a preference.** The
+   method was fixed in advance, computed honestly, and falsified by the
+   baseline: every question, answerable or not, fell below it. The cause
+   is the one recorded before any question was embedded: schema names
+   score higher against each other (0.5726) than any English question
+   scores against them (0.336 to 0.533).
+   **It is the second floor method to fail.** The owner's correction at
+   the first stop replaced a method he judged would almost never fire
+   with one that always fires. Both rest on schema names standing in for
+   questions. For the record only, and used for nothing: the method as
+   first proposed, the median of single unrelated pairs, comes to
+   **0.258977** on this schema (115,914 pairs; from the cached vectors, no
+   call made). The lowest best similarity among the sixteen questions is
+   0.336. So the first method would have declined none of them, question
+   15 included, and the corrected one declined all of them. Neither
+   separates anything.
+   Option 4, a lower percentile of the same numbers, is refused for the
+   reason given: it would be picked knowing where question 15 sits.
+   Option 3 is carried forward (item 53): a floor calibrated on a separate
+   probe set, written by the owner, used for nothing else, and frozen
+   before use. Not in this step.
+   Consequences, with no new threshold introduced anywhere:
+   - Decline at step 6 rests on anchors that cannot be connected (DD-10).
+     FR-42's main mechanism moves to step 7, through IR-05's
+     question-not-answerable code.
+   - Everything else the floor gated loses the gate. Terms are no longer
+     marked unmatched, and a term's nomination no longer depends on the
+     floor. The rule is stated below.
+   - Run 0 stays in the tuning log exactly as it is.
+2. **The margin stands.** It was computed by the same stand-in method.
+   Run 0 did not falsify it, because nothing reached it. The watch-point
+   is recorded below, before the next run.
+3. **The baseline is run again at the Design's defaults with the floor
+   withdrawn**, recorded as run 1, "baseline after the floor ruling", not
+   as a tuning run. Then the work stops again: run 0 exercised nothing,
+   and the owner reviews the mechanisms' first real results before any
+   parameter moves.
+4. **NFR-02 covers retrieval and path finding, excluding external calls.**
+   The embedding call is external, like the model call: its duration is
+   logged separately (NFR-22) and counted in NFR-01's end-to-end budget.
+   Both readings pass today: 173 ms at the median with vectors cached, and
+   881 ms including the API call.
+5. **The interpretations made while building are approved:** the
+   term-level location of ruling c; no anchors meaning no tree and not a
+   decline; the mean of the distinguishing columns for a tied path; the
+   `arbitrary_choice` and `multi_anchor` split, and `many_to_many` read
+   off the tree; key columns left out of a table's search text; Postgres's
+   default `ts_rank` normalisation with OR; `httpx` in place of the OpenAI
+   package.
+6. **A finding of the kind this project exists to produce.**
+   `wp_customer_sk`, selected silently at step 5, raises `multi_anchor` at
+   step 6. The failure is not fixed. It is no longer silent.
+7. The deferred items stand: `show_retrieval`, and the smoke check for the
+   stored snapshot, both at the close.
+
+**How a term nominates a table now, exactly.** Every term of the question
+nominates one table: the table holding the element with the term's highest
+combined score, equal scores going to the name that sorts first. There is
+no threshold and no new number: a term always has a best element, and that
+element's table is its nominee. The margin, which already existed, still
+decides which other tables are its rivals.
+
+*Its effect, known before the run.* Words that name nothing in a schema,
+"increase", "give", "most", now nominate whatever table they are least
+unlike. A nomination does not make a table an anchor; only the whole
+question's score against the cut does that. What it does is twofold. It
+**protects**: a table some term nominates is never set aside as another
+term's rival, so more nominations mean fewer tables set aside. And it
+**creates rivals**: each term's nominee can push another table aside. The
+first is pinned by a test
+(`test_a_weak_terms_nomination_keeps_a_table_from_being_set_aside`). How
+the two net out on real questions is reported with run 1, per question,
+as the tables set aside and the term that did it.
+
+**WATCH-POINT FOR THE MARGIN, recorded before run 1.** The margin was
+measured between schema names, as the floor was. If evidence decides
+every tie it meets, or none of them, that is the same shift between how
+names score and how questions score, showing up in the other threshold.
+It is then reported as that, and the margin is not adjusted. Run 1's
+record counts the ties evidence met, decided and left.
+
 ### Tuning log
 
 Every run of `python -m app.show_eval --step6`, with what changed, the
@@ -2344,3 +2429,10 @@ Deliberate deferrals, recorded while the reasoning is fresh:
 52. Exact vector search, no pgvector index (step 6). Figure 4 of the
     Design shows one. Revisit only if a schema of thousands of elements
     appears; NFR-05's fifty tables and five hundred columns do not need it.
+53. A decline floor calibrated on a separate probe set (second review
+    stop, step 6). Two floor methods computed from the schema alone have
+    failed: one would decline nothing, one declined everything. The
+    remaining principled route is a set of probe questions, answerable and
+    not, written by the owner, used for nothing else, and frozen before
+    use. Until then FR-42 at retrieval rests on disconnection alone, and
+    its main mechanism is step 7's question-not-answerable code.

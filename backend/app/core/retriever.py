@@ -8,8 +8,9 @@ into words; everything that is a decision happens here, on plain numbers.
 TWO KINDS OF SCORE, BOTH KEPT (DD-09, ruling i).
 
   raw         what the searches returned: a cosine similarity and a
-              text-search rank. Absolute decisions use these and only
-              these: the decline floor, and whether a term matched at all.
+              text-search rank. Kept on every candidate. Any absolute
+              decision would have to use these and only these; since the
+              floor was withdrawn (below) nothing here makes one.
   normalised  each kind stretched to 0..1 across the candidates of one
               query (min-max), then combined:
 
@@ -32,19 +33,27 @@ ANCHORS (DD-11, the anchor bound). A table is an anchor when its score for
 the whole question is at least the cut, up to the cap, best first. The
 bound records what the cap excluded.
 
-RIVALS (ruling c, FR-41). A matched term nominates one table: the one
-holding its best-scoring element. Any other table within the margin of the
-nominee, for that term, is a rival: the term could as well have meant it.
-A table that is in contention only as a rival -- no term nominates it -- is
-not made an anchor beside the table that beat it, and the bound records
-that too. Whether the reader must be warned is not decided here: it
-depends on whether the rival ends up in the join tree anyway, and the tree
-is not this component's (DD-01). Every rival is handed on.
+RIVALS (ruling c, FR-41). Every term nominates one table: the one holding
+its best-scoring element, by the term's own combined score, equal scores
+going to the name that sorts first. No threshold is involved: a term
+always has a best element, and that element's table is its nominee. Any
+other table within the margin of the nominee, for that term, is a rival:
+the term could as well have meant it. A table that is in contention only
+as a rival -- no term nominates it -- is not made an anchor beside the
+table that beat it, and the bound records that too. Whether the reader
+must be warned is not decided here: it depends on whether the rival ends
+up in the join tree anyway, and the tree is not this component's (DD-01).
+Every rival is handed on.
 
-DECLINE (FR-42, ruling d). One condition belongs here: the question's best
-raw similarity to any element is at or below the floor. The other, anchors
-that cannot be connected, is the tree builder's. A term at or below the
-floor is recorded as unmatched, which is information and declines nothing.
+NO DECLINE HAPPENS HERE. As first built, a question whose best raw
+similarity was at or below a floor was declined here, and a term at or
+below it nominated nothing. The floor was computed from the schema alone
+by a method fixed in advance, and the step 6 baseline falsified it: every
+question, answerable or not, fell below it. It was withdrawn by the
+owner's ruling at the second review stop, and no number replaced it. A
+question is declined at step 6 only when its anchors cannot be connected
+(DD-10), which is the tree builder's to find. The question's best raw
+similarity is still recorded, as information.
 
 Nothing is dropped silently. Every candidate keeps both raw scores, both
 normalised scores, the combined score and its rank.
@@ -54,8 +63,6 @@ from dataclasses import dataclass
 from typing import Literal
 
 TermKind = Literal["word", "bigram"]
-
-NO_ADEQUATE_ELEMENT = "no_adequate_element"
 
 # How many of a term's best elements are recorded as considered (FR-41).
 CONSIDERED = 5
@@ -101,9 +108,6 @@ class Settings:
     anchor_cap: int
     # A difference in combined score too small to act on (rulings a, c).
     margin: float
-    # A raw similarity no better than something the schema does not hold
-    # would score (ruling d).
-    floor: float
 
     def __post_init__(self) -> None:
         if not 0 <= self.alpha <= 1:
@@ -164,13 +168,11 @@ class Rival:
 @dataclass(frozen=True)
 class TermResult:
     term: Term
-    # The term's best raw similarity to any element, and whether that is
-    # above the floor. An unmatched term nominates nothing.
+    # The term's best raw similarity to any element. Information only.
     best_raw: float
-    matched: bool
     # The table the term nominates, and the element that won it.
-    chosen_table: str | None
-    chosen_element: str | None
+    chosen_table: str
+    chosen_element: str
     # The term's best elements, best first: (element, combined score).
     considered: tuple[tuple[str, float], ...]
     rivals: tuple[Rival, ...]
@@ -191,15 +193,13 @@ class AnchorBound:
 class Retrieval:
     question: str
     settings: Settings
-    declined: bool
-    decline_reason: str | None
-    # The question's best raw similarity to any element.
+    # The question's best raw similarity to any element. Information only.
     best_raw: float
     # Every element, best first.
     candidates: tuple[Candidate, ...]
     # Every table, best first.
     tables: tuple[TableScore, ...]
-    # Best first. Empty when declined, or when no table reaches the cut.
+    # Best first. Empty when no table reaches the cut.
     anchors: tuple[str, ...]
     anchor_bound: AnchorBound
     terms: tuple[TermResult, ...]
@@ -207,10 +207,6 @@ class Retrieval:
     @property
     def rivals(self) -> tuple[Rival, ...]:
         return tuple(rival for term in self.terms for rival in term.rivals)
-
-    @property
-    def unmatched_terms(self) -> tuple[str, ...]:
-        return tuple(term.term.text for term in self.terms if not term.matched)
 
     @property
     def column_scores(self) -> dict[str, float]:
@@ -298,15 +294,6 @@ def retrieve(
     best_raw = max(score.semantic for score in scores)
     term_results = tuple(_term(term, term_scores, settings) for term, term_scores in terms)
 
-    if best_raw <= settings.floor:
-        return Retrieval(
-            question, settings,
-            declined=True, decline_reason=NO_ADEQUATE_ELEMENT, best_raw=best_raw,
-            candidates=candidates, tables=tables, anchors=(),
-            anchor_bound=AnchorBound(settings.anchor_cut, settings.anchor_cap, (), ()),
-            terms=term_results,
-        )  # fmt: skip
-
     above_cut = [entry.table for entry in tables if entry.score >= settings.anchor_cut]
 
     # A table is set aside when some term nominated a table that is itself
@@ -323,7 +310,7 @@ def retrieve(
 
     return Retrieval(
         question, settings,
-        declined=False, decline_reason=None, best_raw=best_raw,
+        best_raw=best_raw,
         candidates=candidates, tables=tables,
         anchors=tuple(in_the_running[: settings.anchor_cap]),
         anchor_bound=AnchorBound(
@@ -338,12 +325,6 @@ def retrieve(
 
 def _term(term: Term, scores: tuple[RawScore, ...], settings: Settings) -> TermResult:
     candidates = rank(scores, settings.alpha)
-    best_raw = max((score.semantic for score in scores), default=0.0)
-    considered = tuple((candidate.element, candidate.combined) for candidate in candidates[:CONSIDERED])
-
-    if not candidates or best_raw <= settings.floor:
-        return TermResult(term, best_raw, False, None, None, considered, ())
-
     tables = table_scores(candidates)
     chosen = tables[0]
     rivals = tuple(
@@ -351,4 +332,11 @@ def _term(term: Term, scores: tuple[RawScore, ...], settings: Settings) -> TermR
         for other in tables[1:]
         if chosen.score - other.score < settings.margin
     )
-    return TermResult(term, best_raw, True, chosen.table, chosen.best, considered, rivals)
+    return TermResult(
+        term,
+        best_raw=max(score.semantic for score in scores),
+        chosen_table=chosen.table,
+        chosen_element=chosen.best,
+        considered=tuple((candidate.element, candidate.combined) for candidate in candidates[:CONSIDERED]),
+        rivals=rivals,
+    )

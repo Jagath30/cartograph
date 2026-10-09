@@ -14,7 +14,6 @@ import math
 import pytest
 
 from app.core.retriever import (
-    NO_ADEQUATE_ELEMENT,
     RawScore,
     Settings,
     Term,
@@ -26,7 +25,7 @@ from app.core.retriever import (
     table_scores,
 )
 
-DEFAULTS = Settings(alpha=0.5, anchor_cut=0.5, anchor_cap=5, margin=0.1, floor=0.2)
+DEFAULTS = Settings(alpha=0.5, anchor_cut=0.5, anchor_cap=5, margin=0.1)
 
 
 def _scores(*rows: tuple[str, float, float]) -> tuple[RawScore, ...]:
@@ -50,7 +49,7 @@ QUESTION = _scores(
 
 
 def _settings(**changes) -> Settings:
-    values = {"alpha": 0.5, "anchor_cut": 0.5, "anchor_cap": 5, "margin": 0.1, "floor": 0.2}
+    values = {"alpha": 0.5, "anchor_cut": 0.5, "anchor_cap": 5, "margin": 0.1}
     return Settings(**{**values, **changes})
 
 
@@ -182,42 +181,24 @@ def test_no_table_at_the_cut_means_no_anchors_and_no_decline() -> None:
     scores = _scores(("sales.amount", 0.6, 0.0), ("shop.region", 0.4, 0.0))
     retrieval = retrieve("q", scores, (), _settings(alpha=0.0))
     assert retrieval.anchors == ()
-    assert retrieval.declined is False
 
 
 # --------------------------------------------------------------------------
-# Decline (FR-42, ruling d): raw similarity against the floor
+# No floor (withdrawn after the step 6 baseline falsified it)
 # --------------------------------------------------------------------------
 
 
-def test_a_question_whose_best_raw_similarity_is_at_the_floor_is_declined() -> None:
-    scores = _scores(("sales.amount", 0.20, 0.0), ("shop.region", 0.10, 0.0))
-    retrieval = retrieve("q", scores, (), _settings(floor=0.20))
-    assert retrieval.declined is True
-    assert retrieval.decline_reason == NO_ADEQUATE_ELEMENT
-    assert retrieval.anchors == ()
-    assert retrieval.best_raw == 0.20
-    # What was looked at is still all there.
-    assert len(retrieval.candidates) == 2
-
-
-def test_just_above_the_floor_is_not_declined() -> None:
-    scores = _scores(("sales.amount", 0.21, 0.0), ("shop.region", 0.10, 0.0))
-    assert retrieve("q", scores, (), _settings(floor=0.20)).declined is False
-
-
-def test_the_floor_reads_the_raw_score_never_the_normalised_one() -> None:
-    """The best candidate always normalises to 1. A floor read on that would
-    never decline anything."""
+def test_nothing_is_declined_here_however_low_the_raw_similarity() -> None:
+    """As first built, a question whose best raw similarity was at or below
+    a floor was declined here. The floor, computed from the schema alone,
+    declined all sixteen questions of the evaluation and was withdrawn by
+    the owner. No number replaced it: the lowest scores still rank, and
+    the best raw similarity is kept as information."""
     scores = _scores(("sales.amount", 0.05, 0.0), ("shop.region", 0.01, 0.0))
-    retrieval = retrieve("q", scores, (), _settings(floor=0.20))
-    assert retrieval.candidates[0].semantic == 1.0
-    assert retrieval.declined is True
-
-
-def test_a_literal_keyword_match_does_not_rescue_a_question_below_the_floor() -> None:
-    scores = _scores(("sales.amount", 0.05, 9.0), ("shop.region", 0.01, 0.0))
-    assert retrieve("q", scores, (), _settings(floor=0.20)).declined is True
+    retrieval = retrieve("q", scores, (), DEFAULTS)
+    assert retrieval.anchors == ("sales",)
+    assert retrieval.best_raw == 0.05
+    assert not hasattr(retrieval, "declined") and not hasattr(DEFAULTS, "floor")
 
 
 # --------------------------------------------------------------------------
@@ -273,22 +254,43 @@ WEATHER = (
 
 def test_a_term_records_what_it_considered_and_what_it_chose() -> None:
     (term,) = retrieve("q", QUESTION, (REGION,), DEFAULTS).terms
-    assert term.matched is True
     assert (term.chosen_table, term.chosen_element) == ("shop", "shop.region")
     assert term.considered[0] == ("shop.region", 1.0)
     assert [element for element, _ in term.considered] == ["shop.region", "returns.amount", "sales.amount"]
     assert term.rivals == ()
 
 
-def test_a_term_at_or_below_the_floor_is_unmatched_and_declines_nothing() -> None:
+def test_every_term_nominates_the_table_of_its_best_element_however_weak_the_match() -> None:
+    """No threshold: a term always has a best element, and that element's
+    table is its nominee. "weather" matches nothing in this schema and
+    still nominates the table it is least unlike. Its raw similarity is
+    kept, so a reader can see how weak the nomination is."""
     retrieval = retrieve("q", QUESTION, (REGION, WEATHER), DEFAULTS)
-    assert retrieval.unmatched_terms == ("weather",)
-    assert retrieval.declined is False
     weather = retrieval.terms[1]
-    assert (weather.matched, weather.chosen_table, weather.rivals) == (False, None, ())
+    assert (weather.chosen_table, weather.chosen_element) == ("shop", "shop.region")
     assert weather.best_raw == 0.15
-    # Unmatched, and still shown what it was nearest to.
     assert weather.considered[0][0] == "shop.region"
+
+
+def test_equal_scores_nominate_the_name_that_sorts_first() -> None:
+    term = (Term("amount", "word"), _scores(("sales.amount", 0.5, 0.0), ("returns.amount", 0.5, 0.0), ("shop", 0.1, 0.0)))
+    (result,) = retrieve("q", QUESTION, (term,), DEFAULTS).terms
+    assert result.chosen_table == "returns"
+    assert [rival.rival for rival in result.rivals] == ["sales"]
+
+
+def test_a_weak_terms_nomination_keeps_a_table_from_being_set_aside() -> None:
+    """The effect of having no threshold, stated as a test. "returns" is a
+    rival for "amount". A second term that matches nothing well still has
+    a best element, and it is in "returns": so "returns" is nominated in
+    its own right and stays an anchor."""
+    weak = (
+        Term("weather", "word"),
+        _scores(("sales.amount", 0.11, 0.0), ("returns.amount", 0.15, 0.0), ("shop.region", 0.02, 0.0)),
+    )
+    settings = _settings(alpha=1.0, anchor_cut=0.5)
+    assert retrieve("q", QUESTION, (AMOUNT,), settings).anchor_bound.set_aside_as_rivals == ("returns",)
+    assert retrieve("q", QUESTION, (AMOUNT, weak), settings).anchor_bound.set_aside_as_rivals == ()
 
 
 # --------------------------------------------------------------------------

@@ -10,7 +10,7 @@ import pytest
 from app.core.graph_builder import build_graph, column_nodes, table_nodes
 from app.core.locate import locate, set_aside
 from app.core.overlay import apply_overlay, parse_overlay
-from app.core.retriever import NO_ADEQUATE_ELEMENT, RawScore, Settings, Term
+from app.core.retriever import RawScore, Settings, Term
 
 NAMING = """
 naming:
@@ -18,7 +18,7 @@ naming:
   words:    { sk: surrogate key, addr: address }
 """
 
-SETTINGS = Settings(alpha=1.0, anchor_cut=0.5, anchor_cap=5, margin=0.25, floor=0.2)
+SETTINGS = Settings(alpha=1.0, anchor_cut=0.5, anchor_cap=5, margin=0.25)
 
 
 @pytest.fixture
@@ -73,13 +73,16 @@ def test_without_enough_evidence_the_tie_is_arbitrary_and_warns(graph) -> None:
     assert located.warning_codes == {"arbitrary_choice"}
 
 
-def test_a_question_below_the_floor_is_declined_before_any_tree(graph) -> None:
-    scores = tuple(RawScore(s.table, s.column, 0.1, 0.0) for s in _scores(graph))
+def test_a_question_that_matches_nothing_well_is_not_declined_for_it(graph) -> None:
+    """The floor that once declined such a question was withdrawn. Raw
+    similarity of 0.1 everywhere but one table: that table is the anchor."""
+    scores = tuple(
+        RawScore(s.table, s.column, 0.12 if s.element == "store" else 0.1, 0.0) for s in _scores(graph)
+    )
     located = locate("q", scores, (), graph, SETTINGS)
-
-    assert (located.declined, located.decline_reason) == (True, NO_ADEQUATE_ELEMENT)
-    assert located.tree is None and located.explanation is None
-    assert located.tables == () and located.warning_codes == frozenset()
+    assert located.declined is False
+    assert located.tables == ("store",)
+    assert located.retrieval.best_raw == 0.12
 
 
 def test_anchors_that_cannot_be_connected_decline_the_question(graph) -> None:
@@ -97,7 +100,7 @@ def test_anchors_that_cannot_be_connected_decline_the_question(graph) -> None:
 
 def test_no_table_at_the_cut_is_not_a_decline_and_has_no_tree_tables(graph) -> None:
     scores = _scores(graph, store__s_state=1.0, customer__c_customer_sk=0.0)
-    located = locate("q", scores, (), graph, Settings(alpha=0.0, anchor_cut=0.5, anchor_cap=5, margin=0.25, floor=0.2))
+    located = locate("q", scores, (), graph, Settings(alpha=0.0, anchor_cut=0.5, anchor_cap=5, margin=0.25))
 
     assert located.retrieval.anchors == ()
     assert located.declined is False and located.decline_reason is None

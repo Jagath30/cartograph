@@ -125,8 +125,7 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
             f"{', '.join(calibration['margin'])}; a margin is never made up for another value."
         )
     margin = calibration["margin"][str(arguments.alpha)]["value"]
-    floor = calibration["floor"]["value"]
-    retrieval_settings = Settings(arguments.alpha, arguments.cut, arguments.cap, margin, floor)
+    retrieval_settings = Settings(arguments.alpha, arguments.cut, arguments.cap, margin)
 
     try:
         paid = MeteredEmbedder(make_embedder(settings))
@@ -139,9 +138,11 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
     print("=" * 100)
     print(f"{'settings':<12}alpha {arguments.alpha}; anchor cut {arguments.cut}, cap {arguments.cap}; "
           f"subgraph bound {arguments.bound}; routes of up to {DEFAULT_MAX_JOINS} joins")  # fmt: skip
-    print(f"{'fixed':<12}margin {margin:.6f} (for this alpha); floor {floor:.6f}. From eval/calibration.json, "
-          f"computed {calibration['computed_on']}")  # fmt: skip
+    print(f"{'fixed':<12}margin {margin:.6f} (for this alpha). From eval/calibration.json, computed "
+          f"{calibration['computed_on']}")  # fmt: skip
     print(f"{'':<12}from the schema alone, before any question was embedded. Not tuned.")
+    print(f"{'floor':<12}WITHDRAWN by the owner's ruling after run 0 (it declined all sixteen). Nothing replaces it:")
+    print(f"{'':<12}a question is declined only when its anchors cannot be connected (DD-10).")
     print(f"{'snapshot':<12}{stored.id}, sha256 {stored.hash}; embedded with {stored.embedding_model}")
 
     statuses: list[str] = []
@@ -188,13 +189,9 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
         differs = f"  -- differs in: {', '.join(wrong)}" if wrong else ""
         print(f"    step 5: {_LABEL[step5[question.id]]}    |    step 6: {_LABEL[verdict.status]}{differs}")
 
-        state = "above the floor" if retrieval.best_raw > floor else "AT OR BELOW THE FLOOR"
         best = max(retrieval.candidates, key=lambda candidate: candidate.semantic_raw)
-        _line("best raw", f"{retrieval.best_raw:.4f} ({best.element}); floor {floor:.4f}: {state}")
-
-        matched = [term.term.text for term in retrieval.terms if term.matched]
-        _line("terms", f"{', '.join(matched) or 'none'}; at or below the floor: "
-                       f"{', '.join(retrieval.unmatched_terms) or 'none'}")  # fmt: skip
+        _line("best raw", f"{retrieval.best_raw:.4f} ({best.element})  (information only)")
+        _line("terms", "; ".join(f"{term.term.text} -> {term.chosen_table}" for term in retrieval.terms) or "none")
         _line("tables", ", ".join(
             f"{entry.table} {entry.score:.3f} (by {entry.best.split('.')[-1]})" for entry in retrieval.tables[:6]
         ))  # fmt: skip
@@ -203,27 +200,24 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
             for c in [candidate for candidate in retrieval.candidates if candidate.column][:4]
         ))  # fmt: skip
 
-        if retrieval.declined:
-            _line("DECLINED", "no element of the schema scores above the floor (FR-42). No anchors, no tree.")
-        else:
-            bound = retrieval.anchor_bound
-            aside = "; ".join(
-                f"{rival.rival} (\"{rival.term}\" chose {rival.chosen}: {rival.chosen_score:.3f} against "
-                f"{rival.rival_score:.3f})"
-                for rival in retrieval.rivals
-                if rival.rival in bound.set_aside_as_rivals and rival.chosen in retrieval.anchors
-            )
-            _line("anchors", f"{len(retrieval.anchors)}: "
-                             + (", ".join(f"{a} {retrieval.score_of(a):.3f}" for a in retrieval.anchors) or "none"))  # fmt: skip
-            _line("set aside", aside or "none")
-            _line("cap cut", ", ".join(bound.excluded_by_cap) or "none")
+        bound = retrieval.anchor_bound
+        aside = "; ".join(
+            f"{rival.rival} (\"{rival.term}\" chose {rival.chosen}: {rival.chosen_score:.3f} against "
+            f"{rival.rival_score:.3f})"
+            for rival in retrieval.rivals
+            if rival.rival in bound.set_aside_as_rivals and rival.chosen in retrieval.anchors
+        )
+        _line("anchors", f"{len(retrieval.anchors)}: "
+                         + (", ".join(f"{a} {retrieval.score_of(a):.3f}" for a in retrieval.anchors) or "none"))  # fmt: skip
+        _line("set aside", aside or "none")
+        _line("cap cut", ", ".join(bound.excluded_by_cap) or "none")
 
         tree = located.tree
-        if tree is not None and located.declined:
+        if located.declined:
             _line("DECLINED", located.explanation.reason)
-        elif tree is not None and tree.decline_reason == NO_ANCHORS:
+        elif tree.decline_reason == NO_ANCHORS:
             _line("tree", "none: no table reached the anchor cut")
-        elif tree is not None:
+        else:
             for attachment, explained in zip(tree.attachments, located.explanation.attachments):
                 if attachment.path is None:
                     _line("attached", f"0  {attachment.anchor}: the seed")
@@ -255,7 +249,7 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
             none_extra.append(not extra)
             _line("", f"missing: {', '.join(missing) or 'none'}; extra: {', '.join(extra) or 'none'}")
 
-            if tree is not None and not located.declined:
+            if not located.declined:
                 for position, join in enumerate(_joins(tree.edges)):
                     _line("joins" if position == 0 else "", join)
                 if not tree.edges:
@@ -266,7 +260,7 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
         raised = sorted(located.warning_codes)
         wanted = "not judged (see_note)" if question.warning == "see_note" else question.warning
         _line("warnings", f"{', '.join(raised) or 'none'}; expected: {wanted}")
-        if located.explanation is not None and not located.declined:
+        if not located.declined:
             for warning in located.explanation.warnings:
                 _line("", f"{warning.code}: {warning.text}")
 
@@ -293,6 +287,8 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
     print(f"{'timing':<12}scoring (embedding lookups and both searches) median {statistics.median(score_ms):.0f} ms, "
           f"largest {max(score_ms):.0f} ms; retrieval and tree median {statistics.median(core_ms):.0f} ms, "
           f"largest {max(core_ms):.0f} ms")  # fmt: skip
+    print(f"{'':<12}external embedding calls, not in the figures' budget (NFR-02) but in them here: "
+          f"{paid.seconds * 1000:.0f} ms in all")  # fmt: skip
     print(f"{'cost':<12}embedded now: {paid.texts} texts, {paid.tokens} tokens, ${paid.cost_usd:.8f}; "
           "everything else came from the cache")  # fmt: skip
     print(f"{'note':<12}With {count} questions a difference of one is noise.")
