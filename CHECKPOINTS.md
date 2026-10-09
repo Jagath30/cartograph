@@ -6936,7 +6936,7 @@ store_sales`, 2.9 million rows, stopped after 1,000: 88 ms, and the
 statement gone from `pg_stat_activity`. Reading one column of it to the
 end: 16.6 s.** 16 tests.
 
-**The orchestrator** (`app/orchestrator.py`). 30 tests, 23 mutations, 22
+**The orchestrator** (`app/orchestrator.py`). 30 tests, 22 mutations, 21
 caught at once and one that showed a missing test (that the prompt holds
 the whole subgraph and not the tree alone), now written.
 
