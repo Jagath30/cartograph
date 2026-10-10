@@ -7755,6 +7755,144 @@ C withdraws routes ending at a returns table, and the alphabet's first
 choice among what is left is still a bridge through `customer` or
 `catalog_sales`.
 
+### A-3 and C, built and run: the results for stop 2 — 10 October 2026
+
+**STOPPED HERE FOR THE OWNER'S REVIEW. Nothing is kept or dropped yet.
+No model call has been made in this pass but smoke's one.** Both changes
+are in the tree as it stands (`f8d3eff` A-3, then C); dropping one is a
+revert of its commit.
+
+**The instrument, and when it was written.** `app/core/keep_rule.py`
+holds the keep-rule as approved: what a question holds, and kept only
+with no loss and a gain. `python -m app.show_pass --record NAME` runs the
+sixteen questions and d2, d3, d6, d7 through retrieval and the tree and
+writes `backend/eval/pass_07b/NAME.json`; `--compare BASE NAME` prints the
+verdict. 14 tests, 17 mutations, one survived for want of a test (a
+`one_of` table held with none present), now written. *It was written
+after A-3's first step 6 report had been printed*, so I had seen A-3's
+summary line (10 of 15) before the rule existed as code; the readings it
+implements were approved at stop 1, before any run. The exact parts are
+generalised from the ruling: any question's exact tables or exact joins
+are held, and at the baseline only Q8 has them.
+
+**The baseline reproduces.** `show_eval --step6` on the unchanged code
+equals `baseline_step6_run3.txt` line for line, the timing apart; and
+`baseline.json` gives run 3's numbers: 11 of 15, 4 missing, 34 beyond,
+6, 9, 8, close calls 21 on 12, nine returns attachments.
+
+**How each was run alone.** A-3 alone: before C existed. C alone: with
+`retriever.py` and `locate.py` put back to the commit before A-3 for the
+run, then restored. Together: the tree as committed.
+
+    A-3 ALONE                                  NOT KEPT
+      lost    Q6   item, and both expected joins
+      lost    Q14  item
+      gained  Q14  store_returns, the return-to-sale join, multi_anchor
+      gained  d3   is shown catalog_sales
+      every expected table        11 -> 10 of 15; missing 4 -> 5
+      tables beyond the expected  34 -> 37
+      alphabet-decided            17 -> 20; onto returns 9 -> 10
+      warnings, questions         arbitrary 6 -> 8, many_to_many 9 -> 9,
+                                  multi_anchor 8 -> 9
+      close calls                 21 on 12 -> 17 on 10
+      retrieval and tree          median 124 ms, largest 159 ms
+      d2, d6, d7                  unchanged
+
+    C ALONE                                    KEPT
+      gained  Q3   its expected join, cs_bill_addr_sk to ca_address_sk
+      lost    nothing
+      every expected table        11 -> 11; missing 4 -> 4
+      tables beyond the expected  34 -> 34
+      alphabet-decided            17 -> 12; onto returns 9 -> 0
+      warnings, questions         arbitrary 6 -> 6, many_to_many 9 -> 9,
+                                  multi_anchor 8 -> 7
+      close calls                 21 on 12, unchanged
+      retrieval and tree          median 119 ms, largest 207 ms
+      d2, d3                      unchanged
+      d6                          same tables; one tie is smaller
+      d7                          customer_demographics, customer and
+                                  date_dim now hang on catalog_sales
+
+    A-3 AND C TOGETHER                         NOT KEPT
+      lost    Q6 and Q14, exactly as A-3 alone
+      gained  what each gains alone
+      every expected table        11 -> 10; beyond 34 -> 37
+      alphabet-decided            17 -> 15; onto returns 9 -> 0
+      retrieval and tree          median 127 ms, largest 166 ms
+      Against C alone, A-3 adds only its own losses and gains: the two do
+      not interact.
+
+**Why A-3 loses `item`, twice.** Not the rule itself: the cap, and then
+the alphabet. Q6: `catalog_returns` (0.961) comes back as the best table
+and becomes the seed; `item` was already outside the cap in run 3 and was
+in the tree only as the bridge evidence chose between the two sales
+tables. With a returns table in the tree the routes through `item` to
+`catalog_sales` and to `catalog_returns` score alike, evidence decides
+nothing, and the alphabet bridges `store_sales` through `date_dim` to
+`catalog_page`. Q14: `store_returns` and `catalog_returns` come back and
+push `item` (0.616), an anchor in run 3, over the cap; the alphabet
+bridges through `catalog_sales` and `customer`. In both, the expected
+table is the bridge that evidence would pick if the tie were only
+between bridges to one table.
+
+**Predicted against actual.**
+
+    A-3  only Q6, Q14 and d3 change          yes; fourteen trees unchanged
+         Q8, Q5, Q11 unmoved                 yes
+         d3 gains catalog_sales              yes
+         Q14 gains store_returns and join    yes
+         Q6 loses item (guess)               yes
+         Q14 loses item (guess)              yes
+         Q6's bridge is customer (guess)     NO: date_dim, to catalog_page
+         close calls 20 on 11 or 12          NO: 17 on 10. Q14's four pairs
+                                             all went, not one
+         verdict NOT KEPT                    yes
+    C    nine returns attachments to none    yes
+         five decided outright, four left    yes
+           arbitrary
+         Q3 gains its expected join          yes
+         Q12 keeps its returns attachments   yes; NOT PREDICTED: its fourth
+                                             attachment's tie fell from 28
+                                             to 16, same route chosen
+         Q16 customer still on               yes
+           customer_demographics
+         no tree gains or loses a table      yes
+         d7 date_dim by cs_ship_date_sk      yes: one diverging join
+           (guess)                           expected where there were two
+         d5 web_page on web_sales            not recorded: d5 is not among
+                                             the four the runner shows
+         verdict KEPT                        yes
+         time under 200 ms                   NO by a hair: largest 207 ms
+
+**Tests and mutations.**
+- A-3: nine tests on the Retriever (five new, four rewritten: under A-3 a
+  rival never outscores its winner, so the old cap fixtures had to
+  change), one on `locate`, two on the report's new `both kept` line. 14
+  mutations: 12 caught at once, one showed a missing test (a rival set
+  aside for another winner printed as kept), one showed a redundant
+  condition, removed.
+- C: 24 tests in `tests/core/test_attach_preference.py`, two in
+  `test_path_evidence.py` for the new order (one replaces the test that
+  asserted the old order), four on the generator and the overlay. 29
+  mutations: 27 caught at once; two showed a missing test (tables on
+  withdrawn routes dropped from the subgraph; the generator leaving the
+  section out, caught only by a test CI skips), both now written.
+- Suite: 999 pass and 2 paid tests skip, in the container.
+
+**Decided while building, and told.**
+- A-3 changes which close calls reach the tree: only a pair that set a
+  table aside is handed on (`Retrieval.set_aside_for`). Before, a pair
+  whose winner scored lower would have been reported as the reason.
+- The report prints `both kept` for a close call that set nothing aside.
+- C: `Attachment.tied` is what the preference left; what it withdrew is
+  in `withdrawn`, named in the reason, and still offered in the subgraph.
+- C: preferences of the new kind are not stored with a snapshot, like the
+  old kind (item 51); `load_current` takes them as an argument. The
+  snapshot hash does not cover them, so nothing was embedded again.
+- `tests/core/test_tpcds_paths.py`: the graph "before anything was
+  declared by hand" drops the preferences with the five hand-declared
+  keys they rest on.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
