@@ -7,6 +7,46 @@ to explain, and what the next single deliverable is.
 
 ---
 
+## Current state — 10 October 2026
+
+Kept current at every close; read first. Written at `e3b642d`.
+
+**What exists.** Steps 1 to 7, tagged `checkpoint-01-stack` to
+`checkpoint-07-generation`. The TPC-DS warehouse (24 tables, 107 keys: 102
+catalog, 5 overlay); ingestion and the graph; PathFinder, JoinTree and
+Explainer (DD-12 as amended); hybrid retrieval over a stored, embedded
+snapshot; generation through `gpt-6-luna` with SqlValidator,
+ConformanceCheck and executor; `python -m app.ask "..."`. Smoke: 32, 0, 0.
+Settings: alpha 0.5, cut 0.5, cap 5, bound 10, three joins, margin 0.107051.
+
+**Rules every session follows.**
+- `OPENAI_API_KEY` is never printed, displayed or read; `.env` is never
+  opened. No `docker compose config`, `docker inspect`, `env`, `printenv`
+  or `set`. Presence is checked, never value.
+- Installs only through the backend image; tests inside the container.
+  Commits on `main`; never push; never `git push --all` or `--tags`;
+  `step2-backup` is never pushed. `docker compose down`, never `down -v`.
+- Tests first; mutate any rule that decides; predictions and keep-rules
+  are committed before the run they judge; nothing is tuned to one
+  question; no threshold is chosen by looking at results.
+
+**Frozen, never edited.** `backend/eval/questions.yaml`, `heldout.yaml`,
+`calibration.json`, `baseline_step5.txt`; `app/core/eval_set.py`,
+`eval_step6.py`; the step 7 instrument (`sql_reading.py`,
+`sql_validator.py`, `conformance.py`) and the prompt builder.
+`heldout.yaml` is not opened, run or embedded, and `app/core/heldout.py`
+is not imported, before step 10.
+
+**Open items, by step** (numbers are in "Carried forward", at the end).
+- Now, the retrieval pass between steps 7 and 8: items 55, 56, 62, 65.
+- Step 8: trace persisted and served; 1, 34, 48, 51, 62 (declines list
+  the tables shown), 64.
+- Step 10: 47, 53, 54, 60, 61, 63, 66; heldout's first run.
+- Step 12: 8, 9, 10, 14, 18, 41. Owed to the Design: DD-12, 13, 14, 15.
+
+**How to resume.** Read this, the last entry above "Carried forward" and
+the items named; check `git status`; run `./scripts/smoke.sh` (one paid call).
+
 ## checkpoint-01-stack — 12 September 2026
 
 **What works now that did not before.** Four services come up from one
