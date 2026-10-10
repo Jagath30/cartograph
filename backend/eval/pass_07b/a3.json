@@ -1,0 +1,1210 @@
+{
+ "core_ms": {
+  "largest": 159,
+  "median": 124
+ },
+ "development": {
+  "d2": {
+   "anchors": [
+    "customer",
+    "customer_demographics",
+    "web_sales",
+    "store_sales"
+   ],
+   "attachments": [
+    {
+     "anchor": "customer_demographics",
+     "by": "customer.c_current_cdemo_sk=customer_demographics.cd_demo_sk",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "customer"
+    },
+    {
+     "anchor": "web_sales",
+     "by": "web_sales.ws_bill_customer_sk=customer.c_customer_sk",
+     "rule": "alphabetical",
+     "tied": 4,
+     "to": "customer"
+    },
+    {
+     "anchor": "store_sales",
+     "by": "store_sales.ss_customer_sk=customer.c_customer_sk",
+     "rule": "alphabetical",
+     "tied": 2,
+     "to": "customer"
+    }
+   ],
+   "subgraph": [
+    "customer",
+    "customer_demographics",
+    "web_sales",
+    "store_sales"
+   ],
+   "tree": [
+    "customer",
+    "customer_demographics",
+    "web_sales",
+    "store_sales"
+   ],
+   "warnings": [
+    "arbitrary_choice",
+    "many_to_many",
+    "multi_anchor"
+   ]
+  },
+  "d3": {
+   "anchors": [
+    "catalog_page",
+    "catalog_sales",
+    "catalog_returns",
+    "web_sales",
+    "web_returns"
+   ],
+   "attachments": [
+    {
+     "anchor": "catalog_sales",
+     "by": "catalog_sales.cs_catalog_page_sk=catalog_page.cp_catalog_page_sk",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "catalog_page"
+    },
+    {
+     "anchor": "catalog_returns",
+     "by": "catalog_returns.cr_catalog_page_sk=catalog_page.cp_catalog_page_sk",
+     "rule": "question_evidence",
+     "tied": 2,
+     "to": "catalog_page"
+    },
+    {
+     "anchor": "web_sales",
+     "by": "catalog_page.cp_end_date_sk=date_dim.d_date_sk / web_sales.ws_ship_date_sk=date_dim.d_date_sk",
+     "rule": "alphabetical",
+     "tied": 51,
+     "to": "catalog_page"
+    },
+    {
+     "anchor": "web_returns",
+     "by": "web_returns.wr_item_sk=web_sales.ws_item_sk / web_returns.wr_order_number=web_sales.ws_order_number",
+     "rule": "question_evidence",
+     "tied": 2,
+     "to": "web_sales"
+    }
+   ],
+   "subgraph": [
+    "catalog_page",
+    "catalog_sales",
+    "catalog_returns",
+    "web_sales",
+    "date_dim",
+    "web_returns",
+    "customer",
+    "customer_address",
+    "customer_demographics",
+    "household_demographics"
+   ],
+   "tree": [
+    "catalog_page",
+    "catalog_sales",
+    "catalog_returns",
+    "web_sales",
+    "date_dim",
+    "web_returns"
+   ],
+   "warnings": [
+    "arbitrary_choice",
+    "many_to_many",
+    "multi_anchor"
+   ]
+  },
+  "d6": {
+   "anchors": [
+    "store",
+    "store_sales",
+    "store_returns",
+    "call_center"
+   ],
+   "attachments": [
+    {
+     "anchor": "store_sales",
+     "by": "store_sales.ss_store_sk=store.s_store_sk",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "store"
+    },
+    {
+     "anchor": "store_returns",
+     "by": "store_returns.sr_store_sk=store.s_store_sk",
+     "rule": "alphabetical",
+     "tied": 2,
+     "to": "store"
+    },
+    {
+     "anchor": "call_center",
+     "by": "call_center.cc_closed_date_sk=date_dim.d_date_sk / store.s_closed_date_sk=date_dim.d_date_sk",
+     "rule": "alphabetical",
+     "tied": 6,
+     "to": "store"
+    }
+   ],
+   "subgraph": [
+    "store",
+    "store_sales",
+    "store_returns",
+    "call_center",
+    "date_dim"
+   ],
+   "tree": [
+    "store",
+    "store_sales",
+    "store_returns",
+    "call_center",
+    "date_dim"
+   ],
+   "warnings": [
+    "arbitrary_choice",
+    "many_to_many",
+    "multi_anchor"
+   ]
+  },
+  "d7": {
+   "anchors": [
+    "catalog_sales",
+    "catalog_returns",
+    "customer_demographics",
+    "customer",
+    "date_dim"
+   ],
+   "attachments": [
+    {
+     "anchor": "catalog_returns",
+     "by": "catalog_returns.cr_item_sk=catalog_sales.cs_item_sk / catalog_returns.cr_order_number=catalog_sales.cs_order_number",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "catalog_sales"
+    },
+    {
+     "anchor": "customer_demographics",
+     "by": "catalog_returns.cr_refunded_cdemo_sk=customer_demographics.cd_demo_sk",
+     "rule": "alphabetical",
+     "tied": 4,
+     "to": "catalog_returns"
+    },
+    {
+     "anchor": "customer",
+     "by": "catalog_returns.cr_refunded_customer_sk=customer.c_customer_sk",
+     "rule": "alphabetical",
+     "tied": 5,
+     "to": "catalog_returns"
+    },
+    {
+     "anchor": "date_dim",
+     "by": "catalog_returns.cr_returned_date_sk=date_dim.d_date_sk",
+     "rule": "alphabetical",
+     "tied": 6,
+     "to": "catalog_returns"
+    }
+   ],
+   "subgraph": [
+    "catalog_sales",
+    "catalog_returns",
+    "customer_demographics",
+    "customer",
+    "date_dim"
+   ],
+   "tree": [
+    "catalog_sales",
+    "catalog_returns",
+    "customer_demographics",
+    "customer",
+    "date_dim"
+   ],
+   "warnings": [
+    "arbitrary_choice",
+    "multi_anchor"
+   ]
+  }
+ },
+ "name": "a3",
+ "questions": {
+  "1": {
+   "anchors": [
+    "store_sales",
+    "store_returns",
+    "store",
+    "date_dim",
+    "catalog_returns"
+   ],
+   "attachments": [
+    {
+     "anchor": "store_returns",
+     "by": "store_returns.sr_item_sk=store_sales.ss_item_sk / store_returns.sr_ticket_number=store_sales.ss_ticket_number",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "store_sales"
+    },
+    {
+     "anchor": "store",
+     "by": "store_sales.ss_store_sk=store.s_store_sk",
+     "rule": "question_evidence",
+     "tied": 2,
+     "to": "store_sales"
+    },
+    {
+     "anchor": "date_dim",
+     "by": "store_sales.ss_sold_date_sk=date_dim.d_date_sk",
+     "rule": "question_evidence",
+     "tied": 3,
+     "to": "store_sales"
+    },
+    {
+     "anchor": "catalog_returns",
+     "by": "catalog_returns.cr_returned_date_sk=date_dim.d_date_sk",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "date_dim"
+    }
+   ],
+   "close_calls": 0,
+   "declined": false,
+   "held": [
+    "declined as expected",
+    "join store_sales.ss_sold_date_sk = date_dim.d_date_sk",
+    "join store_sales.ss_store_sk = store.s_store_sk",
+    "table date_dim",
+    "table store",
+    "table store_sales"
+   ],
+   "judged_tables": true,
+   "missing": [],
+   "surplus": [
+    "catalog_returns",
+    "store_returns"
+   ],
+   "tree": [
+    "store_sales",
+    "store_returns",
+    "store",
+    "date_dim",
+    "catalog_returns"
+   ],
+   "warnings": [
+    "many_to_many"
+   ]
+  },
+  "10": {
+   "anchors": [
+    "web_sales",
+    "web_returns",
+    "web_site",
+    "catalog_sales",
+    "catalog_returns"
+   ],
+   "attachments": [
+    {
+     "anchor": "web_returns",
+     "by": "web_returns.wr_item_sk=web_sales.ws_item_sk / web_returns.wr_order_number=web_sales.ws_order_number",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "web_sales"
+    },
+    {
+     "anchor": "web_site",
+     "by": "web_sales.ws_web_site_sk=web_site.web_site_sk",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "web_sales"
+    },
+    {
+     "anchor": "catalog_sales",
+     "by": "catalog_sales.cs_ship_mode_sk=ship_mode.sm_ship_mode_sk / web_sales.ws_ship_mode_sk=ship_mode.sm_ship_mode_sk",
+     "rule": "question_evidence",
+     "tied": 49,
+     "to": "web_sales"
+    },
+    {
+     "anchor": "catalog_returns",
+     "by": "catalog_returns.cr_ship_mode_sk=ship_mode.sm_ship_mode_sk",
+     "rule": "question_evidence",
+     "tied": 2,
+     "to": "ship_mode"
+    }
+   ],
+   "close_calls": 0,
+   "declined": false,
+   "held": [
+    "declined as expected",
+    "join web_sales.ws_ship_mode_sk = ship_mode.sm_ship_mode_sk",
+    "join web_sales.ws_web_site_sk = web_site.web_site_sk",
+    "table ship_mode",
+    "table web_sales",
+    "table web_site"
+   ],
+   "judged_tables": true,
+   "missing": [],
+   "surplus": [
+    "catalog_returns",
+    "catalog_sales",
+    "web_returns"
+   ],
+   "tree": [
+    "web_sales",
+    "web_returns",
+    "web_site",
+    "catalog_sales",
+    "ship_mode",
+    "catalog_returns"
+   ],
+   "warnings": [
+    "many_to_many"
+   ]
+  },
+  "11": {
+   "anchors": [
+    "store_sales",
+    "date_dim",
+    "store",
+    "store_returns"
+   ],
+   "attachments": [
+    {
+     "anchor": "date_dim",
+     "by": "store_sales.ss_sold_date_sk=date_dim.d_date_sk",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "store_sales"
+    },
+    {
+     "anchor": "store",
+     "by": "store_sales.ss_store_sk=store.s_store_sk",
+     "rule": "question_evidence",
+     "tied": 2,
+     "to": "store_sales"
+    },
+    {
+     "anchor": "store_returns",
+     "by": "store_returns.sr_item_sk=store_sales.ss_item_sk / store_returns.sr_ticket_number=store_sales.ss_ticket_number",
+     "rule": "question_evidence",
+     "tied": 3,
+     "to": "store_sales"
+    }
+   ],
+   "close_calls": 2,
+   "declined": false,
+   "held": [
+    "declined as expected",
+    "join store_sales.ss_sold_date_sk = date_dim.d_date_sk",
+    "no warning",
+    "table date_dim",
+    "table store_sales"
+   ],
+   "judged_tables": true,
+   "missing": [],
+   "surplus": [
+    "store",
+    "store_returns"
+   ],
+   "tree": [
+    "store_sales",
+    "date_dim",
+    "store",
+    "store_returns"
+   ],
+   "warnings": []
+  },
+  "12": {
+   "anchors": [
+    "catalog_returns",
+    "catalog_sales",
+    "call_center",
+    "store_returns",
+    "catalog_page"
+   ],
+   "attachments": [
+    {
+     "anchor": "catalog_sales",
+     "by": "catalog_returns.cr_item_sk=catalog_sales.cs_item_sk / catalog_returns.cr_order_number=catalog_sales.cs_order_number",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "catalog_returns"
+    },
+    {
+     "anchor": "call_center",
+     "by": "catalog_returns.cr_call_center_sk=call_center.cc_call_center_sk",
+     "rule": "question_evidence",
+     "tied": 2,
+     "to": "catalog_returns"
+    },
+    {
+     "anchor": "catalog_page",
+     "by": "catalog_returns.cr_catalog_page_sk=catalog_page.cp_catalog_page_sk",
+     "rule": "question_evidence",
+     "tied": 2,
+     "to": "catalog_returns"
+    },
+    {
+     "anchor": "store_returns",
+     "by": "call_center.cc_closed_date_sk=date_dim.d_date_sk / store_returns.sr_returned_date_sk=date_dim.d_date_sk",
+     "rule": "alphabetical",
+     "tied": 28,
+     "to": "call_center"
+    }
+   ],
+   "close_calls": 1,
+   "declined": false,
+   "held": [
+    "declined as expected",
+    "join catalog_returns.cr_call_center_sk = call_center.cc_call_center_sk",
+    "table call_center",
+    "table catalog_returns"
+   ],
+   "judged_tables": true,
+   "missing": [],
+   "surplus": [
+    "catalog_page",
+    "catalog_sales",
+    "date_dim",
+    "store_returns"
+   ],
+   "tree": [
+    "catalog_returns",
+    "catalog_sales",
+    "call_center",
+    "catalog_page",
+    "store_returns",
+    "date_dim"
+   ],
+   "warnings": [
+    "arbitrary_choice",
+    "many_to_many",
+    "multi_anchor"
+   ]
+  },
+  "13": {
+   "anchors": [
+    "income_band",
+    "household_demographics",
+    "customer_demographics",
+    "customer",
+    "web_sales"
+   ],
+   "attachments": [
+    {
+     "anchor": "household_demographics",
+     "by": "household_demographics.hd_income_band_sk=income_band.ib_income_band_sk",
+     "rule": "only_path",
+     "tied": 0,
+     "to": "income_band"
+    },
+    {
+     "anchor": "customer",
+     "by": "customer.c_current_hdemo_sk=household_demographics.hd_demo_sk",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "household_demographics"
+    },
+    {
+     "anchor": "customer_demographics",
+     "by": "customer.c_current_cdemo_sk=customer_demographics.cd_demo_sk",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "customer"
+    },
+    {
+     "anchor": "web_sales",
+     "by": "web_sales.ws_bill_customer_sk=customer.c_customer_sk",
+     "rule": "alphabetical",
+     "tied": 6,
+     "to": "customer"
+    }
+   ],
+   "close_calls": 0,
+   "declined": false,
+   "held": [
+    "declined as expected",
+    "join household_demographics.hd_income_band_sk = income_band.ib_income_band_sk",
+    "table household_demographics",
+    "table income_band",
+    "table one of store_sales, catalog_sales, web_sales"
+   ],
+   "judged_tables": true,
+   "missing": [
+    "item"
+   ],
+   "surplus": [
+    "customer",
+    "customer_demographics"
+   ],
+   "tree": [
+    "income_band",
+    "household_demographics",
+    "customer",
+    "customer_demographics",
+    "web_sales"
+   ],
+   "warnings": [
+    "arbitrary_choice",
+    "multi_anchor"
+   ]
+  },
+  "14": {
+   "anchors": [
+    "promotion",
+    "store_returns",
+    "catalog_returns",
+    "web_returns",
+    "store_sales"
+   ],
+   "attachments": [
+    {
+     "anchor": "store_sales",
+     "by": "store_sales.ss_promo_sk=promotion.p_promo_sk",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "promotion"
+    },
+    {
+     "anchor": "store_returns",
+     "by": "store_returns.sr_item_sk=store_sales.ss_item_sk / store_returns.sr_ticket_number=store_sales.ss_ticket_number",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "store_sales"
+    },
+    {
+     "anchor": "catalog_returns",
+     "by": "catalog_returns.cr_item_sk=catalog_sales.cs_item_sk / catalog_returns.cr_order_number=catalog_sales.cs_order_number / catalog_sales.cs_promo_sk=promotion.p_promo_sk",
+     "rule": "alphabetical",
+     "tied": 27,
+     "to": "promotion"
+    },
+    {
+     "anchor": "web_returns",
+     "by": "catalog_returns.cr_refunded_customer_sk=customer.c_customer_sk / web_returns.wr_refunded_customer_sk=customer.c_customer_sk",
+     "rule": "alphabetical",
+     "tied": 67,
+     "to": "catalog_returns"
+    }
+   ],
+   "close_calls": 0,
+   "declined": false,
+   "held": [
+    "declined as expected",
+    "join store_returns.sr_item_sk = store_sales.ss_item_sk and store_returns.sr_ticket_number = store_sales.ss_ticket_number",
+    "join store_sales.ss_promo_sk = promotion.p_promo_sk",
+    "table promotion",
+    "table store_returns",
+    "table store_sales",
+    "warning multi_anchor"
+   ],
+   "judged_tables": true,
+   "missing": [
+    "item"
+   ],
+   "surplus": [
+    "catalog_returns",
+    "catalog_sales",
+    "customer",
+    "web_returns"
+   ],
+   "tree": [
+    "promotion",
+    "store_sales",
+    "store_returns",
+    "catalog_returns",
+    "catalog_sales",
+    "web_returns",
+    "customer"
+   ],
+   "warnings": [
+    "arbitrary_choice",
+    "many_to_many",
+    "multi_anchor"
+   ]
+  },
+  "15": {
+   "anchors": [
+    "customer_demographics",
+    "customer",
+    "web_returns",
+    "web_sales",
+    "catalog_returns"
+   ],
+   "attachments": [
+    {
+     "anchor": "customer",
+     "by": "customer.c_current_cdemo_sk=customer_demographics.cd_demo_sk",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "customer_demographics"
+    },
+    {
+     "anchor": "web_returns",
+     "by": "web_returns.wr_refunded_customer_sk=customer.c_customer_sk",
+     "rule": "alphabetical",
+     "tied": 4,
+     "to": "customer"
+    },
+    {
+     "anchor": "web_sales",
+     "by": "web_sales.ws_bill_customer_sk=customer.c_customer_sk",
+     "rule": "alphabetical",
+     "tied": 5,
+     "to": "customer"
+    },
+    {
+     "anchor": "catalog_returns",
+     "by": "catalog_returns.cr_refunded_customer_sk=customer.c_customer_sk",
+     "rule": "alphabetical",
+     "tied": 4,
+     "to": "customer"
+    }
+   ],
+   "close_calls": 1,
+   "declined": false,
+   "held": [],
+   "judged_tables": false,
+   "missing": [],
+   "surplus": [],
+   "tree": [
+    "customer_demographics",
+    "customer",
+    "web_returns",
+    "web_sales",
+    "catalog_returns"
+   ],
+   "warnings": [
+    "arbitrary_choice",
+    "many_to_many",
+    "multi_anchor"
+   ]
+  },
+  "16": {
+   "anchors": [
+    "web_page",
+    "web_sales",
+    "web_returns",
+    "customer_demographics",
+    "customer"
+   ],
+   "attachments": [
+    {
+     "anchor": "web_sales",
+     "by": "web_sales.ws_web_page_sk=web_page.wp_web_page_sk",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "web_page"
+    },
+    {
+     "anchor": "web_returns",
+     "by": "web_returns.wr_web_page_sk=web_page.wp_web_page_sk",
+     "rule": "question_evidence",
+     "tied": 2,
+     "to": "web_page"
+    },
+    {
+     "anchor": "customer_demographics",
+     "by": "web_returns.wr_refunded_cdemo_sk=customer_demographics.cd_demo_sk",
+     "rule": "alphabetical",
+     "tied": 4,
+     "to": "web_returns"
+    },
+    {
+     "anchor": "customer",
+     "by": "customer.c_current_cdemo_sk=customer_demographics.cd_demo_sk",
+     "rule": "alphabetical",
+     "tied": 6,
+     "to": "customer_demographics"
+    }
+   ],
+   "close_calls": 2,
+   "declined": false,
+   "held": [
+    "declined as expected",
+    "join web_sales.ws_web_page_sk = web_page.wp_web_page_sk",
+    "table customer",
+    "table web_page",
+    "table web_sales"
+   ],
+   "judged_tables": true,
+   "missing": [],
+   "surplus": [
+    "customer_demographics",
+    "web_returns"
+   ],
+   "tree": [
+    "web_page",
+    "web_sales",
+    "web_returns",
+    "customer_demographics",
+    "customer"
+   ],
+   "warnings": [
+    "arbitrary_choice",
+    "many_to_many",
+    "multi_anchor"
+   ]
+  },
+  "2": {
+   "anchors": [
+    "catalog_sales",
+    "customer_address",
+    "catalog_returns",
+    "catalog_page",
+    "customer"
+   ],
+   "attachments": [
+    {
+     "anchor": "customer_address",
+     "by": "catalog_sales.cs_bill_addr_sk=customer_address.ca_address_sk",
+     "rule": "question_evidence",
+     "tied": 2,
+     "to": "catalog_sales"
+    },
+    {
+     "anchor": "catalog_returns",
+     "by": "catalog_returns.cr_item_sk=catalog_sales.cs_item_sk / catalog_returns.cr_order_number=catalog_sales.cs_order_number",
+     "rule": "alphabetical",
+     "tied": 3,
+     "to": "catalog_sales"
+    },
+    {
+     "anchor": "catalog_page",
+     "by": "catalog_returns.cr_catalog_page_sk=catalog_page.cp_catalog_page_sk",
+     "rule": "alphabetical",
+     "tied": 2,
+     "to": "catalog_returns"
+    },
+    {
+     "anchor": "customer",
+     "by": "catalog_returns.cr_refunded_customer_sk=customer.c_customer_sk",
+     "rule": "alphabetical",
+     "tied": 5,
+     "to": "catalog_returns"
+    }
+   ],
+   "close_calls": 1,
+   "declined": false,
+   "held": [
+    "declined as expected",
+    "join catalog_sales.cs_bill_addr_sk = customer_address.ca_address_sk",
+    "table catalog_sales",
+    "table customer_address"
+   ],
+   "judged_tables": true,
+   "missing": [],
+   "surplus": [
+    "catalog_page",
+    "catalog_returns",
+    "customer"
+   ],
+   "tree": [
+    "catalog_sales",
+    "customer_address",
+    "catalog_returns",
+    "catalog_page",
+    "customer"
+   ],
+   "warnings": [
+    "arbitrary_choice",
+    "multi_anchor"
+   ]
+  },
+  "3": {
+   "anchors": [
+    "catalog_sales",
+    "catalog_returns",
+    "customer_address",
+    "catalog_page",
+    "customer"
+   ],
+   "attachments": [
+    {
+     "anchor": "catalog_returns",
+     "by": "catalog_returns.cr_item_sk=catalog_sales.cs_item_sk / catalog_returns.cr_order_number=catalog_sales.cs_order_number",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "catalog_sales"
+    },
+    {
+     "anchor": "customer_address",
+     "by": "catalog_returns.cr_refunded_addr_sk=customer_address.ca_address_sk",
+     "rule": "alphabetical",
+     "tied": 4,
+     "to": "catalog_returns"
+    },
+    {
+     "anchor": "catalog_page",
+     "by": "catalog_returns.cr_catalog_page_sk=catalog_page.cp_catalog_page_sk",
+     "rule": "alphabetical",
+     "tied": 2,
+     "to": "catalog_returns"
+    },
+    {
+     "anchor": "customer",
+     "by": "catalog_returns.cr_refunded_customer_sk=customer.c_customer_sk",
+     "rule": "alphabetical",
+     "tied": 5,
+     "to": "catalog_returns"
+    }
+   ],
+   "close_calls": 0,
+   "declined": false,
+   "held": [
+    "declined as expected",
+    "table catalog_sales",
+    "table customer_address",
+    "warning arbitrary_choice"
+   ],
+   "judged_tables": true,
+   "missing": [],
+   "surplus": [
+    "catalog_page",
+    "catalog_returns",
+    "customer"
+   ],
+   "tree": [
+    "catalog_sales",
+    "catalog_returns",
+    "customer_address",
+    "catalog_page",
+    "customer"
+   ],
+   "warnings": [
+    "arbitrary_choice",
+    "multi_anchor"
+   ]
+  },
+  "4": {
+   "anchors": [
+    "web_sales",
+    "item",
+    "web_returns",
+    "web_page"
+   ],
+   "attachments": [
+    {
+     "anchor": "item",
+     "by": "web_sales.ws_item_sk=item.i_item_sk",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "web_sales"
+    },
+    {
+     "anchor": "web_returns",
+     "by": "web_returns.wr_item_sk=web_sales.ws_item_sk / web_returns.wr_order_number=web_sales.ws_order_number",
+     "rule": "question_evidence",
+     "tied": 2,
+     "to": "web_sales"
+    },
+    {
+     "anchor": "web_page",
+     "by": "web_sales.ws_web_page_sk=web_page.wp_web_page_sk",
+     "rule": "question_evidence",
+     "tied": 2,
+     "to": "web_sales"
+    }
+   ],
+   "close_calls": 2,
+   "declined": false,
+   "held": [
+    "declined as expected",
+    "join web_sales.ws_item_sk = item.i_item_sk",
+    "no warning",
+    "table item",
+    "table web_sales"
+   ],
+   "judged_tables": true,
+   "missing": [
+    "date_dim"
+   ],
+   "surplus": [
+    "web_page",
+    "web_returns"
+   ],
+   "tree": [
+    "web_sales",
+    "item",
+    "web_returns",
+    "web_page"
+   ],
+   "warnings": []
+  },
+  "5": {
+   "anchors": [
+    "store_returns",
+    "store_sales",
+    "reason"
+   ],
+   "attachments": [
+    {
+     "anchor": "store_sales",
+     "by": "store_returns.sr_item_sk=store_sales.ss_item_sk / store_returns.sr_ticket_number=store_sales.ss_ticket_number",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "store_returns"
+    },
+    {
+     "anchor": "reason",
+     "by": "store_returns.sr_reason_sk=reason.r_reason_sk",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "store_returns"
+    }
+   ],
+   "close_calls": 2,
+   "declined": false,
+   "held": [
+    "declined as expected",
+    "join store_returns.sr_reason_sk = reason.r_reason_sk",
+    "no warning",
+    "table reason",
+    "table store_returns"
+   ],
+   "judged_tables": true,
+   "missing": [],
+   "surplus": [
+    "store_sales"
+   ],
+   "tree": [
+    "store_returns",
+    "store_sales",
+    "reason"
+   ],
+   "warnings": []
+  },
+  "6": {
+   "anchors": [
+    "catalog_returns",
+    "catalog_sales",
+    "store_sales",
+    "store_returns",
+    "catalog_page"
+   ],
+   "attachments": [
+    {
+     "anchor": "catalog_sales",
+     "by": "catalog_returns.cr_item_sk=catalog_sales.cs_item_sk / catalog_returns.cr_order_number=catalog_sales.cs_order_number",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "catalog_returns"
+    },
+    {
+     "anchor": "catalog_page",
+     "by": "catalog_returns.cr_catalog_page_sk=catalog_page.cp_catalog_page_sk",
+     "rule": "alphabetical",
+     "tied": 2,
+     "to": "catalog_returns"
+    },
+    {
+     "anchor": "store_sales",
+     "by": "catalog_page.cp_end_date_sk=date_dim.d_date_sk / store_sales.ss_sold_date_sk=date_dim.d_date_sk",
+     "rule": "alphabetical",
+     "tied": 26,
+     "to": "catalog_page"
+    },
+    {
+     "anchor": "store_returns",
+     "by": "store_returns.sr_item_sk=store_sales.ss_item_sk / store_returns.sr_ticket_number=store_sales.ss_ticket_number",
+     "rule": "question_evidence",
+     "tied": 2,
+     "to": "store_sales"
+    }
+   ],
+   "close_calls": 0,
+   "declined": false,
+   "held": [
+    "declined as expected",
+    "table catalog_sales",
+    "table store_sales",
+    "warning many_to_many"
+   ],
+   "judged_tables": true,
+   "missing": [
+    "item"
+   ],
+   "surplus": [
+    "catalog_page",
+    "catalog_returns",
+    "date_dim",
+    "store_returns"
+   ],
+   "tree": [
+    "catalog_returns",
+    "catalog_sales",
+    "catalog_page",
+    "store_sales",
+    "date_dim",
+    "store_returns"
+   ],
+   "warnings": [
+    "arbitrary_choice",
+    "many_to_many",
+    "multi_anchor"
+   ]
+  },
+  "7": {
+   "anchors": [
+    "inventory",
+    "item",
+    "warehouse",
+    "web_sales",
+    "catalog_returns"
+   ],
+   "attachments": [
+    {
+     "anchor": "item",
+     "by": "inventory.inv_item_sk=item.i_item_sk",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "inventory"
+    },
+    {
+     "anchor": "warehouse",
+     "by": "inventory.inv_warehouse_sk=warehouse.w_warehouse_sk",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "inventory"
+    },
+    {
+     "anchor": "web_sales",
+     "by": "web_sales.ws_warehouse_sk=warehouse.w_warehouse_sk",
+     "rule": "question_evidence",
+     "tied": 2,
+     "to": "warehouse"
+    },
+    {
+     "anchor": "catalog_returns",
+     "by": "catalog_returns.cr_warehouse_sk=warehouse.w_warehouse_sk",
+     "rule": "question_evidence",
+     "tied": 2,
+     "to": "warehouse"
+    }
+   ],
+   "close_calls": 3,
+   "declined": false,
+   "held": [
+    "declined as expected",
+    "join inventory.inv_item_sk = item.i_item_sk",
+    "join inventory.inv_warehouse_sk = warehouse.w_warehouse_sk",
+    "table inventory",
+    "table item",
+    "table warehouse"
+   ],
+   "judged_tables": true,
+   "missing": [
+    "date_dim"
+   ],
+   "surplus": [
+    "catalog_returns",
+    "web_sales"
+   ],
+   "tree": [
+    "inventory",
+    "item",
+    "warehouse",
+    "web_sales",
+    "catalog_returns"
+   ],
+   "warnings": [
+    "many_to_many"
+   ]
+  },
+  "8": {
+   "anchors": [
+    "store_sales",
+    "promotion"
+   ],
+   "attachments": [
+    {
+     "anchor": "promotion",
+     "by": "store_sales.ss_promo_sk=promotion.p_promo_sk",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "store_sales"
+    }
+   ],
+   "close_calls": 2,
+   "declined": false,
+   "held": [
+    "declined as expected",
+    "exact joins",
+    "exact tables",
+    "join store_sales.ss_promo_sk = promotion.p_promo_sk",
+    "table one of store_sales, catalog_sales, web_sales",
+    "table promotion"
+   ],
+   "judged_tables": true,
+   "missing": [],
+   "surplus": [],
+   "tree": [
+    "store_sales",
+    "promotion"
+   ],
+   "warnings": []
+  },
+  "9": {
+   "anchors": [
+    "household_demographics",
+    "store_sales",
+    "store_returns",
+    "store",
+    "customer_demographics"
+   ],
+   "attachments": [
+    {
+     "anchor": "store_sales",
+     "by": "store_sales.ss_hdemo_sk=household_demographics.hd_demo_sk",
+     "rule": "shortest",
+     "tied": 0,
+     "to": "household_demographics"
+    },
+    {
+     "anchor": "store_returns",
+     "by": "store_returns.sr_hdemo_sk=household_demographics.hd_demo_sk",
+     "rule": "alphabetical",
+     "tied": 2,
+     "to": "household_demographics"
+    },
+    {
+     "anchor": "store",
+     "by": "store_returns.sr_store_sk=store.s_store_sk",
+     "rule": "alphabetical",
+     "tied": 2,
+     "to": "store_returns"
+    },
+    {
+     "anchor": "customer_demographics",
+     "by": "store_returns.sr_cdemo_sk=customer_demographics.cd_demo_sk",
+     "rule": "alphabetical",
+     "tied": 2,
+     "to": "store_returns"
+    }
+   ],
+   "close_calls": 1,
+   "declined": false,
+   "held": [
+    "declined as expected",
+    "join store_sales.ss_hdemo_sk = household_demographics.hd_demo_sk",
+    "table household_demographics",
+    "table store_sales"
+   ],
+   "judged_tables": true,
+   "missing": [],
+   "surplus": [
+    "customer_demographics",
+    "store",
+    "store_returns"
+   ],
+   "tree": [
+    "household_demographics",
+    "store_sales",
+    "store_returns",
+    "store",
+    "customer_demographics"
+   ],
+   "warnings": [
+    "many_to_many",
+    "multi_anchor"
+   ]
+  }
+ }
+}

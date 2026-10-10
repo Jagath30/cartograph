@@ -65,6 +65,17 @@ as plain data, like the scores. A partner within the margin is recorded on
 the term beside its rivals; it is protected from that term's choice only,
 and may still be the rival of a table it is not joined to.
 
+ONLY FOR A WINNER THAT SCORES AT LEAST AS HIGH (the owner's ruling A-3 of
+the retrieval pass, 10 October 2026). A rival is set aside only for a
+winner that scores at least as high as it on the WHOLE question; otherwise
+both stay. A close call on one word says the word could have meant either
+table; it does not say the question is about the lower-scoring one. As
+first built it could: a question that said "catalog" twice lost
+catalog_sales, the second-best table of 24, to web_sales on the word
+"orders" (step 7, development question d3). The close call is still
+recorded on the term. No number is involved: it compares two scores the
+question already has.
+
 NO DECLINE HAPPENS HERE. As first built, a question whose best raw
 similarity was at or below a floor was declined here, and a term at or
 below it nominated nothing. The floor was computed from the schema alone
@@ -210,7 +221,8 @@ class AnchorBound:
     excluded_by_cap: tuple[str, ...]
     # Tables at or above the cut that were in contention only as a term's
     # rival, and were not made anchors beside the table that beat them.
-    # Each was set aside for at least one table that is an anchor.
+    # Each was set aside for at least one table that is an anchor and that
+    # scores at least as high on the whole question.
     set_aside_as_rivals: tuple[str, ...]
 
 
@@ -238,6 +250,18 @@ class Retrieval:
         """table.column -> combined score for the whole question: what the
         question's wording says about each column (DD-12 as amended)."""
         return {candidate.element: candidate.combined for candidate in self.candidates if candidate.column}
+
+    @property
+    def set_aside_for(self) -> tuple[Rival, ...]:
+        """The close calls that set a table aside: the table is set aside,
+        and the table chosen is an anchor that scores at least as high."""
+        return tuple(
+            rival
+            for rival in self.rivals
+            if rival.rival in self.anchor_bound.set_aside_as_rivals
+            and rival.chosen in self.anchors
+            and self.score_of(rival.chosen) >= self.score_of(rival.rival)
+        )
 
     def score_of(self, table: str) -> float:
         return next(entry.score for entry in self.tables if entry.table == table)
@@ -326,8 +350,9 @@ def retrieve(
     above_cut = [entry.table for entry in tables if entry.score >= settings.anchor_cut]
 
     # A table is set aside when some term nominated a table that is an
-    # anchor, this table was within the margin of it and not joined to it,
-    # and no term nominates this table in its own right.
+    # anchor and scores at least as high on the whole question, this table
+    # was within the margin of it for that term and not joined to it, and
+    # no term nominates this table in its own right.
     #
     # "Is an anchor" is read AFTER the cap, so the two are settled together.
     # Start from every table at the cut as a possible winner; set aside the
@@ -337,11 +362,12 @@ def retrieve(
     # ends: tables only ever come back, so a winner once cut stays cut and
     # the winners only shrink.
     nominated = {result.chosen_table for result in term_results if result.chosen_table}
+    whole = {entry.table: entry.score for entry in tables}
     close_calls = [
         (rival.chosen, rival.rival)
         for result in term_results
         for rival in result.rivals
-        if rival.rival not in nominated
+        if rival.rival not in nominated and whole[rival.chosen] >= whole[rival.rival]
     ]
     winners = set(above_cut)
     while True:

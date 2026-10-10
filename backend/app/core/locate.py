@@ -60,12 +60,11 @@ def set_aside(retrieval: Retrieval) -> tuple[SetAside, ...]:
     """The rivals the Retriever actually set aside, once each: a table that
     reached the cut and lost its place to the table a term chose."""
     aside: dict[tuple[str, str], SetAside] = {}
-    for rival in retrieval.rivals:
-        if rival.rival in retrieval.anchor_bound.set_aside_as_rivals and rival.chosen in retrieval.anchors:
-            aside.setdefault(
-                (rival.chosen, rival.rival),
-                SetAside(rival.term, rival.chosen, rival.rival, rival.chosen_score, rival.rival_score),
-            )
+    for rival in retrieval.set_aside_for:
+        aside.setdefault(
+            (rival.chosen, rival.rival),
+            SetAside(rival.term, rival.chosen, rival.rival, rival.chosen_score, rival.rival_score),
+        )
     return tuple(aside.values())
 
 

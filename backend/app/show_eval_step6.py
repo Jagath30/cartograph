@@ -92,6 +92,8 @@ def report(eval_set: EvalSet, snapshot, graph, step5: dict[int, str], arguments)
     print(f"{'':<12}REVISED at the fourth review stop: a table is set aside only for a winner that is still an")
     print(f"{'':<12}anchor after the cap; and a close call is shown as information (\"close call\"), never raised")
     print(f"{'':<12}as the warning anchor_ambiguity. Questions 8, 9 and 13 expect that warning and keep expecting it.")
+    print(f"{'':<12}RETRIEVAL PASS, ruling A-3: a table is set aside only for a winner that scores at least as high")
+    print(f"{'':<12}as it on the whole question; otherwise both stay, and a \"both kept\" line says so.")
     print(f"{'snapshot':<12}{stored.id}, sha256 {stored.hash}; embedded with {stored.embedding_model}")
 
     statuses: list[str] = []

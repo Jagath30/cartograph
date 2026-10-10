@@ -48,10 +48,24 @@ def print_retrieval(located: Located) -> None:
     aside = "; ".join(
         f"{rival.rival} (\"{rival.term}\" chose {rival.chosen}: {rival.chosen_score:.3f} against "
         f"{rival.rival_score:.3f})"
-        for rival in retrieval.rivals
-        if rival.rival in bound.set_aside_as_rivals and rival.chosen in retrieval.anchors
+        for rival in retrieval.set_aside_for
     )
     line("set aside", aside or "none")
+
+    # A close call that set nothing aside because the table a term could
+    # as well have meant scores higher on the whole question than the one
+    # the term chose (ruling A-3). Both are anchors, and no term nominates
+    # the first: had it not scored higher it would have been set aside.
+    both = "; ".join(
+        f"{rival.rival} {retrieval.score_of(rival.rival):.3f} and {rival.chosen} "
+        f"{retrieval.score_of(rival.chosen):.3f} (\"{rival.term}\" chose {rival.chosen}: "
+        f"{rival.chosen_score:.3f} against {rival.rival_score:.3f})"
+        for rival in retrieval.rivals
+        if rival.rival in retrieval.anchors
+        and rival.chosen in retrieval.anchors
+        and rival.rival not in {term.chosen_table for term in retrieval.terms}
+    )
+    line("both kept", both or "none")
 
     # The tables that reached the cut, that no term nominates, and that
     # were kept only because they are joined to the table a term chose.
