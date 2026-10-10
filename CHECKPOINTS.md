@@ -7665,6 +7665,96 @@ which changes no tree. No interaction predicted.
 **Time.** Every change is in the pure core. Predicted: retrieval and
 tree stay under 200 ms at the largest, against one second (NFR-02).
 
+### The owner's rulings at stop 1 of the retrieval pass — 10 October 2026
+
+Given on the diagnosis, the rule texts and the predictions, before any
+code. Recorded as given.
+
+1. **A-1 and A-2 are dropped and are not run.** The lean for A "rested on
+   a wrong picture of the rival rule". **A-3 is adopted:** on a term, a
+   rival is set aside only for a winner that scores at least as high as
+   it on the whole question; otherwise both stay. Close calls are still
+   recorded. It needs no new number. Its prediction is recorded before
+   its run, with what the anchor cap is expected to do (below).
+2. **B is left out of this pass.** Two findings, recorded:
+   - B-1, into the tree: 36 near-miss tables in 14 trees and the surplus
+     from 34 to about 69 (predicted, not run), too high a cost for
+     `date_dim` in Q7 and d2.
+   - B-2, beside the tree: it would pass the keep-rule only because the
+     step 6 judge cannot see tables outside the tree, while its costs,
+     larger prompts and joins read as diverged, fall where the judge does
+     not look.
+   - **A known limit, beside words that are data values:** a date table
+     that scores just under the cut is not retrieved. `date_dim` in Q7
+     (between 0.4 and 0.5) and in d2 (0.492) are the instances; Q4's is
+     further down.
+3. **The keep-rule's stricter readings are approved.** A question that
+   expects no warning and raises none holds that. Q8's exact tree is
+   held.
+4. **C is approved as proposed:** `attach_to` / `rather_than` in a
+   hand-written `tpcds.preferences.yaml` that the generator copies into
+   `tpcds.yaml`; one attachment at a time, only when equally short
+   candidates end at both named tables; one candidate left is reported
+   quietly as a preference; several left go to the alphabet and warn as
+   today; the order is shortest, evidence beyond the margin, preference,
+   alphabet, with evidence consulted once.
+5. The Current state section lists items 55 and 56 under this pass. They
+   stay future work; the line is corrected at the close.
+
+**Order.** A-3 alone, C alone, then A-3 and C together, each against the
+baseline with its tests, mutations and report. Then stop 2.
+
+### PREDICTION FOR A-3, written before its code and its run
+
+From run 3's `set aside` lines and its table scores, and from nothing
+else. A pair stops setting a table aside when the table set aside scores
+higher on the whole question than the table that won the term.
+
+**Derived: which pairs change.**
+
+    Q6   catalog_returns 0.961, set aside for store_sales 0.895: comes back
+    Q14  store_returns 0.883 and catalog_returns 0.830, set aside for
+         web_returns 0.818: both come back
+    Q4   web_site 0.586 is no longer set aside for web_page 0.544, and is
+         still set aside for item 0.804: no change
+    every other pair: the winner scores higher; no change
+    d3   catalog_sales 0.877, set aside for web_sales (lower): comes back
+
+So fourteen of the sixteen trees are unchanged, Q8, Q5 and Q11 among
+them (derived). Close calls: 21 on 12 becomes 20 on 11 or 12.
+
+**What the cap does.**
+
+- **Q6.** Nine tables at the cut. Anchors: `catalog_returns`,
+  `catalog_sales`, `store_sales`, `store_returns`, `catalog_page`. The
+  cap now cuts `store` as well as `item`, `web_sales`, `promotion`.
+  `item` was already cut in run 3 and came back as the bridge between
+  the two sales tables, by evidence, 0.757 against 0.490. Now
+  `catalog_returns` is the seed and `store_sales` is two joins from two
+  tree tables; the routes through `item` to each score nearly the same
+  (`cr_item_sk` 0.902, `cs_item_sk` 0.925), so I expect evidence not to
+  decide and the alphabet to take `catalog_returns` to `store_sales`
+  through `customer`. **Guess: Q6 loses `item`, an expected table it
+  held, and both its expected joins.**
+- **Q14.** Eight at the cut. Anchors: `promotion`, `store_returns`,
+  `catalog_returns`, `web_returns`, `store_sales`. The cap now cuts
+  `catalog_sales`, `item` and `web_sales`. **Derived: Q14 gains
+  `store_returns`, and the return-to-sale join with it. Guess: it loses
+  `item`**, which was an anchor; it returns only if a bridge through it
+  wins, and I expect the alphabet to take `catalog_sales` and `customer`
+  as bridges.
+- **d3.** Six at the cut, five anchors, `catalog_sales` second: it is
+  shown (derived). Which table the cap cuts is not on record.
+- d2, d6, d7: unchanged (derived for d2 and d6; nothing was set aside
+  for a lower-scoring winner there that I can see).
+
+**Verdict predicted: NOT KEPT ALONE**, if either guess about `item`
+holds. At stop 1 I named the gains and said the cap was uncertain; this
+is the cap worked through. With C added nothing changes for these two:
+C withdraws routes ending at a returns table, and the alphabet's first
+choice among what is left is still a bridge through `customer` or
+`catalog_sales`.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
