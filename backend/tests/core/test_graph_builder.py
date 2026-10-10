@@ -229,7 +229,12 @@ def test_nothing_in_the_core_imports_anything_that_does_io() -> None:
     driver, the shell, or the settings appearing here fails the build."""
     # sqlglot is a parser: text in, a tree out. json reads the model's
     # reply from a string. Neither opens anything (step 7).
-    allowed = {"app.core", "dataclasses", "json", "networkx", "sqlglot", "typing", "yaml"}
+    # Step 8: pydantic declares the trace document's shape, hashlib hashes
+    # the preferences in force, and datetime and uuid are there as the
+    # TYPES of two fields. None opens anything; and the test below this
+    # one holds that the core never reads the clock or makes an id.
+    allowed = {"app.core", "dataclasses", "json", "networkx", "sqlglot", "typing", "yaml",
+               "pydantic", "hashlib", "datetime", "uuid"}  # fmt: skip
 
     files = sorted(CORE.glob("*.py"))
     assert files, "app/core holds no modules -- this test is looking in the wrong place"
@@ -245,3 +250,17 @@ def test_nothing_in_the_core_imports_anything_that_does_io() -> None:
                 assert any(module == name or module.startswith(name + ".") for name in allowed), (
                     f"{path.name} imports {module}"
                 )
+
+
+def test_the_core_never_reads_the_clock_or_makes_an_identifier() -> None:
+    """A pure function's output depends on its arguments alone. The time a
+    trace was made and its query id are handed to the core; it invents
+    neither (DD-01)."""
+    for path in sorted(CORE.glob("*.py")):
+        for node in ast.walk(ast.parse(path.read_text())):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                assert node.func.attr not in {"now", "utcnow", "today", "uuid4", "uuid1", "monotonic", "time"}, (
+                    f"{path.name} calls {node.func.attr}()"
+                )
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                assert node.func.id not in {"uuid4", "uuid1", "open"}, f"{path.name} calls {node.func.id}()"
