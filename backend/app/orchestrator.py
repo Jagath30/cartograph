@@ -28,8 +28,21 @@ step 7). One ValidatedSql is made; conformance reads its text; the
 executor is handed the same object. The trace carries the hash of what
 was validated and of what the executor says it sent.
 
-WHAT STEP 7 DOES NOT DO: persist the trace, serve it, or give it a query
-or user id. The trace here is in memory; step 8 stores it.
+THE TRACE IS WRITTEN ONCE (DD-02 rule 1, FR-27, NFR-13; step 8).
+`answer` returns the trace in memory and writes nothing, as at step 7.
+`answer_and_keep` goes on: the trace is assembled into the document that
+is stored and served (app.core.trace_document), with its narrative and a
+query id made here, and handed to the store, which writes the query row
+and the trace row in one transaction. Whatever the outcome: a decline or
+a failure is written as surely as an answer.
+
+IF THAT WRITE FAILS (the owner's ruling 5). The answer is not returned:
+`TraceNotPersisted` is raised, and the API answers 500. An answer whose
+trace was lost is what NFR-13 forbids. There is no retry. One log entry
+carries the query id, the outcome, the cost and the WHOLE document, so
+the record survives where the database refused it. The error's class is
+logged and its words are not: a driver's message can carry a connection
+string. A trace holds no secret, and tests hold it to that.
 """
 
 import hashlib
@@ -38,19 +51,21 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Literal, Protocol
+from uuid import UUID, uuid4
 
 from app.core.conformance import Conformance, Edge, Equality, compare, edges_of, extract_joins
 from app.core.prompt_builder import REPLY_NAME, REPLY_SCHEMA, Prompt, build_prompt, parse_reply, retry_message
 from app.core.snapshot import SchemaSnapshot
 from app.core.sql_reading import schema_of
 from app.core.sql_validator import Validation, feedback, validate
+from app.core.trace_document import TRACE_VERSION, Context, TraceDocument, assemble
 from app.shell.model_client import Message, ModelClient, ModelReply, ReplyShape
 from app.shell.query_executor import Execution
 
 log = logging.getLogger("cartograph.pipeline")
 
-TRACE_VERSION = 1
 MAX_RETRIES = 2
 
 Outcome = Literal["answered", "not_answerable", "validation_failed", "model_failed", "execution_failed"]
@@ -144,6 +159,40 @@ class Executor(Protocol):
     def run(self, validated) -> Execution: ...
 
 
+class Store(Protocol):
+    def save(self, document: TraceDocument) -> None: ...
+
+
+@dataclass(frozen=True)
+class Keep:
+    """What the orchestrator needs to write a trace: where, and the facts
+    the pipeline's own trace does not hold."""
+
+    store: Store
+    context: Context
+    # Whose query it is. Until step 11, the one local user.
+    user_id: int
+    now: Callable[[], datetime] = lambda: datetime.now(UTC)
+    new_id: Callable[[], UUID] = uuid4
+
+
+@dataclass(frozen=True)
+class Kept:
+    # In memory, with the rows: they are returned and never stored (DR-15).
+    trace: Trace
+    # What was written.
+    document: TraceDocument
+
+
+class TraceNotPersisted(RuntimeError):
+    """The pipeline ran and its trace could not be written. The answer is
+    not returned (NFR-13)."""
+
+    def __init__(self, query_id: UUID) -> None:
+        super().__init__(f"the trace of query {query_id} could not be written; its answer was not returned")
+        self.query_id = query_id
+
+
 class Orchestrator:
     def __init__(
         self,
@@ -153,6 +202,7 @@ class Orchestrator:
         model: ModelClient,
         executor: Executor,
         max_retries: int = MAX_RETRIES,
+        keep: Keep | None = None,
     ) -> None:
         if not 0 <= max_retries <= MAX_RETRIES:
             raise ValueError(f"retries are capped at {MAX_RETRIES} per question (NFR-15)")
@@ -163,6 +213,37 @@ class Orchestrator:
         self._model = model
         self._executor = executor
         self._max_retries = max_retries
+        self._keep = keep
+
+    def answer_and_keep(self, question: str) -> Kept:
+        """`answer`, then the one write. Raises TraceNotPersisted when the
+        store refuses it."""
+        keep = self._keep
+        if keep is None:
+            raise RuntimeError("this orchestrator was given no store to keep a trace in")
+        trace = self.answer(question)
+        document = assemble(trace, keep.context, keep.new_id(), keep.user_id, keep.now())
+        began = time.monotonic()
+        try:
+            keep.store.save(document)
+        except Exception as error:
+            log.error(
+                json.dumps(
+                    {"event": "trace_not_persisted", "query_id": str(document.query_id), "outcome": document.outcome,
+                     "cost_usd": document.cost_usd, "error": type(error).__name__,
+                     "trace": document.model_dump(mode="json")}
+                )
+            )  # fmt: skip
+            # Not chained: the driver's own words stay out of whatever
+            # reports this.
+            raise TraceNotPersisted(document.query_id) from None
+        log.info(
+            json.dumps(
+                {"event": "stage", "stage": "persist", "duration_ms": round((time.monotonic() - began) * 1000),
+                 "outcome": "written", "query_id": str(document.query_id), "schema": self._schema_ref[1][:12]}
+            )
+        )  # fmt: skip
+        return Kept(trace, document)
 
     def answer(self, question: str) -> Trace:
         timings: dict[str, int] = {}
