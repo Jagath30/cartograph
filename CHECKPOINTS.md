@@ -7990,6 +7990,88 @@ would put it near even. If it does not, D turns a warned arbitrary
 choice into a quiet preference for the wrong date on this question, and
 that is reported for the owner to decide.
 
+### D, built and run, and the probe: the results for stop 2b — 10 October 2026
+
+**STOPPED HERE FOR THE OWNER'S REVIEW. D is in the tree as committed and
+is not yet kept. No model call has been made.**
+
+**D against the C-only state.** `c_and_d.json` against `c.json`:
+
+    VERDICT by the keep-rule's letter      NOT KEPT: nothing lost, nothing gained
+    the sixteen                            no tree, join, warning or count changes
+    every expected table                   11 of 15, as C alone
+    tables beyond the expected             34, as C alone
+    alphabet-decided attachments           12, as C alone
+    warnings, questions                    6, 9, 7, as C alone; close calls 21 on 12
+    retrieval and tree                     median 114 ms, largest 181 ms
+    d2, d3, d6                             unchanged
+    d7                                     date_dim hangs on catalog_sales by
+                                           cs_sold_date_sk, where it was
+                                           cs_ship_date_sk; still the alphabet's
+                                           choice among 4 (the sold date and
+                                           customer's three)
+
+**Predicted against actual: nothing differs.** No change in the sixteen;
+not kept by the letter; d7's date key moves and its rule stays
+`alphabetical`. Whether d7's SQL then conforms is stop 3's to show.
+
+**So the keep-rule does not decide D, and says so.** The sixteen cannot
+gain from it: none of their trees ties a sales table's two date keys.
+Its one visible effect is on a development question the rule does not
+count. Whether D is kept is the owner's judgement, not a measurement.
+
+**THE PROBE.** "In which month are the most web orders shipped?" One
+paid embedding call: 5 texts, 17 tokens, $0.00000034. Not a model call.
+
+    evidence   ws_ship_date_sk 0.923, ws_sold_date_sk 0.648
+    gap        0.275, against the margin 0.107051: BEYOND IT
+    the pair   web_sales to date_dim with this evidence: question_evidence,
+               the ship date; the sold-date preference is recorded as
+               outranked, the reason says so, and nothing warns
+
+So on a question plainly about shipping the wording chooses the ship
+date and D does not interfere. My guess was "near even"; it is clear,
+two and a half margins.
+
+**What the probe could not show, and what it showed instead.** Its own
+tree holds no date table: `date_dim` scored 0.467, tenth of 24, under
+the cut. That is the known limit recorded at stop 1 (a date table just
+under the cut), met a third time. So D is never asked on the probe as
+retrieved; the result above is the PathFinder on the pair with the
+probe's evidence, and the same in a tree with `date_dim` made an anchor
+by hand. One probe is one probe: a question about shipping whose
+wording leans less on "shipped" could fall inside the margin, and there
+D would choose the sold date quietly where the system used to warn.
+
+**Three decisions inside D, for this review.**
+
+1. **The step 5 report is made on the graph without route preferences.**
+   With D declared, its pair `web_sales` to `date_dim` (question 4) would
+   read MATCH where the frozen baseline reads MISMATCH. `show_eval` now
+   builds a second graph with `preferences=()` for that report alone, and
+   says why in a comment; `baseline_step5.txt` and its byte-for-byte test
+   are untouched. The alternative, a new step 5 baseline in which
+   question 4 matches, is the owner's to rule.
+2. **A preference the wording outranks is not a warning.** With evidence
+   first (C), a valid preference overruled by the question would have
+   raised `preference_not_applied`, the code for a preference that names
+   nothing usable. It is now recorded as `preference_outranked`, said in
+   the reason, and raises nothing. A preference that names none of the
+   tied routes still warns as before.
+3. **A route preference among several places withdraws only the other
+   keys to its own table.** It cannot move a table to its place: with
+   `catalog_page` in the tree, which sorts before `catalog_sales` and has
+   two date keys, the alphabet still takes the page's end date (tested).
+
+**Tests and mutations.** 12 tests in
+`tests/core/test_route_preference_in_tree.py`, two changed in
+`test_path_evidence.py`, the overlay's content test extended. 15
+mutations: 12 caught at once; one showed a missing test (outranked not
+passed up from a single place), now written; one showed a redundant
+condition, removed; one is equivalent (a route preference alone can
+never leave a single candidate where there are several places). Suite:
+1003 pass and 2 paid tests skip.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
