@@ -6,37 +6,52 @@ run once, when the trace is assembled, and what it returns is stored; no
 display composes anything (DD-06). Improving the wording later does not
 improve a trace already written, and that cost was accepted.
 
-WHO IT IS FOR. A reader who does not write SQL. So no table or column is
-named by its identifier: every name is the readable one built at ingestion
-(DD-08), and a join is the Explainer's own sentence. Scores, SQL and
-timings are in the trace's technical sections and not here.
+WHO IT IS FOR. A manager who does not write SQL. It is the SUMMARY that
+reader takes in; the Explainer's full sentence for every route, with its
+keys and its direction, stays in the trace's `paths` for the detail view
+(DD-19). The rules, as the owner set them at stop 2 of step 8:
 
-THE FIVE PARTS, each a string (the owner's ruling 8), in this order:
+  1. It speaks of MEANING. "The billed customer's demographics", not "a
+     row" or "a surrogate key"; no table or column by its identifier.
+  2. For each choice that touched the answer: one sentence for what was
+     used and one naming the alternatives the same way. If the choice was
+     arbitrary it says so, and adds: "If you meant the other, the answer
+     may differ; ask again naming it."
+  3. A declared preference's reason is given once in a narrative, as a
+     clause after "because".
+  4. Longer routes get one sentence in all: "N longer routes also
+     existed; the shortest was used." They were considered and lost.
+  5. Choices in the part of the plan the query did not use get one
+     sentence. A close call names its word and its tables in one.
+  7. The plain phrases come from app.core.narrative_words, which nothing
+     else reads. Where it has none, the readable name is used without
+     "surrogate key".
 
-  found      what the question matched, what was added to connect it, and
-             what else the model was shown.
-  route      which route was taken and why. One wording for each of DD-12's
-             rules: the only route; the shortest; the question's wording;
-             a declared preference, with its reason; or the alphabet, and
-             then the word "arbitrary" is in the sentence itself. Joins
-             the query made are told in full; the part of the plan it did
-             not use gets one sentence.
-  not_taken  the routes the choice was between, in full; longer ones as a
-             count (ruling 6).
-  sql        whether the query kept to the plan: one wording for each
-             outcome of the ConformanceCheck, naming the joins left out
-             or made instead. `not_checked` never claims the plan was
-             kept (T-02).
+THE FIVE PARTS, each a string (ruling 8 at stop 1), in this order:
+
+  found      what the question matched, and what was added to connect it.
+  route      what the answer links to what, and on what basis.
+  not_taken  what was not used, and what to do about it.
+  sql        whether the query followed the plan. `not_checked` never
+             claims that it did (T-02).
   result     what came back. A decline lists the tables the model was
              shown, and says it is a statement about those tables and not
              about the warehouse (item 62).
 
-Nothing here decides anything about the answer. It says what the stages
-decided, and every sentence is derived from a fact in the trace; nothing
-is narrated by a model (DD-14).
+Nothing here decides anything about the answer. Every sentence is derived
+from a fact in the trace; nothing is narrated by a model (DD-14).
 """
 
 from pydantic import BaseModel, ConfigDict
+
+from app.core.narrative_words import KEY_SUFFIX, MOMENTS, ONE, PAIRS, ROLES, TABLES, THINGS
+
+ASK_AGAIN_ONE = "If you meant the other, the answer may differ; ask again naming it."
+ASK_AGAIN_SEVERAL = "If you meant one of those, the answer may differ; ask again naming it."
+# More alternatives than this are counted in the route and named once,
+# under what was not used.
+MANY = 3
+ARBITRARY = "nothing in your question said which you meant, so the choice was made alphabetically: it is arbitrary."
 
 
 class Narrative(BaseModel):
@@ -56,7 +71,7 @@ def narrate(*, outcome, message, retrieval, subgraph, paths, generation, validat
     return Narrative(found=tell.found(), route=tell.route(), not_taken=tell.not_taken(), sql=tell.sql(), result=tell.result())
 
 
-def _listed(items: list[str]) -> str:
+def _listed(items) -> str:
     items = list(items)
     if len(items) <= 1:
         return "".join(items)
@@ -74,6 +89,11 @@ def _count(number: int, one: str, many: str) -> str:
 def _sentence(text: str) -> str:
     text = text.strip()
     return text if text.endswith((".", "!", "?")) else text + "."
+
+
+def _clause(reason: str) -> str:
+    """A declared reason as it reads after "because"."""
+    return reason.strip().rstrip(".")
 
 
 class _Teller:
@@ -103,38 +123,96 @@ class _Teller:
             for a in joined
             if a.selected.id in against or any(use.get(self._key(j)) in ("present", "partial") for j in a.selected.joins)
         ]
-        # What is told in full: the joins that touched the answer, or the
-        # whole plan when no query was compared with it.
+        # What is told: the choices that touched the answer, or the whole
+        # plan when no query was compared with it.
         self.told = self.used if self.checked else joined
         self.untold = [a for a in joined if a not in self.told]
+        # Each declared reason is given once (rule 3).
+        self._reasons_given: list[str] = []
 
     @staticmethod
     def _key(edge) -> tuple:
         return (edge.from_table, tuple(edge.from_columns), edge.to_table, tuple(edge.to_columns))
 
-    def table(self, name: str) -> str:
-        return self.names["tables"].get(name, name)
+    # ---- plain words ------------------------------------------------------
 
-    def column(self, table: str, name: str) -> str:
-        return self.names["columns"].get(f"{table}.{name}", name)
+    def table(self, name: str) -> str:
+        readable = self.names["tables"].get(name, name)
+        return TABLES.get(readable, readable)
+
+    def one(self, name: str) -> str:
+        """One record of a table: web sales -> web sale."""
+        readable = self.names["tables"].get(name, name)
+        return ONE.get(readable, readable)
 
     def tables(self, names) -> str:
-        return _listed([self.table(name) for name in names])
+        return _listed(self.table(name) for name in names)
+
+    def _plain_column(self, table: str, column: str) -> str:
+        readable = self.names["columns"].get(f"{table}.{column}", column)
+        return readable.removesuffix(KEY_SUFFIX)
+
+    def _thing(self, join) -> tuple[str, str]:
+        """What a key points to, in plain words: (article, phrase).
+        "its date of sale"; "the billed customer's demographics"."""
+        target = self.names["tables"].get(join.to_table, join.to_table)
+        thing = THINGS.get(target, ONE.get(target, target))
+        if len(join.from_columns) != 1:
+            return "its", thing
+        base = self._plain_column(join.from_table, join.from_columns[0])
+        if base in MOMENTS:
+            return "its", MOMENTS[base]
+        for tail in (target, target.split(" ")[-1]):
+            if base == tail:
+                return "its", thing
+            if base.endswith(" " + tail):
+                role = base[: -len(tail) - 1]
+                return "the", PAIRS.get((role, target), f"{ROLES.get(role, role)} {thing}")
+        # No phrase: the readable name, without "surrogate key" (rule 7).
+        return "its", base
+
+    def thing(self, join, beside=None) -> str:
+        """A key's meaning as a phrase. When it belongs to another table
+        than the one being spoken of, it says whose: "the customer's date
+        of first purchase"."""
+        article, phrase = self._thing(join)
+        if beside is not None and join.from_table != beside:
+            return f"the {self.one(join.from_table)}'s {phrase}"
+        return f"{article} {phrase}"
+
+    def link(self, join) -> str:
+        return f"each {self.one(join.from_table)} to {self.thing(join)}"
+
+    def reading(self, route, beside=None) -> str:
+        """A whole route as one phrase: its key's meaning, or for a route
+        of several joins the table it goes through."""
+        if len(route.joins) == 1:
+            return self.thing(route.joins[0], beside)
+        between = [name for name in route.tables[1:-1]]
+        moments = [self._thing(j)[1] for j in route.joins if self._thing(j)[1] in MOMENTS.values()]
+        return f"a route through {self.tables(between)}" + (f" ({_listed(moments)})" if moments else "")
+
+    def _because(self, attachment) -> str:
+        fresh = [r for r in dict.fromkeys(_clause(r) for r in attachment.preference_reasons) if r not in self._reasons_given]
+        self._reasons_given += fresh
+        if not fresh:
+            return ", for the reason already given"
+        return ", because " + ", and because ".join(fresh)
 
     # ---- found ------------------------------------------------------------
 
     def found(self) -> str:
         paths = self.paths
         if not paths.anchors:
-            return "No table matched the question closely enough to start from."
+            return "No table matched your question closely enough to start from."
         if len(paths.anchors) == 1:
-            said = [f"The question matched one table: {self.table(paths.anchors[0])}."]
+            said = [f"Your question matched one table: {self.table(paths.anchors[0])}."]
         else:
-            said = [f"The question matched {len(paths.anchors)} tables: {self.tables(paths.anchors)}."]
+            said = [f"Your question matched {len(paths.anchors)} tables: {self.tables(paths.anchors)}."]
         if paths.unconnected:
             said.append(
-                f"{_capital(self.tables(paths.unconnected))} could not be connected to the rest within "
-                f"{_count(paths.max_joins, 'join', 'joins')}."
+                f"{_capital(self.tables(paths.unconnected))} could not be linked to the rest within "
+                f"{_count(paths.max_joins, 'step', 'steps')}."
             )
             return " ".join(said)
 
@@ -142,8 +220,8 @@ class _Teller:
         if bridges:
             one = len(bridges) == 1
             said.append(
-                f"To connect them, {self.tables(bridges)} {'was' if one else 'were'} added: "
-                f"the question did not name {'it' if one else 'them'}."
+                f"To link them, {self.tables(bridges)} {'was' if one else 'were'} added: "
+                f"your question did not name {'it' if one else 'them'}."
             )
         dropped = paths.subgraph_bound.dropped_anchors
         if dropped:
@@ -153,15 +231,10 @@ class _Teller:
             )
         beside = [node.table for node in self.subgraph.nodes if not node.in_tree] if self.subgraph else []
         if beside:
+            said.append(f"The model was also shown {self.tables(beside)}, which could have linked them equally well.")
+        for call in self.retrieval.close_calls if self.retrieval else []:
             said.append(
-                f"The model was also shown {self.tables(beside)}, which {'lies' if len(beside) == 1 else 'lie'} "
-                "on routes that were equally possible."
-            )
-        calls = len(self.retrieval.close_calls) if self.retrieval else 0
-        if calls:
-            said.append(
-                f"For {_count(calls, 'word', 'words')} of the question another table scored about as well; "
-                f"{'that is' if calls == 1 else 'those are'} listed with the tables retrieved."
+                f'"{_capital(call.term)}" could also have meant {self.table(call.rival)}; {self.table(call.chosen)} was used.'
             )
         return " ".join(said)
 
@@ -170,106 +243,129 @@ class _Teller:
     def route(self) -> str:
         paths = self.paths
         if not paths.tables:
-            return "No route was planned."
+            return "No plan was made."
         joined = [a for a in paths.attachments if a.selected is not None]
         if not joined:
-            return f"Only {self.table(paths.tables[0])} was needed, so no join was planned."
-        seed = self.table(paths.seed)
+            return f"Only {self.table(paths.tables[0])} was needed, so there was nothing to link."
         if not self.told:
             return (
-                f"The plan starts from {seed} and joins {_listed([a.anchor_readable for a in joined])} to it; "
-                "the query used none of the planned joins."
+                f"The plan linked {self.tables(paths.tables)}; the query used none of those links, "
+                "so no choice among them affected this answer."
             )
-        said = [f"The plan starts from {seed}."]
-        for attachment in self.told:
-            said.append(
-                f"{_capital(attachment.anchor_readable)} is joined to {attachment.attached_to_readable}. "
-                f"{attachment.selected.description} {self._why(attachment)}"
-            )
+        said = []
+        for position, attachment in enumerate(self.told):
+            said.append(self._used(attachment, first=position == 0))
+            basis = self._basis(attachment)
+            if basis:
+                said.append(basis)
         if self.untold:
-            one = len(self.untold) == 1
-            said.append(
-                f"The plan also joined {_listed([a.anchor_readable for a in self.untold])}; "
-                f"the query did not use {'that join' if one else 'those joins'}."
-            )
+            not_used = self.tables(a.anchor for a in self.untold)
+            said.append(f"The plan also brought in {not_used}; the query did not use {'it' if len(self.untold) == 1 else 'them'}.")
         return " ".join(said)
 
-    def _why(self, attachment) -> str:
-        """One wording for each rule of DD-12."""
-        withdrawn = sum(1 for alternative in attachment.alternatives if alternative.status == "withdrawn")
-        routes = 1 + len(attachment.alternatives)
-        because = " Also: ".join(_sentence(reason) for reason in attachment.preference_reasons)
-        if attachment.rule == "only_path":
-            return f"It is the only route between them within {_count(self.paths.max_joins, 'join', 'joins')}."
-        if attachment.rule == "shortest":
-            return f"{attachment.discovered} routes existed; this is the shortest."
+    def _used(self, attachment, first: bool) -> str:
+        """One sentence for what was used."""
+        opening = "The answer links" if first else "It also links"
+        joins = attachment.selected.joins
+        if len(joins) == 1:
+            return f"{opening} {self.link(joins[0])}."
+        ends = self.tables([attachment.anchor, attachment.attached_to])
+        between = self.tables(attachment.selected.tables[1:-1])
+        return f"{opening} {ends} through {between}: {_listed(self.link(join) for join in joins)}."
+
+    def _others(self, attachment, status: str, own: bool = False) -> list[str]:
+        """The alternatives of one kind, each as a phrase. `own` keeps
+        "its" for use after "each sale also records"; standing alone a
+        phrase reads "the ship date"."""
+        beside = attachment.selected.joins[0].from_table if len(attachment.selected.joins) == 1 else None
+        phrases = dict.fromkeys(self.reading(a, beside) for a in attachment.alternatives if a.status == status)
+        return [p if own or not p.startswith("its ") else "the " + p[4:] for p in phrases]
+
+    def _basis(self, attachment) -> str:
+        """One sentence naming the alternatives, and the basis of the
+        choice: one wording for each rule of DD-12."""
+        tied = self._others(attachment, "tied")
+        withdrawn = self._others(attachment, "withdrawn")
+        if attachment.rule in ("only_path", "shortest") or not (tied or withdrawn):
+            return ""
         if attachment.rule == "question_evidence":
-            return f"{routes} routes were equally short; the wording of the question pointed to this one."
+            return f"{_capital(_listed(tied))} {'was' if len(tied) == 1 else 'were'} equally possible; the wording of your question pointed to this one."
         if attachment.rule == "preference":
-            return _sentence(
-                f"{routes} routes were equally short; a preference declared for this warehouse chose this one, "
-                f"because: {because}"
+            others = tied + withdrawn
+            return (
+                f"{_capital(_listed(others))} {'was' if len(others) == 1 else 'were'} equally possible; "
+                f"a preference declared for this warehouse chose this one{self._because(attachment)}."
             )
         # The alphabet. The word "arbitrary" is in the sentence itself.
+        said = ""
         if withdrawn:
-            return (
-                f"{routes} routes were equally short. "
-                + _sentence(f"A preference declared for this warehouse set aside {withdrawn} of them, because: {because}")
-                + f" Between the {routes - withdrawn} left nothing said which was meant, so the alphabet chose: "
-                "this choice is arbitrary."
+            said = (
+                f"A preference declared for this warehouse set aside {_listed(withdrawn)}{self._because(attachment)}. "
             )
-        return (
-            f"{routes} routes were equally short and nothing said which was meant, so the alphabet chose: "
-            "this choice is arbitrary."
+        joins = attachment.selected.joins
+        same_record = len(joins) == 1 and all(
+            len(a.joins) == 1 and a.joins[0].from_table == joins[0].from_table
+            for a in attachment.alternatives
+            if a.status == "tied"
         )
+        if same_record:
+            also = self._others(attachment, "tied", own=True)
+            return said + f"Each {self.one(joins[0].from_table)} also records {_listed(also)}; {ARBITRARY}"
+        if len(tied) > MANY:
+            # Named once, under what was not used, and not twice.
+            return said + f"{len(tied)} other readings were equally possible, named below; {ARBITRARY}"
+        return said + f"Equally possible: {_listed(tied)}; {ARBITRARY}"
 
     # ---- not taken --------------------------------------------------------
 
     def not_taken(self) -> str:
         paths = self.paths
         if not paths.tables:
-            return "No route was planned, so none was set aside."
+            return "No plan was made, so nothing was set aside."
         if not any(a.selected is not None for a in paths.attachments):
-            return "With one table there was no route to choose."
+            return "With one table there was nothing to choose between."
         said = []
         for attachment in self.told:
-            tied = [a for a in attachment.alternatives if a.status == "tied"]
-            withdrawn = [a for a in attachment.alternatives if a.status == "withdrawn"]
-            if tied:
-                ways = "another way" if len(tied) == 1 else f"in {len(tied)} other ways"
-                said.append(
-                    f"{_capital(attachment.anchor_readable)} could equally have been joined {ways}. "
-                    + " ".join(a.description for a in tied)
-                )
+            tied = self._others(attachment, "tied")
+            withdrawn = self._others(attachment, "withdrawn")
+            if tied and attachment.rule == "alphabetical":
+                said.append(f"Not used: {_listed(tied)}. {ASK_AGAIN_ONE if len(tied) == 1 else ASK_AGAIN_SEVERAL}")
+            elif tied:
+                said.append(f"Not used: {_listed(tied)}.")
             if withdrawn:
-                said.append(
-                    f"A declared preference set aside {len(withdrawn)} more: " + " ".join(a.description for a in withdrawn)
-                )
+                said.append(f"Set aside by a declared preference: {_listed(withdrawn)}.")
+        if any(warning.state == "other_route_taken" for warning in paths.warnings):
+            said.append("The query itself used one of these and not the one planned.")
         if not said and self.told:
-            said.append("No other route was equally short.")
+            said.append("Nothing else was equally short.")
         longer = sum(max(a.discovered - 1 - len(a.alternatives), 0) for a in self.told)
         if longer:
-            said.append(f"{_count(longer, 'longer route', 'longer routes')} also existed and {'was' if longer == 1 else 'were'} not considered.")
+            said.append(f"{_count(longer, 'longer route', 'longer routes')} also existed; the shortest was used.")
         if any(a.alternatives for a in self.untold):
-            said.append(
-                "Choices were also made in the part of the plan the query did not use; they did not affect this answer."
-            )
+            said.append("Other choices were made in the part of the plan the query did not use; they did not affect this answer.")
         elif not self.told:
-            said.append("No other route was equally short.")
-        if any(warning.state == "other_route_taken" for warning in paths.warnings):
-            said.append("The query itself took one of these other routes, not the one planned.")
+            said.append("Nothing was chosen that affected this answer.")
         return " ".join(said)
 
     # ---- sql --------------------------------------------------------------
 
     def _planned(self, edge) -> str:
-        through = " and ".join(self.column(edge.from_table, name) for name in edge.from_columns)
-        return f"{self.table(edge.from_table)} to {self.table(edge.to_table)} (through {through})"
+        return f"the link from {self.link(edge)}"
 
     def _made(self, edge) -> str:
+        """A join the query made that the plan did not choose, in plain
+        words: by the key it is, when the schema shown holds that key."""
+        pair = {(edge.left_table, edge.left_column), (edge.right_table, edge.right_column)}
+        for key in self.subgraph.edges if self.subgraph else []:
+            pairs = [
+                {(key.from_table, start), (key.to_table, end)} for start, end in zip(key.from_columns, key.to_columns)
+            ]
+            if pair in pairs:
+                return self.link(key)
         return (
-            f"{self.table(edge.left_table)} to {self.table(edge.right_table)} (matching "
-            f"{self.column(edge.left_table, edge.left_column)} to {self.column(edge.right_table, edge.right_column)})"
+            f"{self.table(edge.left_table)} to {self.table(edge.right_table)} by matching "
+            f"{self._plain_column(edge.left_table, edge.left_column)} with "
+            f"{self._plain_column(edge.right_table, edge.right_column)}"
         )
 
     def sql(self) -> str:
@@ -279,47 +375,50 @@ class _Teller:
         planned = paths.selected_edges
         made = sum(1 for edge in planned if edge.use == "present")
         missing = [edge for edge in planned if edge.use == "missing"]
-        joins = _count(len(planned), "join", "joins")
+        read = set(self.execution.tables) if self.execution else set()
+        unneeded = [name for name in paths.tables if name not in read]
+        spare = f"; {self.tables(unneeded)} {'was' if len(unneeded) == 1 else 'were'} not needed" if unneeded else ""
         conformance = self.validation.conformance
 
         if conformance == "conforms":
-            said = f"The query made exactly the {joins} planned." if planned else "No join was planned and the query made none."
+            said = "The query followed this plan exactly." if planned else "The query read the one table and linked nothing."
         elif conformance == "incomplete":
             if not paths.actual_edges:
-                read = self.tables(self.execution.tables) if self.execution and self.execution.tables else "one table"
-                said = (
-                    f"The query read {read} and joined nothing: the {len(planned)} planned "
-                    f"{'join was' if len(planned) == 1 else 'joins were'} not needed."
-                )
+                only = self.tables(self.execution.tables) if self.execution and self.execution.tables else "one table"
+                said = f"The query read only {only} and linked nothing{spare}."
             else:
-                said = (
-                    f"The query kept to the plan and did not need all of it: it made {made} of the {len(planned)} "
-                    f"planned joins. Left out: {'; '.join(self._planned(edge) for edge in missing)}."
-                )
+                said = f"The query followed this plan, using {made} of its {_count(len(planned), 'join', 'joins')}{spare}."
         elif conformance == "diverged":
-            parts = ["The query did not keep to the plan."]
+            parts = ["The query did not follow this plan."]
             foreign = [edge for edge in paths.actual_edges if edge.foreign]
             if foreign:
-                parts.append(f"It joined {'; '.join(self._made(edge) for edge in foreign)}, which the plan did not select.")
+                parts.append(f"It linked {_listed(self._made(edge) for edge in foreign)}, which the plan did not choose.")
             partial = [edge for edge in planned if edge.use == "partial"]
             if partial:
-                parts.append(f"It joined {'; '.join(self._planned(edge) for edge in partial)} on only part of the key.")
+                parts.append(f"It made {_listed(self._planned(edge) for edge in partial)} on only part of what identifies it.")
             for group in paths.cross_joins:
                 parts.append(
-                    f"It read {self.tables(group)} without joining them, so every row of one is paired with every "
-                    "row of the other."
+                    f"It read {self.tables(group)} without linking them, so everything in one is paired with "
+                    "everything in the other."
                 )
             if paths.unchecked:
                 parts.append("Part of it could not be read with confidence.")
             if missing:
-                parts.append(f"Planned and not made: {'; '.join(self._planned(edge) for edge in missing)}.")
+                parts.append(f"Planned and not used: {_listed(self._planned(edge) for edge in missing)}.")
             said = " ".join(parts)
         else:
             said = (
-                "Part of the query could not be read with confidence, so it is not confirmed that it kept to the "
-                f"plan. Of what could be read, it made {made} of the {len(planned)} planned joins and none outside them."
+                "Part of the query could not be read with confidence, so it is not confirmed that it followed this "
+                f"plan. What could be read used {made} of its {_count(len(planned), 'join', 'joins')} and nothing outside them."
             )
 
+        for warning in paths.warnings:
+            if warning.code == "many_to_many" and warning.loud:
+                pivot = self.table(warning.about[0]) if warning.about else "one table"
+                said += (
+                    f" Take care: more than one table is linked through {pivot}, so their records are paired with "
+                    "one another and totals can be counted more than once."
+                )
         asked = len(self.generation.attempts)
         if asked > 1:
             earlier = "reply was" if asked == 2 else "replies were"
@@ -371,6 +470,6 @@ class _Teller:
                     "they do not hold the answer. That is a statement about these tables, not about the whole warehouse."
                 )
             if self.paths.unconnected:
-                return "No answer was given: the tables the question matched could not be joined to one another."
-            return "No answer was given: nothing in the tables retrieved matched the question."
+                return "No answer was given: the tables your question matched could not be linked to one another."
+            return "No answer was given: nothing in the tables retrieved matched your question."
         return "No answer was given."

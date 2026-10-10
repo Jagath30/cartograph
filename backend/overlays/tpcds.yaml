@@ -341,29 +341,29 @@ preferences:
   - attach_to:   store_sales
     rather_than: store_returns
     because: >-
-      Operator default. A return refers to its sale, so a table either
-      could carry is taken to describe the sale.
+      a return refers to its sale, so whatever either could carry is
+      taken to describe the sale (an operator's default)
   - attach_to:   catalog_sales
     rather_than: catalog_returns
     because: >-
-      Operator default. A return refers to its sale, so a table either
-      could carry is taken to describe the sale.
+      a return refers to its sale, so whatever either could carry is
+      taken to describe the sale (an operator's default)
   - attach_to:   web_sales
     rather_than: web_returns
     because: >-
-      Operator default. A return refers to its sale, so a table either
-      could carry is taken to describe the sale.
+      a return refers to its sale, so whatever either could carry is
+      taken to describe the sale (an operator's default)
   - between: [catalog_sales, date_dim]
     prefer:
       - from: catalog_sales.cs_sold_date_sk
         to:   date_dim.d_date_sk
     because: >-
-      Operator default. A question that names no date means the date of
-      sale.
+      a question that names no date means the date of sale (an operator's
+      default)
   - between: [web_sales, date_dim]
     prefer:
       - from: web_sales.ws_sold_date_sk
         to:   date_dim.d_date_sk
     because: >-
-      Operator default. A question that names no date means the date of
-      sale.
+      a question that names no date means the date of sale (an operator's
+      default)
