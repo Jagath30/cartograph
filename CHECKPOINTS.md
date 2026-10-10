@@ -8072,6 +8072,33 @@ condition, removed; one is equivalent (a route preference alone can
 never leave a single candidate where there are several places). Suite:
 1003 pass and 2 paid tests skip.
 
+### The owner's rulings at stop 2b of the retrieval pass — 10 October 2026
+
+1. **D IS KEPT, BY THE OWNER'S RULING AND NOT BY A KEEP-RULE VERDICT.**
+   By the rule's letter D was not kept: nothing lost, nothing gained. His
+   reasons, as given:
+   - d7 was named in this pass's brief as a case of the alphabet's lean.
+     The stop 1 gain clause named d2, d3 and d6 and left d7 out by
+     oversight. Read with d7, D gains d7's date join, which now hangs on
+     the sold date.
+   - The sixteen cannot show D's effect either way: none of their trees
+     ties a sales table's two date keys.
+   - The probe shows that clear shipping wording still outranks the
+     preference (0.275 against 0.107).
+   - **Residual risk, a known limit:** shipping wording weaker than the
+     margin now gets the sold date quietly, where it used to warn.
+   - **This ruling was made by the author of the held-out set.**
+2. **The step 5 report: approved as done.** It stays a record of the
+   PathFinder alone, run without route preferences, and its frozen
+   baseline is untouched.
+3. **Outranked is quiet: confirmed.** Wording beyond the margin is a
+   reasoned choice under DD-21, so `preference_outranked` is reported in
+   the reason, not as a warning. A preference that names none of the
+   tied routes still warns.
+
+**Kept: C and D.** Stop 3 follows: the development questions end to end
+once, eight model calls, then smoke.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
