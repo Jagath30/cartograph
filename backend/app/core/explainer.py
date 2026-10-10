@@ -226,6 +226,12 @@ def explain(result: PathResult, graph: nx.DiGraph) -> Explanation:
     return Explanation(result.start, result.end, chosen, alternatives, Reason(result.rule, reason), tuple(warnings))
 
 
+def describe_path(path: Path, graph: nx.DiGraph) -> ExplainedPath:
+    """One route the chosen one was weighed against, in the same words:
+    for the trace, which records what a declared preference withdrew."""
+    return _path(path, graph, tied=True)
+
+
 def _path(path: Path, graph: nx.DiGraph, tied: bool) -> ExplainedPath:
     joins = tuple(_join(join, graph) for join in path.joins)
     sentence = "; then ".join(join.description for join in joins)

@@ -127,6 +127,8 @@ class Trace:
     tokens_in: int
     tokens_out: int
     cost_usd: float
+    # Every table the validated SQL reads, joined or not.
+    sql_tables: tuple[str, ...] = ()
 
     @property
     def sql(self) -> str | None:
@@ -205,6 +207,7 @@ class Orchestrator:
                 tokens_in=sum(attempt.reply.tokens_in for attempt in attempts),
                 tokens_out=sum(attempt.reply.tokens_out for attempt in attempts),
                 cost_usd=sum(attempt.reply.cost_usd for attempt in attempts),
+                sql_tables=state["extraction"].tables if state["extraction"] else (),
             )
 
         # ---- locate ------------------------------------------------------
