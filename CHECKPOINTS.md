@@ -7893,6 +7893,103 @@ between bridges to one table.
   declared by hand" drops the preferences with the five hand-declared
   keys they rest on.
 
+### The owner's rulings at stop 2 of the retrieval pass — 10 October 2026
+
+1. **A-3 is dropped, as the keep-rule says.** Its behaviour is reverted
+   exactly. **Carried out:** the code and tests of `f8d3eff` are reverted;
+   `retriever.py`, `locate.py`, `show_eval_step6.py` and their test files
+   are byte for byte as at `e3b642d`; the report's `both kept` line and
+   `Retrieval.set_aside_for` went with it, since only A-3 used them.
+   **What stayed:** `eval/pass_07b/a3.json` and `a3_and_c.json`, as the
+   record of the runs. The keep-rule code and the runner were in their
+   own commit (`8b38a90`) and are untouched. The cause is carried
+   forward (item 67); d3 stays a known limit.
+2. **C is kept.**
+3. **Integrity check, carried out.** "C alone" was run again from the
+   committed code after the revert: `c_check.json` equals `c.json` in
+   every field but the timing. The state kept is the state measured.
+4. **One more candidate, D, before stop 3** (below).
+5. **Carried for step 8** (item 69): the snapshot hash does not cover
+   the preferences, so the trace records the preferences in force, by
+   their hash, beside `schema_ref`.
+
+### D as proposed, its probe, and PREDICTIONS, before any code or run
+
+**Whose it is.** D was proposed by the owner at stop 2. He is also the
+approver of the held-out set, which was drafted by Claude in a separate
+session; **recorded at his direction: D was proposed by the author of the
+held-out set, and its motivation predates that set**: the ship date
+chosen over the sold date was found at step 5, on question 4 (`ws_ship_
+date_sk` sorts before `ws_sold_date_sk`), and seen again on d7 in this
+pass. This session has not opened `heldout.yaml`.
+
+**The rule.** Two entries of the EXISTING kind in
+`tpcds.preferences.yaml`, nothing else:
+
+    - between: [catalog_sales, date_dim]
+      prefer:  [{ from: catalog_sales.cs_sold_date_sk, to: date_dim.d_date_sk }]
+      because: a question that names no date means the date of sale
+    - between: [date_dim, web_sales]
+      prefer:  [{ from: web_sales.ws_sold_date_sk, to: date_dim.d_date_sk }]
+      because: (the same)
+
+Between two tables the PathFinder already applies it, after the wording
+(the order of C). **One extension is needed, in the join tree.** When an
+attachment's candidates end at several places, a route preference was
+reported as not applied, because it cannot choose between places. d7 is
+that case: `date_dim` is one join from `catalog_sales` (two keys) and
+from `customer` (three). The extension: where the wording has not
+decided, a route preference that names exactly one of the candidates
+withdraws the OTHER candidates ending at the same table. It says nothing
+about the other places. One candidate left: chosen by the preference,
+quietly. Several left: the alphabet, arbitrary, warned as today. It is
+then recorded as applied, not as not applied.
+
+**Nothing else changes.** A preference names one route between two
+tables. A two-join route that passes through `date_dim` is not that
+route: d3's `web_sales` to `catalog_page` through the ship date stays as
+it is. Customer, page, site, promotion and call-centre dates are not
+declared.
+
+**A consequence found while planning, for the owner's ruling at stop
+2b.** The step 5 report is pairwise and takes no evidence. With D
+declared, its pair `web_sales` to `date_dim` (question 4) would be chosen
+by the preference and would read MATCH where the frozen
+`baseline_step5.txt` reads MISMATCH; a test compares the two byte for
+byte. I will keep the step 5 report on the graph WITHOUT declared route
+preferences, so that it stays the PathFinder's unaided answer and the
+baseline stands, and say so here. The alternative is a new step 5
+baseline, which is the owner's to rule.
+
+**Predicted, the sixteen.** Derived from `c.json`: no attachment in any
+of the sixteen trees is a one-join tie between a sales table's two date
+keys. Q1 and Q11 take `ss_sold_date_sk` (one date key); Q12's dates are
+on two-join routes. **So no tree, join, warning or count changes. By
+the keep-rule's letter D is NOT KEPT: nothing is lost and nothing is
+gained** among the sixteen or the three named tables. Its whole effect
+is on d7.
+
+**Predicted, d7.** `date_dim` hangs on `catalog_sales` by
+`cs_sold_date_sk`. Four candidates are left (the sold date and
+`customer`'s three), the alphabet still chooses, so the rule stays
+`alphabetical` and `multi_anchor` stays; `arbitrary_choice` for that
+attachment goes. Guess: at stop 3 d7's SQL makes no join outside the
+selected ones.
+
+**The probe, for D's downside.** Mine, written now, used for nothing
+else, not a question of any set:
+
+    "In which month are the most web orders shipped?"
+
+It needs a few embeddings that are not in the cache: a paid call of a
+fraction of a cent, and not a model call. Reported: the evidence for
+`ws_ship_date_sk` against `ws_sold_date_sk`, the gap against the margin
+0.107051, and which key the tree takes with D declared. **Guess:** the
+ship key leads; whether by more than the margin I do not know, and I
+would put it near even. If it does not, D turns a warned arbitrary
+choice into a quiet preference for the wrong date on this question, and
+that is reported for the owner to decide.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
