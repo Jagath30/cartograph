@@ -7,16 +7,16 @@ to explain, and what the next single deliverable is.
 
 ---
 
-## Current state — 10 October 2026
+## Current state — 10 October 2026, kept current at every close
 
-Kept current at every close; read first. Written at `e3b642d`.
-
-**What exists.** Steps 1 to 7, tagged `checkpoint-01-stack` to
-`checkpoint-07-generation`. The TPC-DS warehouse (24 tables, 107 keys: 102
-catalog, 5 overlay); ingestion and the graph; PathFinder, JoinTree and
-Explainer (DD-12 as amended); hybrid retrieval over a stored, embedded
-snapshot; generation through `gpt-6-luna` with SqlValidator,
-ConformanceCheck and executor; `python -m app.ask "..."`. Smoke: 32, 0, 0.
+**What exists.** Steps 1 to 7 and a retrieval pass, tagged
+`checkpoint-01-stack` to `checkpoint-07b-retrieval`. TPC-DS (24 tables,
+107 keys); ingestion and the graph; PathFinder, JoinTree, Explainer;
+hybrid retrieval over a stored, embedded snapshot; generation through
+`gpt-6-luna`, validated, checked and executed; `python -m app.ask "..."`.
+DD-12's order: shortest, the wording beyond the margin, a declared
+preference, the alphabet. Five preferences in `tpcds.preferences.yaml`:
+sales over returns, the sold date. Smoke 32, 0, 0. Suite 1003 pass, 2 skip.
 Settings: alpha 0.5, cut 0.5, cap 5, bound 10, three joins, margin 0.107051.
 
 **Rules every session follows.**
@@ -24,8 +24,8 @@ Settings: alpha 0.5, cut 0.5, cap 5, bound 10, three joins, margin 0.107051.
   opened. No `docker compose config`, `docker inspect`, `env`, `printenv`
   or `set`. Presence is checked, never value.
 - Installs only through the backend image; tests inside the container.
-  Commits on `main`; never push; never `git push --all` or `--tags`;
-  `step2-backup` is never pushed. `docker compose down`, never `down -v`.
+  Commits on `main`; never push, `--all` and `--tags` least of all;
+  `step2-backup` stays local. `docker compose down`, never `down -v`.
 - Tests first; mutate any rule that decides; predictions and keep-rules
   are committed before the run they judge; nothing is tuned to one
   question; no threshold is chosen by looking at results.
@@ -38,14 +38,14 @@ Settings: alpha 0.5, cut 0.5, cap 5, bound 10, three joins, margin 0.107051.
 is not imported, before step 10.
 
 **Open items, by step** (numbers are in "Carried forward", at the end).
-- Now, the retrieval pass between steps 7 and 8: items 55, 56, 62, 65.
-- Step 8: trace persisted and served; 1, 34, 48, 51, 62 (declines list
-  the tables shown), 64.
+- Step 8, next: trace persisted and served; 1, 34, 48, 51, 62 (declines
+  list the tables shown), 64, 70 (the preferences' hash in the trace).
 - Step 10: 47, 53, 54, 60, 61, 63, 66; heldout's first run.
-- Step 12: 8, 9, 10, 14, 18, 41. Owed to the Design: DD-12, 13, 14, 15.
+- Step 12: 8, 9, 10, 14, 18, 41. Owed to the Design: DD-12 to 16, 21.
+- Future work, no step: 55, 56, 67. Known limits: 62, 68, 69.
 
-**How to resume.** Read this, the last entry above "Carried forward" and
-the items named; check `git status`; run `./scripts/smoke.sh` (one paid call).
+**How to resume.** Read this, the newest checkpoint entry and the items
+named; check `git status`; run `./scripts/smoke.sh` (one paid call).
 
 ## checkpoint-01-stack — 12 September 2026
 
@@ -7418,7 +7418,155 @@ as item 66.
 - `plan_joins`: reading Postgres's plan as a witness, and what VERBOSE
   is for
 
-## The retrieval pass between steps 7 and 8 — opened 10 October 2026
+## checkpoint-07b-retrieval — 10 October 2026
+
+A pass between steps 7 and 8, not a numbered step. Its working record
+follows this entry: the keep-rule, every prediction, four review stops
+and each ruling.
+
+**What works now that did not before.** Where a table could hang on a
+sale or on its return, it hangs on the sale; where a catalog or web sale
+could be dated by its sold date or its ship date and the question says
+nothing, it is dated by the sold date. Both are declared preferences in
+the overlay, written by hand in `backend/overlays/tpcds.preferences.yaml`
+with a reason each, asked only after the question's own wording has
+failed to decide, and reported quietly when they decide (DD-12, DD-21,
+FR-45). The order of DD-12 is now: shortest; the question's wording
+beyond the margin; a declared preference; the alphabet. Billing against
+shipping, and a store against a customer's address, are declared nowhere
+and stay arbitrary and warned. The keep-rule the owner set is code with
+tests (`app/core/keep_rule.py`), and `python -m app.show_pass` records a
+run and applies it. 1003 tests pass in the container and 2 paid ones
+skip; 945 pass and 60 skip with both database URLs and the key unset.
+Smoke from a clean start: 32 passed, 0 failed, 0 skipped.
+
+**THE FINDING OF THE PASS.** With C and D, d7's selected joins became
+the joins the model had already chosen, so its divergence became
+incomplete. d2, d3 and d6 remain retrieval's known limits.
+
+**What was tried, and what became of each.** Judged one at a time by the
+keep-rule: no question loses anything it held at the step 6 baseline,
+and at least one gains.
+
+    A    the rival rule respects the margin     NOT RUN. It rested on a
+                                                wrong picture: a rival IS
+                                                a table within the margin
+    A-3  a rival is set aside only for a        NOT KEPT. Q6 and Q14 each
+         winner scoring at least as high        lose `item`; reverted
+    B    a near-miss beside the structure       LEFT OUT. 36 tables into
+                                                14 trees for two gains
+    C    sales over returns, declared           KEPT by the keep-rule: Q3
+                                                gains its expected join
+    D    the sold date over the ship date       KEPT BY THE OWNER'S RULING,
+                                                not by the rule: nothing
+                                                lost, nothing the rule
+                                                counts gained
+
+**The numbers, on the sixteen development questions, retrieval only.**
+
+                                        step 6 (run 3)   now (C and D)
+    strict agreement                    0 of 16          0 of 16
+    every expected table in the tree    11 of 15         11 of 15
+    expected tables missing             4                4
+    tables beyond the expected          34               34
+    expected joins newly in a tree      -                1 (Q3)
+    warnings as expected, exactly       3 of 14          4 of 14 (Q6)
+    alphabet-decided attachments        17               12
+      onto a returns table beside
+      its sales table                   9                0
+    arbitrary_choice, questions         6                6
+    many_to_many, questions             9                9
+    multi_anchor, questions             8                7
+    close calls                         21 on 12         21 on 12
+    retrieval and tree, largest         215 ms           181 ms (NFR-02: 1 s)
+
+    development run 3 against run 1     d7 diverged -> incomplete; the
+                                        other seven unchanged in outcome
+
+Recall did not move. This pass changed which joins are selected, not
+which tables are found. The full step 6 report of the kept state is
+`backend/eval/pass_07b/step6_c_and_d.txt`.
+
+**Findings.**
+- **My own alternative failed its test, as its prediction said it
+  would.** A-3 gave d3 its `catalog_sales` and Q14 its `store_returns`,
+  and cost Q6 and Q14 the table `item`: a returning table became the
+  seed or filled the cap, and an expected table that was in the tree
+  only as a bridge was lost to the alphabet (item 67).
+- **The keep-rule could not see D.** None of the sixteen trees ties a
+  sales table's two date keys, and its gain clause left d7 out. A rule
+  that counts gains only where it was told to look reports "nothing
+  gained" for a change whose whole effect is elsewhere (item 71).
+- **A probe, where the development set was blind.** One question about
+  shipping, written for the purpose: the wording led by 0.275 against a
+  margin of 0.107 and outranked the preference.
+- **The date table misses the cut again and again**: Q4, Q7, d2 and the
+  probe (item 68).
+- **Faults of the build, found by a check.** Six mutations survived for
+  want of a test and each now has one; two showed redundant code, which
+  was removed; one prediction of mine was wrong in its detail (Q6's
+  bridge) and one in its count (A-3's close calls).
+
+**Owed to the Design.** Added to those of step 7; the Design document is
+not edited in the build.
+- **DD-12, the order**: shortest; question evidence beyond the margin;
+  a declared preference; the alphabet. Evidence moved ahead of the
+  preference, and is consulted once.
+- **DD-12 and DD-16, a second kind of preference**: `attach_to` /
+  `rather_than`, between two places an attachment could end at; and a
+  route preference among several places withdraws only the other keys
+  to its own table. DD-16's example (`prefer: via_store`) is neither.
+- **DD-21, a fourth quiet case**: a preference the wording outranks is
+  said in the reason and raises nothing.
+- **Not owed:** the margin in the rival rule (A was not run, A-3 not
+  kept) and B (left out).
+
+**To dissect.**
+- why a rival is a table WITHIN the margin, and what "set aside only
+  beyond the margin" would therefore have meant
+- A-3 on Q6, on paper: `catalog_returns` returns, becomes the seed, and
+  `item` is lost. Which rule lost it, and why not A-3 itself
+- `held` in `keep_rule.py`: the element items against the exact parts,
+  and why a surplus table costs only what it breaks
+- why the keep-rule's readings were approved before a run, and what it
+  means that its code was written after one
+- `_narrow`: "both tables among the places", and the three things it is
+  never applied to
+- why the wording is consulted once: work the test with the ship key at
+  0.75 by hand
+- `_narrow_routes`: why it withdraws the other keys to its own table and
+  cannot move a table to its place (`catalog_page`'s end date)
+- `preference_outranked` against `preference_not_applied`: which is a
+  fault of the preference
+- why `tied` is what a preference left and `withdrawn` is kept beside it,
+  and what the subgraph does with each
+- why the step 5 report is made on a graph without route preferences
+- the generator's third source: `_section`, and the test that runs in CI
+  without `tpcds_ri.sql`
+- why a kept change is re-run from the committed code and compared with
+  its recorded run
+- d7 in run 1 and in run 3: the same SQL, a different tree, a different
+  verdict. Which of them changed
+
+**Paid calls, the whole pass.** Three smoke runs, one model call each;
+development run 3, eight model calls, $0.001675; the probe, one
+embedding call, $0.00000034. About $0.0018.
+
+**Next single deliverable.** Unchanged: step 8, the trace assembled,
+persisted and served, now with the preferences in force recorded beside
+`schema_ref` (item 70).
+
+**The close, 10 October 2026.** Smoke from a clean start (`docker compose
+down`, the volume kept, then `./scripts/smoke.sh`): 32 passed, 0 failed,
+0 skipped. Suite: 1003 pass and 2 skip in the container; 945 pass and 60
+skip with both database URLs and the key unset. Pre-push checks over the
+commits since `e3b642d`: no `.env`, no `tpcds_ri.sql`, nothing under
+`data/`, no ledger or cache, no key-shaped string, no benchmark query
+text, no ignored file tracked; no frozen file differs from `e3b642d`;
+nothing reads or names `heldout.yaml`. Tagged `checkpoint-07b-retrieval`.
+Nothing is pushed.
+
+### The working record of the retrieval pass — opened 10 October 2026
 
 Not a numbered step. Step 7 showed retrieval is the bottleneck (items 62
 and 65). The sixteen questions of `questions.yaml` are now the development
@@ -8266,6 +8414,9 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     a hand-written preferences source. The first real preference needs
     one, on the pattern of `tpcds.naming.yaml`; typed into `tpcds.yaml` it
     would be overwritten.
+    **Done in the retrieval pass:** `tpcds.preferences.yaml`, five
+    entries, none about billing against shipping or a store against an
+    address.
 34. "Every discovered path stays in the trace and stays drawn" (DD-21)
     meets 147 routes for one pair. The Explainer returns them all and
     marks which are tied; what the trace stores and the panel draws is a
@@ -8469,6 +8620,10 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     declared preference per pair would not reach it: the tie is between
     two places to attach, which a preference cannot decide (step 6,
     piece 4).
+    **Answered in the retrieval pass (C):** a second kind of preference,
+    between two places, was added for exactly this, and the nine
+    attachments are none. The alphabet still leans wherever nothing is
+    declared.
 66. **Two summaries joined on a dimension attribute read as diverged**
     (found when the held-out set was frozen, for step 10). Two channel
     CTEs joined on `i_category`, say: the attribute is in no path class,
@@ -8476,3 +8631,35 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     selected. It is symmetric across modes. Question 6 of the original
     set is exposed to it; the held-out set deliberately has no
     two-channel comparison. Report it at step 10.
+67. **An expected table present only as a bridge is lost when a tie
+    spans two places** (the retrieval pass, A-3). With a returns table
+    back in contention it becomes the seed or fills the cap; the routes
+    through the bridge to the sale and to its return score alike, the
+    wording decides nothing, and the alphabet takes another bridge. Q6
+    and Q14 each lost `item` so. Evidence: `eval/pass_07b/a3.json`. It is
+    why A-3 was not kept, and why d3 stays declined: `catalog_sales`,
+    second of 24, is still set aside for `web_sales` on "orders".
+68. **A date table just under the cut is not retrieved** (the retrieval
+    pass; a known limit, beside words that are data values). `date_dim`
+    scored between 0.4 and 0.5 in Q7, 0.492 in d2, 0.467 in the probe,
+    and lower in Q4. Admitting near-misses (B) was costed, not run: 36
+    tables into 14 trees, the surplus from 34 to about 69, for two
+    gains; shown beside the tree and not joined, it would have passed
+    the keep-rule only because the step 6 judge cannot see there.
+69. **Shipping wording weaker than the margin now gets the sold date
+    quietly, where it used to warn** (the retrieval pass, D; a known
+    limit, by the owner's ruling). One probe, plainly about shipping,
+    led by 0.275 against 0.107. No weaker wording was tried.
+70. **For step 8: the snapshot hash does not cover the preferences**, of
+    either kind. Two runs over one `schema_ref` can select different
+    joins. The trace records the preferences in force, by their hash,
+    beside `schema_ref`.
+71. **Two things the pass's keep-rule could not see.** Its gain clause
+    named d2, d3 and d6 and not d7, so D's one effect counted for
+    nothing; and an exact warnings part newly reached (Q6, with C) is
+    not an item it holds. Any later rule should list what it counts
+    before it is used, as item 57 says of "worsened".
+72. **Seen in the pass and left alone.** d3's `web_sales` still reaches
+    `catalog_page` through the ship date: a two-join route is not the
+    route D names. And with C the probe's `web_page` hung on `customer`
+    by `wp_customer_sk` (item 40), `multi_anchor` raised.
