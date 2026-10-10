@@ -2,8 +2,13 @@
 whole pipeline: retrieval as `show_retrieval` opens it, the model behind
 the spend ledger, the executor, and the orchestrator over them.
 
-Shared by `app.ask` and `app.run_dev`, so that the two cannot run a
-question slightly differently. Nothing here decides anything.
+Shared by `app.ask`, `app.run_dev` and the API, so that no two of them
+can run a question slightly differently. Nothing here decides anything.
+
+Given a store (step 8), the orchestrator is also told how to keep a
+trace: where, whose, and the facts its own trace does not hold -- the
+graph for readable names, the hash of the preferences in force, the
+bounds and the model. Without one it is exactly as it was at step 7.
 """
 
 from dataclasses import dataclass
@@ -11,8 +16,11 @@ from pathlib import Path
 
 from app.config import get_settings
 from app.core.graph_builder import build_graph
+from app.core.join_tree import DEFAULT_SUBGRAPH_BOUND
 from app.core.locate import locate
-from app.orchestrator import Orchestrator
+from app.core.path_finder import DEFAULT_MAX_JOINS
+from app.core.trace_document import Context, preferences_hash
+from app.orchestrator import Keep, Orchestrator
 from app.shell.model_client import LedgeredModel, SpendLedger, make_model
 from app.shell.query_executor import QueryExecutor
 from app.shell.retrieval_session import Opened, open_retrieval
@@ -31,9 +39,12 @@ class Pipeline:
     model: str
 
 
-def open_pipeline(name: str, purpose: str, alpha: float = 0.5, cut: float = 0.5, cap: int = 5) -> Pipeline:
+def open_pipeline(
+    name: str, purpose: str, alpha: float = 0.5, cut: float = 0.5, cap: int = 5, store=None
+) -> Pipeline:
     """`name` begins every message; `purpose` is written beside each model
-    call in the ledger. Raises ModelKeyMissing when there is no key."""
+    call in the ledger. `store` is a TraceStore, or None to keep nothing.
+    Raises ModelKeyMissing when there is no key."""
     settings = get_settings()
     snapshot = SchemaIngestor(settings.warehouse_database_url, settings.warehouse_overlay_path).ingest()
     graph = build_graph(snapshot)
@@ -45,7 +56,15 @@ def open_pipeline(name: str, purpose: str, alpha: float = 0.5, cut: float = 0.5,
         scored = opened.index.score_question(question)
         return locate(question, scored.scores, scored.terms, graph, opened.settings)
 
+    keep = None
+    if store is not None:
+        context = Context(
+            snapshot, graph, preferences_hash(snapshot), DEFAULT_SUBGRAPH_BOUND, DEFAULT_MAX_JOINS,
+            settings.sql_model, settings.sql_model_temperature,
+        )  # fmt: skip
+        keep = Keep(store, context, store.local_user_id())
     orchestrator = Orchestrator(
-        snapshot, (opened.stored.id, opened.stored.hash), find, model, QueryExecutor(settings.warehouse_database_url)
+        snapshot, (opened.stored.id, opened.stored.hash), find, model, QueryExecutor(settings.warehouse_database_url),
+        keep=keep,
     )
     return Pipeline(orchestrator, opened, ledger, settings.sql_model)

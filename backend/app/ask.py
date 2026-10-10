@@ -13,7 +13,10 @@ not in the cache. Each model call is written to the spend ledger, and the
 last line says what this run cost and the ledger's total. It needs
 OPENAI_API_KEY; without it the command says what to set and exits 3.
 
-Nothing is stored: persisting the trace is step 8.
+The trace is stored, as the API stores it (step 8): the query's id is
+printed, and `GET /api/v1/queries/<id>` returns it with its narrative. If
+it cannot be stored the command says so and exits 4, and prints no
+answer, as the API returns none (NFR-13).
 
 No logic lives here: open the pipeline (shell), answer (orchestrator),
 print.
@@ -25,11 +28,15 @@ import logging
 import sys
 
 from app.answer_report import print_trace, summary
+from app.config import get_settings
+from app.orchestrator import TraceNotPersisted
 from app.shell.embedder import EmbeddingKeyMissing
 from app.shell.model_client import ModelKeyMissing
 from app.shell.pipeline_session import CEILING_USD, open_pipeline
+from app.shell.trace_store import TraceStore
 
 NO_KEY_EXIT = 3
+NOT_STORED_EXIT = 4
 
 
 def main(argv: list[str]) -> int:
@@ -45,16 +52,21 @@ def main(argv: list[str]) -> int:
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
     try:
-        pipeline = open_pipeline("ask", arguments.purpose)
-        trace = pipeline.orchestrator.answer(arguments.question)
+        pipeline = open_pipeline("ask", arguments.purpose, store=TraceStore(get_settings().app_database_url))
+        kept = pipeline.orchestrator.answer_and_keep(arguments.question)
     except (ModelKeyMissing, EmbeddingKeyMissing) as missing:
         print(f"ask: {missing}", file=sys.stderr)
         return NO_KEY_EXIT
+    except TraceNotPersisted as lost:
+        print(f"ask: {lost}", file=sys.stderr)
+        return NOT_STORED_EXIT
+    trace = kept.trace
 
     if arguments.json:
-        print(json.dumps(summary(trace)))
+        print(json.dumps(summary(trace) | {"query_id": str(kept.document.query_id)}))
         return 0
     print_trace(trace)
+    print(f"    {'stored':<11}query {kept.document.query_id}")
     embedded = pipeline.retrieval.paid
     print(f"    {'embedding':<11}{embedded.texts} texts embedded now, ${embedded.cost_usd:.8f}")
     print(f"    {'ledger':<11}{pipeline.ledger.calls()} model calls in all, ${pipeline.ledger.total():.6f}; "
