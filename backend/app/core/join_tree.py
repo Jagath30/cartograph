@@ -33,6 +33,13 @@ again over what a preference left. What was withdrawn is recorded. It is
 never applied to the table being attached, to a bridge inside a route, or
 where every candidate ends at one table.
 
+A ROUTE PREFERENCE AMONG SEVERAL PLACES (ruling D of the retrieval pass).
+A preference that names one route between two tables cannot choose between
+places. Where the wording has not decided and it names exactly one of the
+candidates, it withdraws the OTHER candidates that end at the same table
+-- the other keys to it -- and says nothing of the rest. The same two
+outcomes follow: one left, chosen by preference; several, the alphabet.
+
 No kind of table is favoured anywhere in this (Charter D-06): no fact table
 as hub, no ranking by fan-out. Distance and the question decide; where they
 cannot, the alphabet does and the tree says so.
@@ -119,6 +126,12 @@ class Attachment:
     # preferences that did it. `tied` is then what was left, chosen included.
     withdrawn: tuple[Path, ...] = ()
     attach_preferences: tuple[AttachPreference, ...] = ()
+    # Route preferences that withdrew the other keys to their own table
+    # where the candidates ended at several places.
+    route_preferences: tuple[Preference, ...] = ()
+    # A route preference that named a candidate and was outranked by the
+    # question's wording.
+    preference_outranked: Preference | None = None
 
     @property
     def arbitrary(self) -> bool:
@@ -308,13 +321,17 @@ def _grow(graph, anchors, scores, evidence, margin, max_joins):
                 discovered=len(result.discovered),
                 preference_applied=result.preference_applied,
                 preference_not_applied=result.preference_not_applied,
+                preference_outranked=result.preference_outranked,
             )  # fmt: skip
         else:
-            # Several places, equally near. A preference that names a route
-            # is declared between two tables and cannot say which of two
-            # places is meant; any that were declared are reported as not
-            # applied. A preference between two PLACES can, and is asked
-            # only when the question's wording has not decided.
+            # Several places, equally near. Neither kind of preference is
+            # asked unless the question's wording has not decided. A
+            # preference between two PLACES withdraws the candidates ending
+            # at the place it ranks second. A preference that names a ROUTE
+            # cannot choose between places: it withdraws the other
+            # candidates ending at its own table. One declared for a pair
+            # here that names none of the candidates is reported as not
+            # applied, as before.
             candidates = tuple(
                 sorted(
                     (path for result in nearest for path in (result.tied or (result.selected,))),
@@ -322,16 +339,24 @@ def _grow(graph, anchors, scores, evidence, margin, max_joins):
                 )
             )
             choice = choose(candidates, (), evidence, margin)
-            left, applied = candidates, ()
+            routes_declared = tuple(
+                preference
+                for result in nearest
+                for preference in (result.preference_applied, result.preference_not_applied, result.preference_outranked)
+                if preference is not None
+            )
+            naming = tuple(p for p in routes_declared if any(path.edges == frozenset(p.prefer) for path in candidates))
+            left, applied, routes = candidates, (), ()
             if choice.rule != "question_evidence":
                 left, applied = _narrow(candidates, graph.graph.get("attach_preferences", ()))
-            if applied:
+                left, routes = _narrow_routes(left, naming)
+            if applied or routes:
                 choice = Choice(left[0], "preference" if len(left) == 1 else "alphabetical", choice.evidence)
-            declared = next(
-                (r.preference_applied or r.preference_not_applied for r in nearest
-                 if r.preference_applied or r.preference_not_applied),
+            declared = next((p for p in routes_declared if p not in naming), None)
+            outranked = next(
+                (p for p in naming if choice.rule == "question_evidence" and choice.selected.edges != frozenset(p.prefer)),
                 None,
-            )  # fmt: skip
+            )
             attachment = Attachment(
                 anchor, len(attachments), choice.selected, choice.selected.tables[-1], choice.rule,
                 tied=left, evidence=choice.evidence, margin=margin if choice.evidence else None,
@@ -339,6 +364,8 @@ def _grow(graph, anchors, scores, evidence, margin, max_joins):
                 preference_not_applied=declared,
                 withdrawn=tuple(path for path in candidates if path not in left),
                 attach_preferences=applied,
+                route_preferences=routes,
+                preference_outranked=outranked,
             )  # fmt: skip
 
         attachments.append(attachment)
@@ -363,6 +390,25 @@ def _narrow(
         if preference.attach_to in places and preference.rather_than in places:
             left = tuple(path for path in left if path.tables[-1] != preference.rather_than)
             applied.append(preference)
+    return left, tuple(applied)
+
+
+def _narrow_routes(
+    candidates: tuple[Path, ...], declared: tuple[Preference, ...]
+) -> tuple[tuple[Path, ...], tuple[Preference, ...]]:
+    """The candidates route preferences leave, and those that withdrew any.
+    One that names a candidate withdraws the others ending at that
+    candidate's table, and no other."""
+    left, applied = candidates, []
+    for preference in declared:
+        named = [path for path in left if path.edges == frozenset(preference.prefer)]
+        if len(named) != 1:
+            continue
+        # It is only ever asked where its two tables tied, so there is
+        # always another key to that table to withdraw.
+        place = named[0].tables[-1]
+        left = tuple(path for path in left if path is named[0] or path.tables[-1] != place)
+        applied.append(preference)
     return left, tuple(applied)
 
 

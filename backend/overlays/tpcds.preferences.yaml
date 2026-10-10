@@ -16,16 +16,29 @@
 # attach_to / rather_than   where a table could be attached to either of
 #             these two at equal length, attach it to the first. The two
 #             must be joined directly by a foreign key. It says which
-#             TABLE, never which key: billing against shipping, and a store
-#             against a customer's address, are left arbitrary on purpose
-#             (DD-12, DD-21), and none is declared here.
-# because     required.
+#             TABLE, never which key.
+# between / prefer          between these two tables, when several routes
+#             are equally short, this one is meant. `prefer` lists the
+#             edges of that one route, each a `from` and a `to`.
+# because     required, for either kind.
+#
+# NOT DECLARED, ON PURPOSE (DD-12, DD-21): billing against shipping, for
+# an address, a customer or a household; and a store against a customer's
+# address. Those are the ties this project exists to show, and they stay
+# arbitrary and warned. The dates of customers, catalog pages, web sites,
+# promotions and call centres are not declared either.
 #
 # Why these three (CHECKPOINTS.md, item 65). In every channel X_returns
 # sorts before X_sales. So whenever a returns table was retrieved beside
 # its sales table, the alphabet hung every dimension that either could
 # carry on the returns table: nine times in the sixteen trees of the step 6
 # report. The alphabet is arbitrary and, on this schema, not neutral.
+#
+# Why the two dates. catalog_sales and web_sales each hold a sold date and
+# a ship date, and "ship" sorts before "sold": a question that named no
+# date was answered by the date the goods shipped (step 5, question 4).
+# A question whose wording is about shipping still gets the ship date:
+# the wording is asked first.
 
 preferences:
   - attach_to:   store_sales
@@ -43,3 +56,17 @@ preferences:
     because: >-
       Operator default. A return refers to its sale, so a table either
       could carry is taken to describe the sale.
+  - between: [catalog_sales, date_dim]
+    prefer:
+      - from: catalog_sales.cs_sold_date_sk
+        to:   date_dim.d_date_sk
+    because: >-
+      Operator default. A question that names no date means the date of
+      sale.
+  - between: [web_sales, date_dim]
+    prefer:
+      - from: web_sales.ws_sold_date_sk
+        to:   date_dim.d_date_sk
+    because: >-
+      Operator default. A question that names no date means the date of
+      sale.

@@ -172,6 +172,7 @@ def explain(result: PathResult, graph: nx.DiGraph) -> Explanation:
             f"{tie}. The wording of the question points to this one: it scores {best:.3f} against "
             f"{next_best:.3f} for the next, more than the {result.margin:.3f} that could be chance. {others}"
         )
+        reason += _outranked(result.preference_outranked)
     else:
         reason = f"{tie}. The tie was broken alphabetically, so the choice is arbitrary."
         if result.evidence:
@@ -416,16 +417,21 @@ def _attachment_reason(attachment: Attachment, chosen: ExplainedPath, alternativ
     if attachment.rule == "shortest":
         return f"{attachment.discovered} routes existed; the shortest was used."
     narrowed = ""
-    if attachment.attach_preferences:
+    if attachment.attach_preferences or attachment.route_preferences:
         count = len(attachment.tied) + len(attachment.withdrawn)
         tie = f"{count} routes of {_joins(chosen.length)} connect {anchor} to the tables already joined"
-        declared = "; ".join(
-            f"{_table(graph, p.attach_to)} rather than {_table(graph, p.rather_than)}, because: {p.because}"
-            for p in attachment.attach_preferences
-        )
+        if attachment.attach_preferences:
+            declared = "; ".join(
+                f"{_table(graph, p.attach_to)} rather than {_table(graph, p.rather_than)}, because: {p.because}"
+                for p in attachment.attach_preferences
+            )
+            narrowed += f" The overlay declares where a table that could join either is attached: {declared}."
+        for p in attachment.route_preferences:
+            first, second = (_table(graph, table) for table in p.between)
+            narrowed += f" The overlay declares which route between {first} and {second} is meant, because: {p.because}."
         gone = " ".join(f"Not taken: {_path(path, graph, tied=True).description}" for path in attachment.withdrawn)
-        narrowed = f" The overlay declares where a table that could join either is attached: {declared}. {gone}"
-    if attachment.rule == "preference" and attachment.attach_preferences:
+        narrowed += f" {gone}"
+    if attachment.rule == "preference" and narrowed:
         return f"{tie}.{narrowed}"
     if attachment.rule == "preference":
         return f"{tie}. The overlay declares which is meant, because: {attachment.preference_applied.because}."
@@ -435,7 +441,7 @@ def _attachment_reason(attachment: Attachment, chosen: ExplainedPath, alternativ
         return (
             f"{tie}. The wording of the question points to this one: it scores {best:.3f} against "
             f"{next_best:.3f} for the next, more than the {attachment.margin:.3f} that could be chance. {others}"
-        )
+        ) + _outranked(attachment.preference_outranked)
     reason = f"{tie}.{narrowed}"
     if narrowed:
         reason += f" {len(attachment.tied)} routes were left."
@@ -447,6 +453,15 @@ def _attachment_reason(attachment: Attachment, chosen: ExplainedPath, alternativ
             f"within the {attachment.margin:.3f} that could be chance."
         )
     return reason
+
+
+def _outranked(preference) -> str:
+    """A declared route preference the question's wording overruled. Said
+    in the reason; it is not a fault and raises nothing."""
+    if preference is None:
+        return ""
+    named = " / ".join(sorted(f"{a}={b}" for a, b in preference.prefer))
+    return f" The overlay prefers {named} by default; the wording of the question outranks it."
 
 
 def _attachment_warnings(attachment: Attachment, chosen: ExplainedPath, graph: nx.DiGraph) -> list[PathWarning]:

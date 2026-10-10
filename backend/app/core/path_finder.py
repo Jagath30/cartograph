@@ -156,6 +156,10 @@ class PathResult:
     # Declared for this pair, but it did not name exactly one of the paths
     # it could have chosen between. Reported, never silently dropped.
     preference_not_applied: Preference | None = None
+    # Declared for this pair and naming one of the tied paths, but the
+    # question's wording chose another by more than the margin. Not a fault
+    # of the preference: it is said in the reason and raises nothing.
+    preference_outranked: Preference | None = None
     # What the question's wording said about each tied path, best first:
     # (path id, score). Empty when no evidence was supplied or nothing
     # tied. Present whether or not it decided.
@@ -273,11 +277,13 @@ def find_paths(
         )  # fmt: skip
 
     choice = choose(shortest, tuple(preferred), evidence, margin)
+    outranked = choice.rule == "question_evidence" and len(preferred) == 1
     return PathResult(
         start, end, max_joins, tuple(discovered),
         selected=choice.selected, rule=choice.rule, tied=shortest,
         preference_applied=declared if choice.rule == "preference" else None,
-        preference_not_applied=None if choice.rule == "preference" else declared,
+        preference_not_applied=None if choice.rule == "preference" or outranked else declared,
+        preference_outranked=declared if outranked else None,
         evidence=choice.evidence,
         margin=margin if choice.evidence else None,
     )  # fmt: skip

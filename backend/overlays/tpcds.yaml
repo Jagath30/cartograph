@@ -18,7 +18,7 @@
 #
 # 102 relationships from tpcds_ri.sql, which the generated warehouse does not
 # declare by itself (FR-43), then 5 declared by hand that tpcds_ri.sql omits.
-# The preferences say which TABLE a table is attached to, never which key (DD-12).
+# The preferences are an operator's defaults (DD-12). Billing against shipping is not among them.
 
 relationships:
   - from: call_center.cc_closed_date_sk
@@ -353,3 +353,17 @@ preferences:
     because: >-
       Operator default. A return refers to its sale, so a table either
       could carry is taken to describe the sale.
+  - between: [catalog_sales, date_dim]
+    prefer:
+      - from: catalog_sales.cs_sold_date_sk
+        to:   date_dim.d_date_sk
+    because: >-
+      Operator default. A question that names no date means the date of
+      sale.
+  - between: [web_sales, date_dim]
+    prefer:
+      - from: web_sales.ws_sold_date_sk
+        to:   date_dim.d_date_sk
+    because: >-
+      Operator default. A question that names no date means the date of
+      sale.

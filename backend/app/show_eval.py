@@ -40,6 +40,7 @@ import hashlib
 import sys
 import textwrap
 from collections import Counter
+from dataclasses import replace
 from pathlib import Path
 
 from app.config import get_settings
@@ -120,6 +121,13 @@ def main(argv: list[str] | None = None) -> None:
     settings = get_settings()
     snapshot = SchemaIngestor(settings.warehouse_database_url, settings.warehouse_overlay_path).ingest()
     graph = build_graph(snapshot)
+    # The step 5 report is the PathFinder's unaided answer for a pair of
+    # tables, as recorded at checkpoint-05 and held byte for byte since. A
+    # route preference declared later (the sold date, in the retrieval pass
+    # between steps 7 and 8) would change a pair it reports, so this report
+    # is made on the graph without declared route preferences. The step 6
+    # report, below it, uses the graph as the application does.
+    unaided = build_graph(replace(snapshot, preferences=()))
     sources = Counter(key.source for key in snapshot.foreign_keys)
 
     print(f"{'set':<12}backend/eval/{EVAL_SET.name}")
@@ -143,8 +151,8 @@ def main(argv: list[str] | None = None) -> None:
         verdicts = []
         raised_anywhere: set[str] = set()
         for check in question.checks:
-            result = find_paths(graph, *check.between)
-            explanation = explain(result, graph)
+            result = find_paths(unaided, *check.between)
+            explanation = explain(result, unaided)
             selected = result.selected.edges if result.selected is not None else None
             raised = tuple(warning.code for warning in explanation.warnings)
             verdict = judge(check, selected, raised)

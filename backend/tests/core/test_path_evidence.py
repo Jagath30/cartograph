@@ -138,15 +138,17 @@ def test_just_beyond_the_margin_decides(graph) -> None:
 def test_the_questions_wording_comes_before_a_declared_preference(small_snapshot) -> None:
     """DD-12 as amended twice: shortest, the wording beyond the margin, a
     declared preference, the alphabet. A preference is an operator's
-    default; what this question says outranks it. The preference is
-    reported as not applied."""
+    default; what this question says outranks it, and the reason says so."""
     preference = Preference(between=PAIR, prefer=(BILL,), because="billing is what counts")
     graph = build_graph(replace(apply_overlay(small_snapshot, parse_overlay(NAMING)), preferences=(preference,)))
 
     result = find_paths(graph, *PAIR, evidence=_scores(bill=0.10, ship=0.90), margin=0.10)
     assert result.rule == "question_evidence"
     assert result.selected.joins[0].fk_columns == ("cs_ship_addr_sk",)
-    assert result.preference_applied is None and result.preference_not_applied == preference
+    # Outranked, which is not the same as not applicable: nothing warns.
+    assert result.preference_applied is None and result.preference_not_applied is None
+    assert result.preference_outranked == preference
+    assert codes(explain(result, graph)) == []
 
 
 def test_a_declared_preference_decides_when_the_wording_does_not(small_snapshot) -> None:

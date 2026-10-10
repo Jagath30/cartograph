@@ -193,7 +193,7 @@ def render_overlay(
         "#",
         f"# {len(keys)} relationships from tpcds_ri.sql, which the generated warehouse does not",
         f"# declare by itself (FR-43), then {by_hand.count('  - from:')} declared by hand that tpcds_ri.sql omits.",
-        "# The preferences say which TABLE a table is attached to, never which key (DD-12).",
+        "# The preferences are an operator's defaults (DD-12). Billing against shipping is not among them.",
         "",
         "relationships:",
     ]

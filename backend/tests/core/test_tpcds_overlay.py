@@ -68,15 +68,24 @@ def test_the_overlays_preferences_are_their_source_and_the_source_exists() -> No
     assert yaml.safe_load(generated)["preferences"] == yaml.safe_load(source)["preferences"]
 
 
-def test_the_preferences_are_sales_over_returns_in_each_channel_and_nothing_else(overlay, snapshot) -> None:
-    """Three, one a channel, each between a return and its own sale. No
-    preference names a route: billing against shipping, and a store against
-    a customer's address, stay arbitrary (DD-12, DD-21)."""
+def test_the_preferences_are_sales_over_returns_and_the_sold_date_and_nothing_else(overlay, snapshot) -> None:
+    """Three between a return and its own sale, one a channel (ruling C).
+    Two that name the sold date over the ship date, for the two sales
+    tables that have both (ruling D). Nothing about billing against
+    shipping, or a store against a customer's address: those stay
+    arbitrary (DD-12, DD-21)."""
     assert [(p.attach_to, p.rather_than) for p in overlay.attach_preferences] == [
         ("store_sales", "store_returns"), ("catalog_sales", "catalog_returns"), ("web_sales", "web_returns"),
     ]  # fmt: skip
     assert all(p.because for p in overlay.attach_preferences)
-    assert overlay.preferences == ()
+    assert [(p.between, p.prefer) for p in overlay.preferences] == [
+        (("catalog_sales", "date_dim"), (("catalog_sales.cs_sold_date_sk", "date_dim.d_date_sk"),)),
+        (("date_dim", "web_sales"), (("web_sales.ws_sold_date_sk", "date_dim.d_date_sk"),)),
+    ]
+    assert all(p.because for p in overlay.preferences)
+    declared = {column for p in overlay.preferences for edge in p.prefer for column in edge}
+    assert not {column for column in declared if "bill" in column or "ship" in column or "addr" in column}
+    assert snapshot.preferences == overlay.preferences
     assert snapshot.attach_preferences == overlay.attach_preferences
     assert build_graph(snapshot).graph["attach_preferences"] == overlay.attach_preferences
 
@@ -89,6 +98,7 @@ def test_the_generator_ends_the_overlay_with_the_preferences() -> None:
     )
     assert rendered.endswith("\n\n" + ri.preferences_section(PREFERENCES_SOURCE.read_text()))
     assert len(parse_overlay(rendered).attach_preferences) == 3
+    assert len(parse_overlay(rendered).preferences) == 2
 
 
 def test_a_preferences_source_with_no_entry_or_a_second_section_is_refused() -> None:
