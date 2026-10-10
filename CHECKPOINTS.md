@@ -7418,6 +7418,66 @@ as item 66.
 - `plan_joins`: reading Postgres's plan as a witness, and what VERBOSE
   is for
 
+## The retrieval pass between steps 7 and 8 — opened 10 October 2026
+
+Not a numbered step. Step 7 showed retrieval is the bottleneck (items 62
+and 65). The sixteen questions of `questions.yaml` are now the development
+set for retrieval; `heldout.yaml` stays closed and measures the result at
+step 10. Checked before anything: HEAD `e3b642d`, clean, level with
+`origin/main`; smoke 32 passed, 0 failed, 0 skipped.
+
+### THE KEEP-RULE, committed before any code and before any run
+
+As the owner gave it, 10 October 2026.
+
+- **Judge.** The step 6 judge over the 16 questions, retrieval only, no
+  model.
+- **Kept only if** no question loses anything it held at the step 6
+  baseline (a table, a join, its expected warning, a decline), and at
+  least one question gains something. Bringing in the table the step 7
+  diagnosis named as missing for d2, d3 or d6 also counts as a gain.
+- **One at a time, then together.** Each change is judged alone against
+  the baseline, then the kept ones together. A change kept alone but
+  harmful in combination is reported, not kept.
+- **Reported for each change:** questions with every expected table, and
+  tables missing; tables beyond the expected; alphabet-decided
+  attachments; warnings by kind, and close calls; the retrieval-plus-path
+  time against NFR-02's one second. And, with no model call, what the
+  change does to d2, d3, d6 and d7.
+- **No new numeric threshold chosen by looking at results.**
+
+**The baseline** is run 3 of step 6, `backend/eval/baseline_step6_run3.txt`
+(alpha 0.5, cut 0.5, cap 5, bound 10, three joins, margin 0.107051). It is
+regenerated unchanged before the first change is run and must reproduce,
+the timing apart.
+
+**How "held" is read. MINE, written before any run, for the owner to
+confirm or correct at stop 1** (item 57 is why this is fixed first). A
+question holds, at the baseline:
+
+- *a table*: each expected table that is in its tree (for a `one_of`, at
+  least one of them);
+- *a join*: each expected join that is in its tree (any alternative of a
+  `one_of`);
+- *its expected warning*: the expected code, when it is among those
+  raised;
+- *a decline*: being declined, or not, as expected.
+
+It gains when one of these is newly true, or when the subgraph shown for
+d2, d3 or d6 newly holds `date_dim`, `catalog_sales` or `time_dim`.
+
+**Two things those words do not settle. Both decide a verdict below.**
+
+1. Questions 4, 5 and 11 expect no warning and raise none at the
+   baseline. Is that held, and lost when a change makes one of them raise
+   a warning?
+2. Question 8's tree is exactly right at the baseline, two tables and one
+   join. Is the exact tree held, and lost when two more sales tables join
+   it, though every expected table and join is still there?
+
+My reading, until ruled: **yes to both.** It is the stricter one and can
+only make a change harder to keep.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
