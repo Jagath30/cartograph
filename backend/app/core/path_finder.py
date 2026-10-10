@@ -201,10 +201,12 @@ def choose(
 ) -> Choice:
     """Rules 2 to 4, among paths already known to be equally short. `tied`
     is in alphabetical order; `preferred` is those of them a declared
-    preference names."""
-    if len(preferred) == 1:
-        return Choice(preferred[0], "preference")
+    preference names.
 
+    The order (DD-12 as amended at step 6 and again in the retrieval pass,
+    10 October 2026): the question's wording beyond the margin; then a
+    declared preference; then the alphabet. A preference is an operator's
+    default, and what this question says outranks a default."""
     scored: tuple[tuple[str, float], ...] = ()
     if evidence is not None:
         scores = score_tied(tied, evidence)
@@ -212,6 +214,9 @@ def choose(
         scored = tuple((path.id, scores[path.id]) for path in ranked)
         if scored[0][1] - scored[1][1] > margin:
             return Choice(ranked[0], "question_evidence", scored)
+
+    if len(preferred) == 1:
+        return Choice(preferred[0], "preference", scored)
 
     return Choice(tied[0], "alphabetical", scored)
 

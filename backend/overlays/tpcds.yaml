@@ -9,13 +9,16 @@
 #   naming         from backend/overlays/tpcds.naming.yaml
 #                  NAMING EDITS BELONG IN tpcds.naming.yaml, not here.
 #
-# To regenerate after editing either source:
+#   preferences    from backend/overlays/tpcds.preferences.yaml
+#                  PREFERENCES BELONG IN tpcds.preferences.yaml, not here.
+#
+# To regenerate after editing any source:
 #     python3 backend/warehouse/ri.py write-overlay
 # (./scripts/warehouse.sh also regenerates it, and rebuilds the warehouse.)
 #
 # 102 relationships from tpcds_ri.sql, which the generated warehouse does not
 # declare by itself (FR-43), then 5 declared by hand that tpcds_ri.sql omits.
-# The preferences section is absent on purpose (DD-12).
+# The preferences say which TABLE a table is attached to, never which key (DD-12).
 
 relationships:
   - from: call_center.cc_closed_date_sk
@@ -333,3 +336,20 @@ naming:
     autogen:  automatically generated
     shipto:   ship-to
     dim:      dimension
+
+preferences:
+  - attach_to:   store_sales
+    rather_than: store_returns
+    because: >-
+      Operator default. A return refers to its sale, so a table either
+      could carry is taken to describe the sale.
+  - attach_to:   catalog_sales
+    rather_than: catalog_returns
+    because: >-
+      Operator default. A return refers to its sale, so a table either
+      could carry is taken to describe the sale.
+  - attach_to:   web_sales
+    rather_than: web_returns
+    because: >-
+      Operator default. A return refers to its sale, so a table either
+      could carry is taken to describe the sale.

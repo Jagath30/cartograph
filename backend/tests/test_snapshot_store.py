@@ -194,7 +194,10 @@ def live_snapshot() -> SchemaSnapshot:
 
 def test_the_graph_rebuilt_from_rows_is_the_graph_live_ingestion_builds(store, scratch_database, live_snapshot) -> None:
     store.save(live_snapshot, "warehouse")
-    _, loaded = store.load_current(preferences=live_snapshot.preferences)
+    _, loaded = store.load_current(
+        preferences=live_snapshot.preferences, attach_preferences=live_snapshot.attach_preferences
+    )
+    assert len(live_snapshot.attach_preferences) == 3
 
     assert loaded == live_snapshot
     rebuilt, original = build_graph(loaded), build_graph(live_snapshot)

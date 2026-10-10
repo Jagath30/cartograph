@@ -16,11 +16,22 @@ THE METHOD: NEAREST ATTACHMENT.
      table already in it (ties: higher score, then name).
   3. Its candidate routes are every shortest route to every tree table at
      that distance. One candidate: it is used. Several: DD-12's rules 2 to
-     4 choose -- a declared preference, then the question's wording, then
+     4 choose -- the question's wording, then a declared preference, then
      the alphabet -- exactly as between two tables.
   4. Every table on the chosen route joins the tree, so a later anchor can
      attach to a bridging table as well as to an anchor.
   5. Repeat until no anchor is left. The order is recorded.
+
+A PREFERENCE BETWEEN TWO PLACES (ruling C of the retrieval pass). Where
+the candidates end at different tree tables and the question's wording has
+not decided, the overlay may declare `attach_to: X, rather_than: Y`: when
+both X and Y are among the places, the candidates ending at Y are
+withdrawn. One left: it is chosen, by the preference, and nothing warns.
+Several left: the alphabet chooses among them and the choice is arbitrary,
+as before. The wording is consulted once, over every candidate, and not
+again over what a preference left. What was withdrawn is recorded. It is
+never applied to the table being attached, to a bridge inside a route, or
+where every candidate ends at one table.
 
 No kind of table is favoured anywhere in this (Charter D-06): no fact table
 as hub, no ranking by fan-out. Distance and the question decide; where they
@@ -54,6 +65,7 @@ from app.core.path_finder import (
     DEFAULT_MAX_JOINS,
     MANY_TO_ONE,
     ONE_TO_MANY,
+    Choice,
     Join,
     Path,
     Rule,
@@ -61,7 +73,7 @@ from app.core.path_finder import (
     choose,
     find_paths,
 )
-from app.core.snapshot import Preference
+from app.core.snapshot import AttachPreference, Preference
 
 DEFAULT_SUBGRAPH_BOUND = 10
 
@@ -103,6 +115,10 @@ class Attachment:
     discovered: int = 0
     preference_applied: Preference | None = None
     preference_not_applied: Preference | None = None
+    # Candidates a preference between two places withdrew, and the
+    # preferences that did it. `tied` is then what was left, chosen included.
+    withdrawn: tuple[Path, ...] = ()
+    attach_preferences: tuple[AttachPreference, ...] = ()
 
     @property
     def arbitrary(self) -> bool:
@@ -224,7 +240,7 @@ def build_tree(
 
     alternatives: list[str] = []
     for attachment in attachments:
-        for path in attachment.tied:
+        for path in (*attachment.tied, *attachment.withdrawn):
             alternatives += [table for table in path.tables if table not in tables and table not in alternatives]
     room = max(subgraph_bound - len(tables), 0)
 
@@ -294,10 +310,11 @@ def _grow(graph, anchors, scores, evidence, margin, max_joins):
                 preference_not_applied=result.preference_not_applied,
             )  # fmt: skip
         else:
-            # Several places, equally near. A preference is declared between
-            # two tables and cannot say which of two places is meant, so
-            # rule 2 has nothing to offer here; any that were declared are
-            # reported as not applied.
+            # Several places, equally near. A preference that names a route
+            # is declared between two tables and cannot say which of two
+            # places is meant; any that were declared are reported as not
+            # applied. A preference between two PLACES can, and is asked
+            # only when the question's wording has not decided.
             candidates = tuple(
                 sorted(
                     (path for result in nearest for path in (result.tied or (result.selected,))),
@@ -305,6 +322,11 @@ def _grow(graph, anchors, scores, evidence, margin, max_joins):
                 )
             )
             choice = choose(candidates, (), evidence, margin)
+            left, applied = candidates, ()
+            if choice.rule != "question_evidence":
+                left, applied = _narrow(candidates, graph.graph.get("attach_preferences", ()))
+            if applied:
+                choice = Choice(left[0], "preference" if len(left) == 1 else "alphabetical", choice.evidence)
             declared = next(
                 (r.preference_applied or r.preference_not_applied for r in nearest
                  if r.preference_applied or r.preference_not_applied),
@@ -312,9 +334,11 @@ def _grow(graph, anchors, scores, evidence, margin, max_joins):
             )  # fmt: skip
             attachment = Attachment(
                 anchor, len(attachments), choice.selected, choice.selected.tables[-1], choice.rule,
-                tied=candidates, evidence=choice.evidence, margin=margin if choice.evidence else None,
+                tied=left, evidence=choice.evidence, margin=margin if choice.evidence else None,
                 discovered=sum(len(result.discovered) for result in nearest),
                 preference_not_applied=declared,
+                withdrawn=tuple(path for path in candidates if path not in left),
+                attach_preferences=applied,
             )  # fmt: skip
 
         attachments.append(attachment)
@@ -325,6 +349,21 @@ def _grow(graph, anchors, scores, evidence, margin, max_joins):
         tables += [table for table in attachment.path.tables if table not in tables]
 
     return tuple(attachments), tuple(tables), tuple(joins), ()
+
+
+def _narrow(
+    candidates: tuple[Path, ...], declared: tuple[AttachPreference, ...]
+) -> tuple[tuple[Path, ...], tuple[AttachPreference, ...]]:
+    """The candidates a preference between two places leaves, in their
+    order, and the preferences that withdrew any. One applies only when
+    both of its tables are among the places the candidates end at."""
+    left, applied = candidates, []
+    for preference in declared:
+        places = {path.tables[-1] for path in left}
+        if preference.attach_to in places and preference.rather_than in places:
+            left = tuple(path for path in left if path.tables[-1] != preference.rather_than)
+            applied.append(preference)
+    return left, tuple(applied)
 
 
 def _pivots(tables: tuple[str, ...], joins: tuple[Join, ...]) -> tuple[tuple[str, tuple[str, ...]], ...]:

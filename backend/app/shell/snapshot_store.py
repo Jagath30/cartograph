@@ -32,7 +32,7 @@ from dataclasses import asdict, dataclass
 import psycopg
 
 from app.core.search_text import search_texts
-from app.core.snapshot import Column, ForeignKey, Preference, PrimaryKey, SchemaSnapshot, Table
+from app.core.snapshot import AttachPreference, Column, ForeignKey, Preference, PrimaryKey, SchemaSnapshot, Table
 
 
 class NoCurrentSnapshot(RuntimeError):
@@ -89,8 +89,11 @@ class SnapshotStore:
         with psycopg.connect(self._dsn) as connection:
             return self._current(connection)
 
-    def load_current(self, preferences: tuple[Preference, ...] = ()) -> tuple[StoredSnapshot, SchemaSnapshot]:
-        """The current snapshot, rebuilt from its rows."""
+    def load_current(
+        self, preferences: tuple[Preference, ...] = (), attach_preferences: tuple[AttachPreference, ...] = ()
+    ) -> tuple[StoredSnapshot, SchemaSnapshot]:
+        """The current snapshot, rebuilt from its rows. Preferences of both
+        kinds are not stored and are handed in."""
         with psycopg.connect(self._dsn) as connection:
             stored = self._current(connection)
             elements = connection.execute(
@@ -143,6 +146,7 @@ class SnapshotStore:
                 for _, k in sorted(keys.items())
             ),
             preferences=preferences,
+            attach_preferences=attach_preferences,
         )  # fmt: skip
         return stored, snapshot
 

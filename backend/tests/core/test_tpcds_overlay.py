@@ -12,7 +12,7 @@ green on an edgeless graph.
 
 import pytest
 import yaml
-from tpcds_files import NAMING_SOURCE, OVERLAY, RELATIONSHIPS_SOURCE, ddl_snapshot
+from tpcds_files import NAMING_SOURCE, OVERLAY, PREFERENCES_SOURCE, RELATIONSHIPS_SOURCE, ddl_snapshot
 
 from app.core.graph_builder import build_graph, foreign_key_edges
 from app.core.overlay import Relationship, apply_overlay, parse_overlay
@@ -44,11 +44,58 @@ def test_the_overlays_naming_is_the_naming_source_and_the_source_exists() -> Non
     source = NAMING_SOURCE.read_text()
     generated = OVERLAY.read_text()
 
-    assert generated.endswith("\n\n" + ri.naming_section(source)), (
+    assert ("\n\n" + ri.naming_section(source) + "\npreferences:\n") in generated, (
         f"{OVERLAY.name} does not carry the current {NAMING_SOURCE.name}. "
         "Run: python3 backend/warehouse/ri.py write-overlay"
     )
     assert yaml.safe_load(generated)["naming"] == yaml.safe_load(source)["naming"]
+
+
+def test_the_overlays_preferences_are_their_source_and_the_source_exists() -> None:
+    """The same drift test, for the preferences. They are an operator's
+    declared defaults: text nobody can safely edit is worse here than
+    anywhere, because it changes which joins are selected."""
+    assert PREFERENCES_SOURCE.exists(), (
+        f"{PREFERENCES_SOURCE.name} is missing. It is the only place preferences are edited; restore it from git."
+    )
+    source = PREFERENCES_SOURCE.read_text()
+    generated = OVERLAY.read_text()
+
+    assert generated.endswith("\n\n" + ri.preferences_section(source)), (
+        f"{OVERLAY.name} does not carry the current {PREFERENCES_SOURCE.name}. "
+        "Run: python3 backend/warehouse/ri.py write-overlay"
+    )
+    assert yaml.safe_load(generated)["preferences"] == yaml.safe_load(source)["preferences"]
+
+
+def test_the_preferences_are_sales_over_returns_in_each_channel_and_nothing_else(overlay, snapshot) -> None:
+    """Three, one a channel, each between a return and its own sale. No
+    preference names a route: billing against shipping, and a store against
+    a customer's address, stay arbitrary (DD-12, DD-21)."""
+    assert [(p.attach_to, p.rather_than) for p in overlay.attach_preferences] == [
+        ("store_sales", "store_returns"), ("catalog_sales", "catalog_returns"), ("web_sales", "web_returns"),
+    ]  # fmt: skip
+    assert all(p.because for p in overlay.attach_preferences)
+    assert overlay.preferences == ()
+    assert snapshot.attach_preferences == overlay.attach_preferences
+    assert build_graph(snapshot).graph["attach_preferences"] == overlay.attach_preferences
+
+
+def test_the_generator_ends_the_overlay_with_the_preferences() -> None:
+    """Needs no tpcds_ri.sql, so it runs in CI: one key typed here."""
+    key = ri.ForeignKey("a_fk", "store_sales", "ss_store_sk", "store", "s_store_sk")
+    rendered = ri.render_overlay(
+        [key], RELATIONSHIPS_SOURCE.read_text(), NAMING_SOURCE.read_text(), PREFERENCES_SOURCE.read_text()
+    )
+    assert rendered.endswith("\n\n" + ri.preferences_section(PREFERENCES_SOURCE.read_text()))
+    assert len(parse_overlay(rendered).attach_preferences) == 3
+
+
+def test_a_preferences_source_with_no_entry_or_a_second_section_is_refused() -> None:
+    with pytest.raises(ValueError, match="no preferences found"):
+        ri.preferences_section("preferences:\n")
+    with pytest.raises(ValueError, match="only the preferences section"):
+        ri.preferences_section("preferences:\n  - { attach_to: a, rather_than: b, because: r }\nnaming: {}\n")
 
 
 def test_the_overlays_hand_declared_relationships_are_their_source_and_the_source_exists() -> None:

@@ -130,18 +130,35 @@ def test_just_beyond_the_margin_decides(graph) -> None:
 
 
 # --------------------------------------------------------------------------
-# Its place in the order: after a preference, never above a shorter route
+# Its place in the order: before a preference (ruling C of the retrieval
+# pass, 10 October 2026), never above a shorter route
 # --------------------------------------------------------------------------
 
 
-def test_a_declared_preference_comes_before_the_questions_wording(small_snapshot) -> None:
+def test_the_questions_wording_comes_before_a_declared_preference(small_snapshot) -> None:
+    """DD-12 as amended twice: shortest, the wording beyond the margin, a
+    declared preference, the alphabet. A preference is an operator's
+    default; what this question says outranks it. The preference is
+    reported as not applied."""
     preference = Preference(between=PAIR, prefer=(BILL,), because="billing is what counts")
     graph = build_graph(replace(apply_overlay(small_snapshot, parse_overlay(NAMING)), preferences=(preference,)))
 
     result = find_paths(graph, *PAIR, evidence=_scores(bill=0.10, ship=0.90), margin=0.10)
+    assert result.rule == "question_evidence"
+    assert result.selected.joins[0].fk_columns == ("cs_ship_addr_sk",)
+    assert result.preference_applied is None and result.preference_not_applied == preference
+
+
+def test_a_declared_preference_decides_when_the_wording_does_not(small_snapshot) -> None:
+    """Within the margin the wording decides nothing, and the preference
+    does, although the wording leans the other way."""
+    preference = Preference(between=PAIR, prefer=(BILL,), because="billing is what counts")
+    graph = build_graph(replace(apply_overlay(small_snapshot, parse_overlay(NAMING)), preferences=(preference,)))
+
+    result = find_paths(graph, *PAIR, evidence=_scores(bill=0.25, ship=0.5), margin=0.25)
     assert result.rule == "preference"
     assert result.selected.joins[0].fk_columns == ("cs_bill_addr_sk",)
-    assert result.evidence == ()
+    assert result.preference_applied == preference
 
 
 def test_a_preference_that_singles_out_nothing_leaves_the_tie_to_the_evidence_and_is_reported(small_snapshot) -> None:

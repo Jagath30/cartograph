@@ -38,9 +38,13 @@ def every_pair(graph):
 @pytest.fixture(scope="module")
 def every_pair_before():
     """The same, over the 102 relationships of tpcds_ri.sql alone: the graph
-    as it was before anything was declared by hand."""
+    as it was before anything was declared by hand. The preferences go
+    with the hand-declared keys they rest on: each is between a return and
+    its sale, and that key is one of the five."""
     overlay = parse_overlay(OVERLAY.read_text())
-    generated = replace(overlay, relationships=tuple(r for r in overlay.relationships if not r.note))
+    generated = replace(
+        overlay, relationships=tuple(r for r in overlay.relationships if not r.note), attach_preferences=()
+    )
     graph = build_graph(apply_overlay(ddl_snapshot(), generated))
     return {pair: find_paths(graph, *pair) for pair in combinations(sorted(table_nodes(graph)), 2)}
 

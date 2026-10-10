@@ -1,0 +1,45 @@
+# Declared preferences for the TPC-DS warehouse (DD-12, DD-16).
+#
+# WRITTEN BY HAND, and the only place they are edited. The generator copies
+# the section below, unchanged, into tpcds.yaml, which is what the
+# application reads. After any edit here:
+#
+#     python3 backend/warehouse/ri.py write-overlay
+#
+# and a test fails until you do.
+#
+# A preference is an operator's default, recorded where it can be seen. It
+# is asked only after the shortest route and the question's own wording
+# have failed to decide, and before the alphabet. It never overrules what
+# a question says.
+#
+# attach_to / rather_than   where a table could be attached to either of
+#             these two at equal length, attach it to the first. The two
+#             must be joined directly by a foreign key. It says which
+#             TABLE, never which key: billing against shipping, and a store
+#             against a customer's address, are left arbitrary on purpose
+#             (DD-12, DD-21), and none is declared here.
+# because     required.
+#
+# Why these three (CHECKPOINTS.md, item 65). In every channel X_returns
+# sorts before X_sales. So whenever a returns table was retrieved beside
+# its sales table, the alphabet hung every dimension that either could
+# carry on the returns table: nine times in the sixteen trees of the step 6
+# report. The alphabet is arbitrary and, on this schema, not neutral.
+
+preferences:
+  - attach_to:   store_sales
+    rather_than: store_returns
+    because: >-
+      Operator default. A return refers to its sale, so a table either
+      could carry is taken to describe the sale.
+  - attach_to:   catalog_sales
+    rather_than: catalog_returns
+    because: >-
+      Operator default. A return refers to its sale, so a table either
+      could carry is taken to describe the sale.
+  - attach_to:   web_sales
+    rather_than: web_returns
+    because: >-
+      Operator default. A return refers to its sale, so a table either
+      could carry is taken to describe the sale.

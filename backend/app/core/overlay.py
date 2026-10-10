@@ -18,6 +18,12 @@ edges. It is only ever a tie-breaker, and whether it applies is decided by
 the PathFinder; what is decided here is whether it is well-formed and
 whether every edge it names is a real foreign key of this warehouse.
 
+A preference of the second kind names two tables, `attach_to` and
+`rather_than`: where a table could be attached to either at equal length,
+it is attached to the first. It is the join tree's to apply. Checked here:
+both are tables of this warehouse, and a foreign key joins them directly.
+An entry is one kind or the other, never a mixture.
+
 A relationship's `from` and `to` are each one `table.column`, or a list of
 them for a key of several columns -- the same number on each side, paired
 by position, each side within one table. An optional `note` says why a
@@ -35,7 +41,7 @@ from dataclasses import dataclass, field, replace
 import yaml
 
 from app.core.naming import Naming, describe_column, describe_table, readable_column, readable_table
-from app.core.snapshot import ForeignKey, Preference, SchemaSnapshot
+from app.core.snapshot import AttachPreference, ForeignKey, Preference, SchemaSnapshot
 
 _SECTIONS = {"relationships", "naming", "preferences"}
 _NAMING_SECTIONS = {"prefixes", "words"}
@@ -67,6 +73,7 @@ class Overlay:
     relationships: tuple[Relationship, ...] = ()
     naming: Naming = field(default_factory=Naming)
     preferences: tuple[Preference, ...] = ()
+    attach_preferences: tuple[AttachPreference, ...] = ()
 
 
 def parse_overlay(text: str) -> Overlay:
@@ -88,7 +95,16 @@ def parse_overlay(text: str) -> Overlay:
         raise ValueError("overlay: naming must be a mapping")
     _only(naming, _NAMING_SECTIONS, "overlay naming")
 
-    preferences = [_preference(entry) for entry in document.get("preferences") or []]
+    declared = document.get("preferences") or []
+    if not isinstance(declared, list):
+        raise ValueError("overlay: preferences must be a list")
+    attaching = [_attach_preference(entry) for entry in declared if isinstance(entry, dict) and "attach_to" in entry]
+    places = [frozenset((entry.attach_to, entry.rather_than)) for entry in attaching]
+    twice = sorted({tuple(sorted(place)) for place in places if places.count(place) > 1})
+    if twice:
+        raise ValueError(f"overlay: more than one preference about attaching to the same two tables: {twice}")
+
+    preferences = [_preference(entry) for entry in declared if not (isinstance(entry, dict) and "attach_to" in entry)]
     pairs = [preference.between for preference in preferences]
     contested = sorted({pair for pair in pairs if pairs.count(pair) > 1})
     if contested:
@@ -101,7 +117,24 @@ def parse_overlay(text: str) -> Overlay:
             words=_strings(naming.get("words"), "naming.words"),
         ),
         preferences=tuple(preferences),
+        attach_preferences=tuple(attaching),
     )
+
+
+def _attach_preference(entry: dict) -> AttachPreference:
+    if set(entry) != {"attach_to", "rather_than", "because"}:
+        raise ValueError(
+            f"overlay: a preference between two places needs exactly `attach_to`, `rather_than` and `because`, got {entry!r}"
+        )
+    attach_to, rather_than, because = entry["attach_to"], entry["rather_than"], entry["because"]
+    for name in (attach_to, rather_than):
+        if not isinstance(name, str) or not name or "." in name:
+            raise ValueError(f"overlay: `attach_to` and `rather_than` each name one table, got {name!r}")
+    if attach_to == rather_than:
+        raise ValueError(f"overlay: `attach_to` and `rather_than` name the same table, {attach_to}")
+    if not isinstance(because, str) or not because.strip():
+        raise ValueError(f"overlay: a preference for {attach_to} over {rather_than} must say `because` of what")
+    return AttachPreference(attach_to, rather_than, " ".join(because.split()))
 
 
 def _only(mapping: dict, allowed: set[str], where: str) -> None:
@@ -217,6 +250,17 @@ def apply_overlay(snapshot: SchemaSnapshot, overlay: Overlay) -> SchemaSnapshot:
     foreign_keys = snapshot.foreign_keys + tuple(added)
     for preference in overlay.preferences:
         _check_preference(preference, foreign_keys)
+    known = {table.name for table in snapshot.tables}
+    joined = {frozenset((key.from_table, key.to_table)) for key in foreign_keys}
+    for attaching in overlay.attach_preferences:
+        for name in (attaching.attach_to, attaching.rather_than):
+            if name not in known:
+                raise ValueError(f"overlay: a preference names {name}, and the warehouse has no table of that name")
+        if frozenset((attaching.attach_to, attaching.rather_than)) not in joined:
+            raise ValueError(
+                f"overlay: no foreign key joins {attaching.attach_to} and {attaching.rather_than} directly, "
+                "so a preference between them as places to attach is refused"
+            )
 
     return replace(
         snapshot,
@@ -224,6 +268,7 @@ def apply_overlay(snapshot: SchemaSnapshot, overlay: Overlay) -> SchemaSnapshot:
         columns=tuple(columns),
         foreign_keys=foreign_keys,
         preferences=overlay.preferences,
+        attach_preferences=overlay.attach_preferences,
     )
 
 

@@ -95,6 +95,10 @@ def print_retrieval(located: Located) -> None:
                 line("attached", f"0  {attachment.anchor}: the seed")
                 continue
             tied = f", {len(attachment.tied)} tied" if attachment.tied else ""
+            if attachment.withdrawn:
+                declared = "; ".join(f"{p.attach_to} rather than {p.rather_than}" for p in attachment.attach_preferences)
+                tied = f", {len(attachment.tied) + len(attachment.withdrawn)} tied, " \
+                       f"{len(attachment.withdrawn)} withdrawn by a declared preference ({declared})"  # fmt: skip
             evidence = ""
             if attachment.evidence:
                 (_, top), (_, second) = attachment.evidence[:2]

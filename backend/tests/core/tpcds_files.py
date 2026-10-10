@@ -11,6 +11,7 @@ BACKEND = Path(__file__).resolve().parents[2]
 OVERLAY = BACKEND / "overlays" / "tpcds.yaml"
 NAMING_SOURCE = BACKEND / "overlays" / "tpcds.naming.yaml"
 RELATIONSHIPS_SOURCE = BACKEND / "overlays" / "tpcds.relationships.yaml"
+PREFERENCES_SOURCE = BACKEND / "overlays" / "tpcds.preferences.yaml"
 SCHEMA = BACKEND / "warehouse" / "tpcds_schema.sql"
 
 

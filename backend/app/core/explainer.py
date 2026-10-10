@@ -415,6 +415,18 @@ def _attachment_reason(attachment: Attachment, chosen: ExplainedPath, alternativ
         return f"Only one route of {_joins(attachment.path.length)} or fewer connects {anchor} to the tables already joined."
     if attachment.rule == "shortest":
         return f"{attachment.discovered} routes existed; the shortest was used."
+    narrowed = ""
+    if attachment.attach_preferences:
+        count = len(attachment.tied) + len(attachment.withdrawn)
+        tie = f"{count} routes of {_joins(chosen.length)} connect {anchor} to the tables already joined"
+        declared = "; ".join(
+            f"{_table(graph, p.attach_to)} rather than {_table(graph, p.rather_than)}, because: {p.because}"
+            for p in attachment.attach_preferences
+        )
+        gone = " ".join(f"Not taken: {_path(path, graph, tied=True).description}" for path in attachment.withdrawn)
+        narrowed = f" The overlay declares where a table that could join either is attached: {declared}. {gone}"
+    if attachment.rule == "preference" and attachment.attach_preferences:
+        return f"{tie}.{narrowed}"
     if attachment.rule == "preference":
         return f"{tie}. The overlay declares which is meant, because: {attachment.preference_applied.because}."
     if attachment.rule == "question_evidence":
@@ -424,7 +436,10 @@ def _attachment_reason(attachment: Attachment, chosen: ExplainedPath, alternativ
             f"{tie}. The wording of the question points to this one: it scores {best:.3f} against "
             f"{next_best:.3f} for the next, more than the {attachment.margin:.3f} that could be chance. {others}"
         )
-    reason = f"{tie}. The tie was broken alphabetically, so the choice is arbitrary."
+    reason = f"{tie}.{narrowed}"
+    if narrowed:
+        reason += f" {len(attachment.tied)} routes were left."
+    reason += " The tie was broken alphabetically, so the choice is arbitrary."
     if attachment.evidence:
         (_, best), (_, next_best) = attachment.evidence[:2]
         reason += (

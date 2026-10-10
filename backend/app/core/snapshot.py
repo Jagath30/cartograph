@@ -83,6 +83,24 @@ class Preference:
 
 
 @dataclass(frozen=True)
+class AttachPreference:
+    """A declared answer to a tie between two PLACES (DD-12; ruling C of the
+    retrieval pass, 10 October 2026): where a table could be attached to
+    either of these two at equal length, attach it to `attach_to`.
+
+    A `Preference` names one route between two tables and cannot say this:
+    here the routes end at different tables. It is an operator's default
+    and nothing more. It is consulted only after the question's own wording
+    has failed to decide, it never chooses between two keys of one table,
+    and `because` is required, as for any preference.
+    """
+
+    attach_to: str
+    rather_than: str
+    because: str
+
+
+@dataclass(frozen=True)
 class SchemaSnapshot:
     tables: tuple[Table, ...]
     columns: tuple[Column, ...]
@@ -91,3 +109,4 @@ class SchemaSnapshot:
     # Not a fact about the schema, but validated against it and carried with
     # it, so that whoever holds the graph holds the preferences too.
     preferences: tuple[Preference, ...] = ()
+    attach_preferences: tuple[AttachPreference, ...] = ()

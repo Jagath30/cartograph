@@ -177,20 +177,20 @@ def test_the_two_statements_left_out_are_the_ones_the_tpc_commented_out() -> Non
 def test_the_overlay_on_disk_is_exactly_what_the_file_says() -> None:
     """The overlay is generated, never edited (DD-16). If the two disagree,
     one of them was touched by hand. Whole file, byte for byte: the
-    relationships from tpcds_ri.sql, then the hand-declared ones and the
-    naming, each from its own source."""
+    relationships from tpcds_ri.sql, then the hand-declared ones, the
+    naming and the preferences, each from its own source."""
     keys = ri.load()
 
     assert OVERLAY.read_text() == ri.render_overlay(
-        keys, ri.RELATIONSHIPS_FILE.read_text(), ri.NAMING_FILE.read_text()
+        keys, ri.RELATIONSHIPS_FILE.read_text(), ri.NAMING_FILE.read_text(), ri.PREFERENCES_FILE.read_text()
     )
     assert overlay_edges() == [(k.from_table, k.from_column, k.to_table, k.to_column) for k in keys]
 
 
-def test_the_overlay_holds_the_relationships_and_naming_sections() -> None:
-    """Naming arrived at step 3 (SDD correction 3). Preferences arrive with
-    path selection at step 4 (DD-12)."""
-    assert list(yaml.safe_load(OVERLAY.read_text())) == ["relationships", "naming"]
+def test_the_overlay_holds_its_three_sections() -> None:
+    """Naming arrived at step 3 (SDD correction 3). Preferences arrived
+    with the retrieval pass between steps 7 and 8 (DD-12, item 65)."""
+    assert list(yaml.safe_load(OVERLAY.read_text())) == ["relationships", "naming", "preferences"]
 
 
 # --------------------------------------------------------------------------

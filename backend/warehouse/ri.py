@@ -37,6 +37,7 @@ RI_FILE = Path(__file__).with_name("tpcds_ri.sql")
 OVERLAY_FILE = Path(__file__).parent.parent / "overlays" / "tpcds.yaml"
 NAMING_FILE = OVERLAY_FILE.with_name("tpcds.naming.yaml")
 RELATIONSHIPS_FILE = OVERLAY_FILE.with_name("tpcds.relationships.yaml")
+PREFERENCES_FILE = OVERLAY_FILE.with_name("tpcds.preferences.yaml")
 
 # A public mirror of the TPC-DS toolkit, pinned to a commit rather than a
 # branch, and to a hash rather than to trust. If either changes, that is a
@@ -150,10 +151,21 @@ def hand_relationships(source: str) -> str:
     return entries + "\n"
 
 
-def render_overlay(keys: list[ForeignKey], relationships_source: str, naming_source: str) -> str:
+def preferences_section(source: str) -> str:
+    """The `preferences:` block of its hand-written source, header line
+    included."""
+    section = "\n".join(_section(source, "preferences", PREFERENCES_FILE)).rstrip() + "\n"
+    if "  - " not in section:
+        raise ValueError(f"{PREFERENCES_FILE.name}: no preferences found under `preferences:`")
+    return section
+
+
+def render_overlay(
+    keys: list[ForeignKey], relationships_source: str, naming_source: str, preferences_source: str
+) -> str:
     """The overlay file (DD-16): relationships generated from the keys, then
-    the hand-declared relationships and the naming section, each copied from
-    its own source.
+    the hand-declared relationships, the naming section and the preferences
+    section, each copied from its own source.
 
     Written by hand rather than through a YAML library so the host needs
     nothing installed; every generated value is a bare identifier, so there
@@ -172,13 +184,16 @@ def render_overlay(keys: list[ForeignKey], relationships_source: str, naming_sou
         f"#   naming         from backend/overlays/{NAMING_FILE.name}",
         f"#                  NAMING EDITS BELONG IN {NAMING_FILE.name}, not here.",
         "#",
-        "# To regenerate after editing either source:",
+        f"#   preferences    from backend/overlays/{PREFERENCES_FILE.name}",
+        f"#                  PREFERENCES BELONG IN {PREFERENCES_FILE.name}, not here.",
+        "#",
+        "# To regenerate after editing any source:",
         "#     python3 backend/warehouse/ri.py write-overlay",
         "# (./scripts/warehouse.sh also regenerates it, and rebuilds the warehouse.)",
         "#",
         f"# {len(keys)} relationships from tpcds_ri.sql, which the generated warehouse does not",
         f"# declare by itself (FR-43), then {by_hand.count('  - from:')} declared by hand that tpcds_ri.sql omits.",
-        "# The preferences section is absent on purpose (DD-12).",
+        "# The preferences say which TABLE a table is attached to, never which key (DD-12).",
         "",
         "relationships:",
     ]
@@ -187,7 +202,10 @@ def render_overlay(keys: list[ForeignKey], relationships_source: str, naming_sou
         lines.append(f"    to:   {key.to_table}.{key.to_column}")
     lines.append("")
     lines.append(f"  # Declared by hand in {RELATIONSHIPS_FILE.name}. Not in tpcds_ri.sql, not in the catalog.")
-    return "\n".join(lines) + "\n" + by_hand + "\n" + naming_section(naming_source)
+    return (
+        "\n".join(lines) + "\n" + by_hand + "\n" + naming_section(naming_source)
+        + "\n" + preferences_section(preferences_source)
+    )  # fmt: skip
 
 
 def render_primary_keys(keys: list[ForeignKey]) -> str:
@@ -209,6 +227,7 @@ def render_current_overlay() -> str:
         load(),
         RELATIONSHIPS_FILE.read_text(encoding="utf-8"),
         NAMING_FILE.read_text(encoding="utf-8"),
+        PREFERENCES_FILE.read_text(encoding="utf-8"),
     )
 
 
