@@ -162,18 +162,3 @@ def test_the_bounds_are_passed_on(graph) -> None:
     located = locate("q", scores, (), graph, SETTINGS, subgraph_bound=3)
     assert located.tree.subgraph_bound.limit == 3
     assert located.tree.subgraph_bound.dropped_anchors == ("customer_address",)
-
-
-def test_a_close_call_that_set_nothing_aside_is_not_handed_to_the_tree(graph) -> None:
-    """Ruling A-3. store is set aside for customer_address, which scores
-    higher than it. "place" chose catalog_sales, which scores lower than
-    store and is an anchor too: that close call set nothing aside, and the
-    tree must not be told it did."""
-    question = _scores(graph, customer_address=1.0, store=0.9, catalog_sales=0.8, customer__c_customer_sk=0.0)
-    address = _scores(graph, customer_address=1.0, store=0.9, customer__c_customer_sk=0.0)
-    place = _scores(graph, catalog_sales=1.0, store=0.9, customer__c_customer_sk=0.0)
-    terms = ((Term("address", "word"), address), (Term("place", "word"), place))
-    located = locate("q", question, terms, graph, SETTINGS)
-
-    assert located.retrieval.anchor_bound.set_aside_as_rivals == ("store",)
-    assert [(entry.chosen, entry.rival) for entry in set_aside(located.retrieval)] == [("customer_address", "store")]

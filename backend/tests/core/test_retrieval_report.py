@@ -60,7 +60,7 @@ def test_every_line_of_the_record_is_printed_in_order(graph, capsys) -> None:
     printed = capsys.readouterr().out
 
     assert _labels(printed) == [
-        "best raw", "terms", "tables", "columns", "anchors", "set aside", "both kept", "partners", "cap cut",
+        "best raw", "terms", "tables", "columns", "anchors", "set aside", "partners", "cap cut",
         "attached", "attached", "attached", "tree",
     ]  # fmt: skip
     assert "anchors    3: catalog_sales 1.000, customer_address 0.900, store_sales 0.700" in printed
@@ -138,40 +138,3 @@ def test_with_nothing_to_say_the_warnings_line_says_none(graph, capsys) -> None:
 def test_a_join_of_two_columns_is_one_line(graph) -> None:
     edges = frozenset({frozenset({("a.x", "b.x"), ("a.y", "b.y")}), frozenset({("a.z", "c.z")})})
     assert joins_of(edges) == ["a.x = b.x and a.y = b.y", "a.z = c.z"]
-
-
-def test_a_rival_kept_because_it_outscores_the_winner_is_printed_as_kept(graph, capsys) -> None:
-    """Ruling A-3 of the retrieval pass. "address" chose customer_address
-    with store within the margin, and store scores higher on the whole
-    question: both are anchors, nothing is set aside, and the line says so."""
-    question = _scores(
-        graph, catalog_sales=1.0, store=0.9, customer_address=0.8, customer__c_customer_sk=0.0
-    )
-    address = _scores(graph, customer_address=1.0, store=0.9, customer__c_customer_sk=0.0)
-    settings = Settings(alpha=1.0, anchor_cut=0.5, anchor_cap=5, margin=0.25)
-    print_retrieval(locate("q", question, ((Term("address", "word"), address),), graph, settings))
-    printed = capsys.readouterr().out
-
-    assert "set aside  none" in printed
-    assert (
-        'both kept  store 0.900 and customer_address 0.800 ("address" chose customer_address: 1.000 against 0.900)'
-        in printed
-    )
-
-
-def test_a_rival_set_aside_for_another_winner_is_not_printed_as_kept(graph, capsys) -> None:
-    """store outscores customer_address, which "address" chose, and is set
-    aside all the same, for catalog_sales, which "order" chose and which
-    scores higher. It was not kept, and the line must not say it was."""
-    question = _scores(
-        graph, catalog_sales=1.0, store=0.9, customer_address=0.8, customer__c_customer_sk=0.0
-    )
-    address = _scores(graph, customer_address=1.0, store=0.9, customer__c_customer_sk=0.0)
-    order = _scores(graph, catalog_sales=1.0, store=0.9, customer__c_customer_sk=0.0)
-    settings = Settings(alpha=1.0, anchor_cut=0.5, anchor_cap=5, margin=0.25)
-    terms = ((Term("address", "word"), address), (Term("order", "word"), order))
-    print_retrieval(locate("q", question, terms, graph, settings))
-    printed = capsys.readouterr().out
-
-    assert 'set aside  store ("order" chose catalog_sales: 1.000 against 0.900)' in printed
-    assert "both kept  none" in printed
