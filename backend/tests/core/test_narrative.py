@@ -6,12 +6,14 @@ who does not write SQL. The owner's rules at stop 2 of step 8, each
 tested below by its number:
 
   1  meaning, not mechanics: no "row", "surrogate key", "dimension";
-  2  for each choice that touched the answer, what was used and what the
-     alternatives were; an arbitrary one says so and says to ask again;
+  2  route says, for each choice that touched the answer, what was used
+     and how it was chosen, and names no alternative; not_taken names
+     them once, with ONE "ask again" for all the arbitrary choices;
   3  a declared preference's reason once, as a clause;
   4  longer routes in one sentence in all, "the shortest was used";
-  5  the unused part of the plan in one sentence; a close call names its
-     word and its tables;
+  5  the unused part of the plan in one sentence; close calls are not in
+     the narrative at all (stop 2b);
+  6  alternatives sharing an owner and a noun are one phrase;
   7  plain phrases from a vocabulary only the narrative reads, with a
      fallback to the readable name without "surrogate key".
 
@@ -96,15 +98,13 @@ def test_it_is_the_same_every_time_it_is_composed_from_the_same_trace() -> None:
     assert again(first) == first.narrative
 
 
-def test_the_guide_the_owner_gave_for_d4() -> None:
-    """The style to aim for, held as a whole so that a change to any part
-    of it is seen."""
+def test_d4_whole() -> None:
+    """Held as a whole so that a change to any part of it is seen."""
     narrative = told([reply(D4_SQL)], *D4, executor=Runs(rows=7))
     assert narrative.found == "Your question matched 4 tables: customer demographics, web sales, web site and web page."
     assert narrative.route == (
-        "The answer links each web sale to the billed customer's demographics. Each web sale also records the "
-        f"shipped-to customer's demographics; {ARBITRARY} The plan also brought in web site and web page; "
-        "the query did not use them."
+        f"The answer links each web sale to the billed customer's demographics. 1 other reading was equally possible; {ARBITRARY} "
+        "The plan also brought in web site and web page; the query did not use them."
     )
     assert narrative.not_taken == (
         "Not used: the shipped-to customer's demographics. If you meant the other, the answer may differ; "
@@ -112,6 +112,26 @@ def test_the_guide_the_owner_gave_for_d4() -> None:
     )
     assert narrative.sql == "The query followed this plan, using 1 of its 3 joins; web site and web page were not needed."
     assert narrative.result == "7 rows came back."
+
+
+def test_d7_whole() -> None:
+    narrative = told([reply(D7_SQL)], *D7, executor=Runs(rows=7))
+    assert narrative.route == (
+        "The answer links each catalog sale to the billed customer's demographics. A preference declared for this "
+        f"warehouse set aside 2 readings, because {RETURN_REASON} (an operator's default). 1 other remained equally "
+        f"possible; {ARBITRARY} It also links each catalog sale to its date of sale. A preference declared for this "
+        f"warehouse set aside 2 readings, for the reason already given and because {DATE_REASON} (an operator's "
+        f"default). 3 others remained equally possible; {ARBITRARY} The plan also brought in catalog returns and "
+        "customer; the query did not use them."
+    )
+    assert narrative.not_taken == (
+        "Not used: the shipped-to customer's demographics, and the customer's dates of first purchase, first shipment "
+        "and last review. If you meant one of those, the answer may differ; ask again naming it. Set aside by "
+        "declared preference: the catalog return's refunded and returning customers' demographics; the catalog "
+        "return's date of return; and the ship date. 732 longer routes also existed; the shortest was used. Other "
+        "choices were made in the part of the plan the query did not use; they did not affect this answer."
+    )
+    assert narrative.sql == "The query followed this plan, using 2 of its 4 joins; catalog returns and customer were not needed."
 
 
 # ---- rule 1: meaning, not mechanics ----------------------------------------
@@ -173,19 +193,14 @@ def test_found_with_one_table() -> None:
     assert told([reply("SELECT COUNT(*) FROM store")], "store").found == "Your question matched one table: store."
 
 
-def test_a_close_call_names_its_word_and_its_tables_in_one_sentence() -> None:
-    """Rule 5."""
+def test_close_calls_are_not_in_the_narrative_and_stay_in_the_trace() -> None:
+    """The ruling at stop 2b: their terms are machine-made word pairs,
+    not the reader's words. They stay in the retrieval section."""
     made = document([reply(STORE_SQL)], *STORE)
-    calls = [
-        SimpleNamespace(term="buyer", chosen="customer", rival="customer_address"),
-        SimpleNamespace(term="day", chosen="date_dim", rival="time_dim"),
-    ]
-    found = again(made, retrieval=SimpleNamespace(close_calls=calls)).found
-    assert found.endswith(
-        '"Buyer" could also have meant customer address; customer was used. '
-        '"Day" could also have meant times of day; calendar dates was used.'
-    )
-    assert "could also have meant" not in made.narrative.found
+    calls = [SimpleNamespace(term="web split", chosen="web_site", rival="web_returns", text="x")]
+    with_calls = again(made, retrieval=SimpleNamespace(close_calls=calls))
+    assert with_calls == made.narrative
+    assert "could also have meant" not in whole(with_calls) and "web split" not in whole(with_calls).lower()
 
 
 def test_an_anchor_dropped_to_keep_within_the_bound_is_named() -> None:
@@ -198,50 +213,56 @@ def test_an_anchor_dropped_to_keep_within_the_bound_is_named() -> None:
 # ---- rule 2: what was used, the alternatives, and the basis ----------------
 
 
-def test_what_was_used_is_one_sentence_of_meaning() -> None:
+def test_what_was_used_is_one_sentence_of_meaning_and_then_how_it_was_chosen() -> None:
     assert told([reply(BILL)], *ADDRESS).route.startswith("The answer links each catalog sale to the billing address. ")
-    assert told([reply(STORE_SQL)], *STORE).route == "The answer links each store sale to its store."
+    assert told([reply(STORE_SQL)], *STORE).route == "The answer links each store sale to its store. It is the shortest route between them."
+    assert told([reply(STORE_SQL)], *STORE, max_joins=1).route == "The answer links each store sale to its store. It is the only route between them."
 
 
-def test_an_arbitrary_choice_names_the_alternative_says_so_and_says_to_ask_again() -> None:
+def test_an_arbitrary_choice_says_so_in_the_route_and_names_the_alternative_under_not_used() -> None:
     narrative = told([reply(BILL)], *ADDRESS)
-    assert narrative.route == (
-        f"The answer links each catalog sale to the billing address. Each catalog sale also records the shipping address; {ARBITRARY}"
-    )
+    assert narrative.route == f"The answer links each catalog sale to the billing address. 1 other reading was equally possible; {ARBITRARY}"
+    assert "shipping" not in narrative.route
     assert narrative.not_taken.startswith(f"Not used: the shipping address. {ASK_AGAIN_ONE}")
     assert ASK_AGAIN_ONE == "If you meant the other, the answer may differ; ask again naming it."
+    assert ASK_AGAIN_SEVERAL == "If you meant one of those, the answer may differ; ask again naming it."
 
 
-def test_several_alternatives_are_asked_about_as_several() -> None:
+def test_the_arbitrary_choices_are_named_together_and_asked_about_once() -> None:
+    """Rule 2: one "ask again" for all the arbitrary choices together."""
     narrative = told([reply(D7_SQL)], *D7)
-    assert (
-        "Equally possible: the customer's date of first purchase, the customer's date of first shipment and the "
-        f"customer's date of last review; {ARBITRARY}"
-    ) in narrative.route
-    assert (
-        "Not used: the customer's date of first purchase, the customer's date of first shipment and the customer's "
-        f"date of last review. {ASK_AGAIN_SEVERAL}"
-    ) in narrative.not_taken
+    assert narrative.not_taken.startswith(
+        "Not used: the shipped-to customer's demographics, and the customer's dates of first purchase, first shipment "
+        f"and last review. {ASK_AGAIN_SEVERAL} Set aside by declared preference: "
+    )
+    assert whole(narrative).count("ask again") == 1 and narrative.not_taken.count("Not used:") == 1
+    assert narrative.route.count("it is arbitrary") == 2
+
+
+def test_the_route_names_no_alternative() -> None:
+    for script, anchors in (([reply(D7_SQL)], D7), ([reply(D4_SQL)], D4), ([reply(BRIDGE_SQL)], ("item", "date_dim"))):
+        route = told(script, *anchors).route
+        for phrase in ("shipped-to", "first purchase", "date of return and the ship date", "refunded", "a route through", "ship date"):
+            assert phrase not in route, phrase
 
 
 def test_a_shortest_or_only_route_has_no_alternative_to_name_and_no_alarm() -> None:
     for arguments in ({}, {"max_joins": 1}):
         narrative = told([reply(STORE_SQL)], *STORE, **arguments)
-        assert narrative.route == "The answer links each store sale to its store."
         assert "arbitrary" not in whole(narrative) and "ask again" not in whole(narrative)
     assert told([reply(STORE_SQL)], *STORE).not_taken == "Nothing else was equally short. 15 longer routes also existed; the shortest was used."
     assert told([reply(STORE_SQL)], *STORE, max_joins=1).not_taken == "Nothing else was equally short."
 
 
-def test_a_declared_preference_names_what_it_chose_over_and_is_not_an_alarm() -> None:
+def test_a_declared_preference_gives_its_reason_and_is_not_an_alarm() -> None:
     where = located("catalog_sales", "date_dim")
     assert where.tree.attachments[1].rule == "preference"
     narrative = told([reply("SELECT d.d_year FROM catalog_sales cs JOIN date_dim d ON cs.cs_sold_date_sk = d.d_date_sk")], where=where)
     assert narrative.route == (
-        "The answer links each catalog sale to its date of sale. The ship date was equally possible; a preference "
+        "The answer links each catalog sale to its date of sale. 1 other reading was equally possible; a preference "
         f"declared for this warehouse chose this one, because {DATE_REASON} (an operator's default)."
     )
-    assert narrative.not_taken.startswith("Not used: the ship date. 152 longer")
+    assert narrative.not_taken == "Set aside by declared preference: the ship date. 152 longer routes also existed; the shortest was used."
     assert "arbitrary" not in whole(narrative) and "ask again" not in whole(narrative)
 
 
@@ -253,11 +274,11 @@ def test_a_preference_between_two_places_names_the_place_it_set_aside() -> None:
     assert attachment.rule == "preference" and len(attachment.withdrawn) == 1
     narrative = told([reply("SELECT 1 FROM store_sales ss JOIN item i ON ss.ss_item_sk = i.i_item_sk")], where=where)
     assert narrative.route.startswith(
-        "The answer links each store sale to its item. The store return's item was equally possible; a preference "
+        "The answer links each store sale to its item. 1 other reading was equally possible; a preference "
         f"declared for this warehouse chose this one, because {RETURN_REASON} (an operator's default)."
     )
-    assert "Set aside by a declared preference: the store return's item." in narrative.not_taken
-    assert "arbitrary" not in whole(narrative)
+    assert narrative.not_taken.startswith("Set aside by declared preference: the store return's item. ")
+    assert "arbitrary" not in whole(narrative) and "Not used" not in narrative.not_taken
 
 
 def test_the_wording_of_the_question_is_named_when_it_decided() -> None:
@@ -266,28 +287,27 @@ def test_the_wording_of_the_question_is_named_when_it_decided() -> None:
     assert where.tree.attachments[1].rule == "question_evidence"
     narrative = told([reply(SHIP)], where=where)
     assert narrative.route == (
-        "The answer links each catalog sale to the shipping address. The billing address was equally possible; "
-        "the wording of your question pointed to this one."
+        "The answer links each catalog sale to the shipping address. The wording of your question pointed to this "
+        "over 1 other reading."
     )
+    assert narrative.not_taken.startswith("Set aside by the wording of your question: the billing address. ")
     assert "arbitrary" not in whole(narrative) and "ask again" not in whole(narrative)
 
 
-def test_a_preference_that_left_a_tie_says_what_it_set_aside_and_that_the_rest_is_arbitrary() -> None:
+def test_a_preference_that_left_a_tie_says_so_and_that_the_rest_is_arbitrary() -> None:
     where = located("catalog_sales", "catalog_returns", "customer_demographics")
     assert where.tree.attachments[2].rule == "alphabetical" and len(where.tree.attachments[2].withdrawn) == 2
     sql = "SELECT cd.cd_marital_status FROM catalog_sales cs JOIN customer_demographics cd ON cs.cs_bill_cdemo_sk = cd.cd_demo_sk"
     narrative = told([reply(sql)], where=where)
     assert narrative.route.startswith(
         "The answer links each catalog sale to the billed customer's demographics. A preference declared for this "
-        "warehouse set aside the catalog return's refunded customer's demographics and the catalog return's returning "
-        f"customer's demographics, because {RETURN_REASON} (an operator's default). "
-        f"Each catalog sale also records the shipped-to customer's demographics; {ARBITRARY}"
+        f"warehouse set aside 2 readings, because {RETURN_REASON} (an operator's default). "
+        f"1 other remained equally possible; {ARBITRARY}"
     )
-    assert f"Not used: the shipped-to customer's demographics. {ASK_AGAIN_ONE}" in narrative.not_taken
-    assert (
-        "Set aside by a declared preference: the catalog return's refunded customer's demographics and the catalog "
-        "return's returning customer's demographics."
-    ) in narrative.not_taken
+    assert narrative.not_taken.startswith(
+        f"Not used: the shipped-to customer's demographics. {ASK_AGAIN_ONE} Set aside by declared preference: "
+        "the catalog return's refunded and returning customers' demographics. "
+    )
 
 
 def test_a_route_of_two_joins_is_told_through_the_table_between() -> None:
@@ -298,12 +318,12 @@ def test_a_route_of_two_joins_is_told_through_the_table_between() -> None:
     )
 
 
-def test_many_alternatives_are_counted_in_the_route_and_named_once_under_not_used() -> None:
+def test_alternatives_are_counted_in_the_route_and_named_once_under_not_used() -> None:
     narrative = told([reply(BRIDGE_SQL)], "item", "date_dim")
-    assert f"10 other readings were equally possible, named below; {ARBITRARY}" in narrative.route
-    assert "a route through" not in narrative.route
+    assert narrative.route.endswith(f"10 other readings were equally possible; {ARBITRARY}")
     assert narrative.not_taken.startswith("Not used: a route through catalog sales (ship date), a route through catalog sales (date of sale), ")
     assert "a route through store sales (date of sale)" in narrative.not_taken and ASK_AGAIN_SEVERAL in narrative.not_taken
+    assert "the a route" not in narrative.not_taken
 
 
 def test_a_second_choice_is_introduced_as_a_second() -> None:
@@ -320,7 +340,9 @@ def test_a_choice_the_query_went_against_is_told_and_never_called_unused() -> No
     assert "the billing address" in narrative.route and "it is arbitrary" in narrative.route
     assert "none of those links" not in narrative.route
     assert "did not affect this answer" not in narrative.not_taken
-    assert "The query itself used one of these and not the one planned." in narrative.not_taken
+    assert narrative.not_taken.startswith(
+        f"Not used: the shipping address. {ASK_AGAIN_ONE} The query itself used one of these and not the one planned."
+    )
     assert "The query itself" not in told([reply(BILL)], *ADDRESS).not_taken
 
 
@@ -363,7 +385,7 @@ def test_a_route_through_a_table_gives_each_date_once() -> None:
 
 def test_one_table_has_nothing_to_link_or_to_choose() -> None:
     narrative = told([reply("SELECT COUNT(*) FROM store")], "store")
-    assert narrative.route == "Only store was needed, so there was nothing to link."
+    assert narrative.route == "Only store was found, so there was nothing to link."
     assert narrative.not_taken == "With one table there was nothing to choose between."
 
 
@@ -375,7 +397,7 @@ def test_each_declared_reason_is_given_once_in_a_narrative() -> None:
     date, and the ship date for the date. Two reasons, each once."""
     text = whole(told([reply(D7_SQL)], *D7))
     assert text.count(RETURN_REASON) == 1 and text.count(DATE_REASON) == 1
-    assert f", because {DATE_REASON} (an operator's default). " in text
+    assert f" because {DATE_REASON} (an operator's default). " in text
     assert "because:" not in text and "Operator default." not in text
 
 
@@ -387,10 +409,14 @@ def test_a_reason_already_given_is_referred_to_and_not_repeated() -> None:
     )
     route = told([reply(sql)], where=where).route
     assert route.count(RETURN_REASON) == 1
-    assert (
-        "set aside the catalog return's refunded household's demographics and the catalog return's returning "
-        "household's demographics, for the reason already given. "
-    ) in route
+    assert route.count("set aside 2 readings, for the reason already given. ") == 1
+
+
+def test_a_reason_given_and_a_new_one_are_both_said() -> None:
+    """d7's date: the return was set aside for the reason given a sentence
+    before, the ship date for a new one."""
+    route = told([reply(D7_SQL)], *D7).route
+    assert f"set aside 2 readings, for the reason already given and because {DATE_REASON} (an operator's default)." in route
 
 
 def test_the_reasons_in_the_overlay_read_as_clauses() -> None:
@@ -484,12 +510,12 @@ def test_without_a_phrase_it_falls_back_to_the_readable_name_without_surrogate_k
         "catalog_sales.cs_bill_addr_sk": "invoiced address surrogate key",
         "catalog_sales.cs_ship_addr_sk": "somewhere else surrogate key",
     }
-    route = again(made, names=NAMES | {"columns": columns}).route
+    narrative = again(made, names=NAMES | {"columns": columns})
     # A role the vocabulary does not hold is used as it reads ...
-    assert "each catalog sale to the invoiced address." in route
+    assert "each catalog sale to the invoiced address." in narrative.route
     # ... and a name that is not a role and a thing is used whole.
-    assert "Each catalog sale also records its somewhere else;" in route
-    assert "surrogate key" not in route
+    assert narrative.not_taken.startswith("Not used: the somewhere else. ")
+    assert "surrogate key" not in whole(narrative)
 
 
 # ---- whether the query followed the plan: one wording for each outcome -----
@@ -666,7 +692,7 @@ def test_a_reading_is_not_listed_both_as_not_used_and_as_set_aside() -> None:
         update={"attachments": [seed, attached.model_copy(update={"alternatives": [*attached.alternatives, twin]})]}
     )
     not_taken = again(made, paths=paths).not_taken
-    assert "Set aside by a declared preference" not in not_taken
+    assert "Set aside by declared preference" not in not_taken
     assert not_taken.count("a route through catalog sales (ship date)") == 1
 
 
@@ -682,3 +708,80 @@ def test_a_route_whose_two_steps_are_the_same_kind_of_date_names_it_once() -> No
         update={"attachments": [seed, attached.model_copy(update={"alternatives": [twice]})]}
     )
     assert "Not used: a route through inventory (date). " in again(made, paths=paths).not_taken
+
+
+# ---- rule 6: alternatives that share an owner and a noun are one phrase ----
+
+
+def test_dates_of_one_owner_are_grouped() -> None:
+    not_taken = told([reply(D7_SQL)], *D7).not_taken
+    assert "the customer's dates of first purchase, first shipment and last review" in not_taken
+    assert "the customer's date of first purchase" not in not_taken
+
+
+def test_roles_of_one_owner_and_one_thing_are_grouped_and_possessives_do_not_stack_twice() -> None:
+    not_taken = told([reply(D7_SQL)], *D7).not_taken
+    assert "the catalog return's refunded and returning customers' demographics" in not_taken
+    assert "refunded customer's demographics" not in not_taken
+
+
+def test_what_does_not_share_an_owner_or_a_noun_is_not_grouped() -> None:
+    """The return's date of return and the sale's ship date are two
+    things; so are the sale's shipped-to demographics and the customer's
+    dates."""
+    not_taken = told([reply(D7_SQL)], *D7).not_taken
+    assert "the catalog return's date of return; and the ship date." in not_taken
+    assert "dates of return" not in not_taken
+
+
+def test_a_group_of_two_and_a_single_reading() -> None:
+    made = document([reply(D7_SQL)], *D7)
+    attachments = list(made.paths.attachments)
+    date = next(a for a in attachments if a.anchor == "date_dim")
+    two = [a for a in date.alternatives if a.status == "tied"][:2]
+    attachments[attachments.index(date)] = date.model_copy(update={"alternatives": two})
+    not_taken = again(made, paths=made.paths.model_copy(update={"attachments": attachments})).not_taken
+    assert "the customer's dates of first purchase and first shipment." in not_taken
+
+
+def test_a_thing_that_is_not_a_possessive_is_made_plural_plainly() -> None:
+    where = located("catalog_sales", "catalog_returns", "customer")
+    sql = "SELECT 1 FROM catalog_sales cs JOIN customer c ON cs.cs_bill_customer_sk = c.c_customer_sk"
+    not_taken = told([reply(sql)], where=where).not_taken
+    assert "Set aside by declared preference: the catalog return's refunded and returning customers." in not_taken
+
+
+def test_things_of_one_owner_that_are_different_things_are_two_phrases() -> None:
+    where = located("catalog_sales", "catalog_returns", "customer_demographics", "household_demographics")
+    sql = (
+        "SELECT COUNT(*) FROM catalog_sales cs JOIN customer_demographics cd ON cs.cs_bill_cdemo_sk = cd.cd_demo_sk "
+        "JOIN household_demographics hd ON cs.cs_bill_hdemo_sk = hd.hd_demo_sk"
+    )
+    not_taken = told([reply(sql)], where=where).not_taken
+    assert (
+        "Set aside by declared preference: the catalog return's refunded and returning customers' demographics, and "
+        "the catalog return's refunded and returning households' demographics."
+    ) in not_taken
+    assert "Not used: the shipped-to customer's demographics and the shipped-to household's demographics." in not_taken
+
+
+def test_the_same_kind_of_date_of_two_owners_is_two_phrases() -> None:
+    made = document([reply(D7_SQL)], *D7)
+    attachments = list(made.paths.attachments)
+    date = next(a for a in attachments if a.anchor == "date_dim")
+    retied = [a.model_copy(update={"status": "tied"}) if "returned" in a.id else a for a in date.alternatives]
+    attachments[attachments.index(date)] = date.model_copy(update={"alternatives": retied})
+    not_taken = again(made, paths=made.paths.model_copy(update={"attachments": attachments})).not_taken
+    assert "the customer's dates of first purchase, first shipment and last review; and the catalog return's date of return." in not_taken
+
+
+def test_two_routes_that_read_alike_are_named_once() -> None:
+    made = document([reply(BRIDGE_SQL)], "item", "date_dim")
+    seed, attached = made.paths.attachments
+    twin = attached.alternatives[0].model_copy(update={"id": "another id, the same reading"})
+    paths = made.paths.model_copy(
+        update={"attachments": [seed, attached.model_copy(update={"alternatives": [*attached.alternatives, twin]})]}
+    )
+    not_taken = again(made, paths=paths).not_taken
+    assert not_taken.startswith("Not used: a route through catalog sales (ship date), a route through catalog sales (date of sale), ")
+    assert not_taken.count("a route through catalog sales (ship date)") == 1

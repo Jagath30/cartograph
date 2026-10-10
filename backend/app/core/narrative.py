@@ -13,19 +13,30 @@ keys and its direction, stays in the trace's `paths` for the detail view
 
   1. It speaks of MEANING. "The billed customer's demographics", not "a
      row" or "a surrogate key"; no table or column by its identifier.
-  2. For each choice that touched the answer: one sentence for what was
-     used and one naming the alternatives the same way. If the choice was
-     arbitrary it says so, and adds: "If you meant the other, the answer
-     may differ; ask again naming it."
+  2. `route` says, for each choice that touched the answer, what was used
+     and HOW it was chosen: the only route, the shortest, the wording of
+     the question, a declared preference, or the alphabet -- and then it
+     says the choice is arbitrary. It does not name the alternatives.
+     `not_taken` names them, once: "Not used: ...", then ONE "If you meant
+     one of those, the answer may differ; ask again naming it." for all
+     the arbitrary choices together, then what a declared preference or
+     the question's wording set aside, the longer routes, and the unused
+     part of the plan.
   3. A declared preference's reason is given once in a narrative, as a
      clause after "because".
   4. Longer routes get one sentence in all: "N longer routes also
      existed; the shortest was used." They were considered and lost.
   5. Choices in the part of the plan the query did not use get one
-     sentence. A close call names its word and its tables in one.
+     sentence. A plan that gave no answer is one sentence too.
+  6. Alternatives that share an owner and a noun are one phrase: "the
+     customer's dates of first purchase, first shipment and last review".
   7. The plain phrases come from app.core.narrative_words, which nothing
      else reads. Where it has none, the readable name is used without
      "surrogate key".
+
+CLOSE CALLS ARE NOT HERE (the owner's ruling at stop 2b). Their terms are
+machine-made word pairs, not the reader's words; they stay in the trace's
+retrieval section for the detail view.
 
 THE FIVE PARTS, each a string (ruling 8 at stop 1), in this order:
 
@@ -48,9 +59,6 @@ from app.core.narrative_words import KEY_SUFFIX, MOMENTS, ONE, PAIRS, ROLES, TAB
 
 ASK_AGAIN_ONE = "If you meant the other, the answer may differ; ask again naming it."
 ASK_AGAIN_SEVERAL = "If you meant one of those, the answer may differ; ask again naming it."
-# More alternatives than this are counted in the route and named once,
-# under what was not used.
-MANY = 3
 ARBITRARY = "nothing in your question said which you meant, so the choice was made alphabetically: it is arbitrary."
 
 
@@ -75,7 +83,23 @@ def _listed(items) -> str:
     items = list(items)
     if len(items) <= 1:
         return "".join(items)
+    # A list of phrases that themselves hold a list is parted by semicolons.
+    if any(" and " in item or ", " in item for item in items):
+        if len(items) == 2:
+            return f"{items[0]}, and {items[1]}"
+        return "; ".join(items[:-1]) + "; and " + items[-1]
     return ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def _plural(text: str) -> str:
+    """"date of" -> "dates of"; "customer's demographics" -> "customers'
+    demographics"; "customer" -> "customers"."""
+    if " of" in text:
+        head, rest = text.split(" of", 1)
+        return f"{head}s of{rest}"
+    if "'s " in text:
+        return text.replace("'s ", "s' ", 1)
+    return text + ("es" if text.endswith("s") else "s")
 
 
 def _capital(text: str) -> str:
@@ -154,52 +178,94 @@ class _Teller:
         readable = self.names["columns"].get(f"{table}.{column}", column)
         return readable.removesuffix(KEY_SUFFIX)
 
-    def _thing(self, join) -> tuple[str, str]:
-        """What a key points to, in plain words: (article, phrase).
-        "its date of sale"; "the billed customer's demographics"."""
+    def _thing(self, join) -> tuple:
+        """What a key points to, in plain words, as parts that can be
+        grouped (rule 6):
+          ("of", "date of", "first purchase")       its date of first purchase
+          ("adj", "billed", "customer's demographics")
+          ("plain", article, phrase)."""
         target = self.names["tables"].get(join.to_table, join.to_table)
         thing = THINGS.get(target, ONE.get(target, target))
         if len(join.from_columns) != 1:
-            return "its", thing
+            return ("plain", "its", thing)
         base = self._plain_column(join.from_table, join.from_columns[0])
         if base in MOMENTS:
-            return "its", MOMENTS[base]
+            moment = MOMENTS[base]
+            for head in ("date of", "time of"):
+                if moment.startswith(head + " "):
+                    return ("of", head, moment[len(head) + 1 :])
+            return ("plain", "its", moment)
         for tail in (target, target.split(" ")[-1]):
             if base == tail:
-                return "its", thing
+                return ("plain", "its", thing)
             if base.endswith(" " + tail):
                 role = base[: -len(tail) - 1]
-                return "the", PAIRS.get((role, target), f"{ROLES.get(role, role)} {thing}")
+                if (role, target) in PAIRS:
+                    return ("plain", "the", PAIRS[role, target])
+                return ("adj", ROLES.get(role, role), thing)
         # No phrase: the readable name, without "surrogate key" (rule 7).
-        return "its", base
+        return ("plain", "its", base)
 
-    def thing(self, join, beside=None) -> str:
-        """A key's meaning as a phrase. When it belongs to another table
-        than the one being spoken of, it says whose: "the customer's date
-        of first purchase"."""
-        article, phrase = self._thing(join)
-        if beside is not None and join.from_table != beside:
-            return f"the {self.one(join.from_table)}'s {phrase}"
-        return f"{article} {phrase}"
+    @staticmethod
+    def _said(part: tuple, owner: str | None = None, alone: bool = False) -> str:
+        kind, first, second = part
+        article, body = {"of": ("its", f"{first} {second}"), "adj": ("the", f"{first} {second}")}.get(kind, (first, second))
+        if owner:
+            return f"the {owner}'s {body}"
+        if not article:
+            return body
+        return f"{'the' if alone else article} {body}"
+
+    def _owner(self, join, beside) -> str | None:
+        """Whose it is, when it belongs to another table than the one
+        being spoken of: "the customer's date of first purchase"."""
+        return self.one(join.from_table) if beside is not None and join.from_table != beside else None
 
     def link(self, join) -> str:
-        return f"each {self.one(join.from_table)} to {self.thing(join)}"
+        return f"each {self.one(join.from_table)} to {self._said(self._thing(join))}"
 
-    def reading(self, route, beside=None) -> str:
-        """A whole route as one phrase: its key's meaning, or for a route
-        of several joins the table it goes through."""
+    def _reading(self, route, beside) -> tuple:
+        """A whole route as (owner, part): its key's meaning, or for a
+        route of several joins the table it goes through."""
         if len(route.joins) == 1:
-            return self.thing(route.joins[0], beside)
-        between = [name for name in route.tables[1:-1]]
-        moments = list(dict.fromkeys(self._thing(j)[1] for j in route.joins if self._thing(j)[1] in MOMENTS.values()))
-        return f"a route through {self.tables(between)}" + (f" ({_listed(moments)})" if moments else "")
+            return self._owner(route.joins[0], beside), self._thing(route.joins[0])
+        parts = [self._thing(join) for join in route.joins]
+        dated = [f"{first} {second}" if kind == "of" else second for kind, first, second in parts
+                 if kind == "of" or second in MOMENTS.values()]  # fmt: skip
+        moments = list(dict.fromkeys(dated))
+        through = f"a route through {self.tables(route.tables[1:-1])}" + (f" ({_listed(moments)})" if moments else "")
+        return None, ("plain", "", through)
+
+    def _grouped(self, readings: list[tuple]) -> list[str]:
+        """The readings as phrases, those that share an owner and a noun
+        as one (rule 6), each at the place of its first member."""
+        readings = list(dict.fromkeys(readings))
+        groups: dict[tuple, list[tuple]] = {}
+        for owner, part in readings:
+            key = (owner, part[0], part[1] if part[0] == "of" else part[2]) if part[0] != "plain" else (owner, part)
+            groups.setdefault(key, []).append((owner, part))
+        phrases = []
+        for members in groups.values():
+            owner, (kind, first, second) = members[0]
+            if len(members) == 1:
+                phrase = self._said(members[0][1], owner, alone=True)
+            elif kind == "of":
+                body = f"{_plural(first)} {_listed(part[2] for _, part in members)}"
+                phrase = f"the {owner}'s {body}" if owner else f"the {body}"
+            else:
+                body = f"{_listed(part[1] for _, part in members)} {_plural(second)}"
+                phrase = f"the {owner}'s {body}" if owner else f"the {body}"
+            phrases.append(phrase.strip())
+        return phrases
 
     def _because(self, attachment) -> str:
-        fresh = [r for r in dict.fromkeys(_clause(r) for r in attachment.preference_reasons) if r not in self._reasons_given]
+        reasons = list(dict.fromkeys(_clause(r) for r in attachment.preference_reasons))
+        fresh = [r for r in reasons if r not in self._reasons_given]
+        given = len(fresh) < len(reasons)
         self._reasons_given += fresh
         if not fresh:
             return ", for the reason already given"
-        return ", because " + ", and because ".join(fresh)
+        return (", for the reason already given and because " if given else ", because ") + ", and because ".join(fresh)
 
     # ---- found ------------------------------------------------------------
 
@@ -234,10 +300,6 @@ class _Teller:
         beside = [node.table for node in self.subgraph.nodes if not node.in_tree] if self.subgraph else []
         if beside:
             said.append(f"The model was also shown {self.tables(beside)}, which could have linked them equally well.")
-        for call in self.retrieval.close_calls if self.retrieval else []:
-            said.append(
-                f'"{_capital(call.term)}" could also have meant {self.table(call.rival)}; {self.table(call.chosen)} was used.'
-            )
         return " ".join(said)
 
     # ---- route ------------------------------------------------------------
@@ -248,7 +310,7 @@ class _Teller:
             return "No plan was made."
         joined = [a for a in paths.attachments if a.selected is not None]
         if not joined:
-            return f"Only {self.table(paths.tables[0])} was needed, so there was nothing to link."
+            return f"Only {self.table(paths.tables[0])} was found, so there was nothing to link."
         if not self.answered:
             return (
                 f"A plan was made linking {self.tables(paths.tables)}. No answer came of it, so none of its "
@@ -262,9 +324,7 @@ class _Teller:
         said = []
         for position, attachment in enumerate(self.told):
             said.append(self._used(attachment, first=position == 0))
-            basis = self._basis(attachment)
-            if basis:
-                said.append(basis)
+            said.append(self._basis(attachment))
         if self.untold:
             not_used = self.tables(a.anchor for a in self.untold)
             said.append(f"The plan also brought in {not_used}; the query did not use {'it' if len(self.untold) == 1 else 'them'}.")
@@ -280,48 +340,34 @@ class _Teller:
         between = self.tables(attachment.selected.tables[1:-1])
         return f"{opening} {ends} through {between}: {_listed(self.link(join) for join in joins)}."
 
-    def _others(self, attachment, status: str, own: bool = False) -> list[str]:
-        """The alternatives of one kind, each as a phrase. `own` keeps
-        "its" for use after "each sale also records"; standing alone a
-        phrase reads "the ship date"."""
+    def _others(self, attachment, status: str) -> list[tuple]:
+        """The alternatives of one kind, each as (owner, part)."""
         beside = attachment.selected.joins[0].from_table if len(attachment.selected.joins) == 1 else None
-        phrases = dict.fromkeys(self.reading(a, beside) for a in attachment.alternatives if a.status == status)
-        return [p if own or not p.startswith("its ") else "the " + p[4:] for p in phrases]
+        return [self._reading(a, beside) for a in attachment.alternatives if a.status == status]
 
     def _basis(self, attachment) -> str:
-        """One sentence naming the alternatives, and the basis of the
-        choice: one wording for each rule of DD-12."""
-        tied = self._others(attachment, "tied")
-        withdrawn = self._others(attachment, "withdrawn")
-        if attachment.rule in ("only_path", "shortest") or not (tied or withdrawn):
-            return ""
+        """How it was chosen: one wording for each rule of DD-12. The
+        alternatives are counted here and named under what was not used."""
+        tied = len(self._others(attachment, "tied"))
+        withdrawn = len(self._others(attachment, "withdrawn"))
+        if attachment.rule == "only_path":
+            return "It is the only route between them."
+        if not (tied or withdrawn):
+            return "It is the shortest route between them."
         if attachment.rule == "question_evidence":
-            return f"{_capital(_listed(tied))} {'was' if len(tied) == 1 else 'were'} equally possible; the wording of your question pointed to this one."
+            return f"The wording of your question pointed to this over {_count(tied, 'other reading', 'other readings')}."
         if attachment.rule == "preference":
-            others = tied + withdrawn
             return (
-                f"{_capital(_listed(others))} {'was' if len(others) == 1 else 'were'} equally possible; "
+                f"{_count(tied + withdrawn, 'other reading was', 'other readings were')} equally possible; "
                 f"a preference declared for this warehouse chose this one{self._because(attachment)}."
             )
         # The alphabet. The word "arbitrary" is in the sentence itself.
-        said = ""
         if withdrawn:
-            said = (
-                f"A preference declared for this warehouse set aside {_listed(withdrawn)}{self._because(attachment)}. "
+            return (
+                f"A preference declared for this warehouse set aside {_count(withdrawn, 'reading', 'readings')}"
+                f"{self._because(attachment)}. {_count(tied, 'other', 'others')} remained equally possible; {ARBITRARY}"
             )
-        joins = attachment.selected.joins
-        same_record = len(joins) == 1 and all(
-            len(a.joins) == 1 and a.joins[0].from_table == joins[0].from_table
-            for a in attachment.alternatives
-            if a.status == "tied"
-        )
-        if same_record:
-            also = self._others(attachment, "tied", own=True)
-            return said + f"Each {self.one(joins[0].from_table)} also records {_listed(also)}; {ARBITRARY}"
-        if len(tied) > MANY:
-            # Named once, under what was not used, and not twice.
-            return said + f"{len(tied)} other readings were equally possible, named below; {ARBITRARY}"
-        return said + f"Equally possible: {_listed(tied)}; {ARBITRARY}"
+        return f"{_count(tied, 'other reading was', 'other readings were')} equally possible; {ARBITRARY}"
 
     # ---- not taken --------------------------------------------------------
 
@@ -333,18 +379,32 @@ class _Teller:
             return "With one table there was nothing to choose between."
         if not self.answered:
             return "No answer was given, so nothing that was chosen affected one."
-        said = []
+        arbitrary: list[tuple] = []
+        by_wording: list[tuple] = []
+        by_preference: list[tuple] = []
         for attachment in self.told:
             tied = self._others(attachment, "tied")
-            withdrawn = [phrase for phrase in self._others(attachment, "withdrawn") if phrase not in tied]
-            if tied and attachment.rule == "alphabetical":
-                said.append(f"Not used: {_listed(tied)}. {ASK_AGAIN_ONE if len(tied) == 1 else ASK_AGAIN_SEVERAL}")
-            elif tied:
-                said.append(f"Not used: {_listed(tied)}.")
-            if withdrawn:
-                said.append(f"Set aside by a declared preference: {_listed(withdrawn)}.")
+            if attachment.rule == "alphabetical":
+                arbitrary += tied
+            elif attachment.rule == "question_evidence":
+                by_wording += tied
+            else:
+                by_preference += tied
+            by_preference += self._others(attachment, "withdrawn")
+        # Named once: a reading is listed where the reader can act on it.
+        by_preference = [reading for reading in by_preference if reading not in arbitrary]
+
+        said = []
+        if arbitrary:
+            names = self._grouped(arbitrary)
+            one = len(dict.fromkeys(arbitrary)) == 1
+            said.append(f"Not used: {_listed(names)}. {ASK_AGAIN_ONE if one else ASK_AGAIN_SEVERAL}")
         if any(warning.state == "other_route_taken" for warning in paths.warnings):
             said.append("The query itself used one of these and not the one planned.")
+        if by_wording:
+            said.append(f"Set aside by the wording of your question: {_listed(self._grouped(by_wording))}.")
+        if by_preference:
+            said.append(f"Set aside by declared preference: {_listed(self._grouped(by_preference))}.")
         if not said and self.told:
             said.append("Nothing else was equally short.")
         longer = sum(max(a.discovered - 1 - len(a.alternatives), 0) for a in self.told)
