@@ -1,17 +1,26 @@
-"""The first migration, run for real against a scratch database (DR-14,
-Design section 06, DD-17).
+"""The migrations, run for real against a scratch database (DR-14, Design
+section 06, DD-07, DD-17).
 
-Every table the application store has was created by this migration and by
-nothing else. These tests run it up and down, and then ask Postgres to
-refuse the things the schema exists to refuse.
+Every table the application store has was created by a migration and by
+nothing else. These tests run them up and down, and then ask Postgres to
+refuse the things the schema exists to refuse. The first migration (step
+6) made the three schema tables; the second (step 8) makes users, queries
+and traces, with user_id on queries from the moment the table exists
+(DR-08).
 """
+
+import json
+import uuid
+
 
 import psycopg
 import pytest
 from alembic import command
 from appdb import alembic_config
 
-TABLES = ["schema_edges", "schema_elements", "schema_snapshots"]
+SCHEMA_TABLES = ["schema_edges", "schema_elements", "schema_snapshots"]
+TABLES = ["queries", "schema_edges", "schema_elements", "schema_snapshots", "traces", "users"]
+LOCAL_USER = "local@cartograph.invalid"
 
 
 def _tables(url: str) -> list[str]:
@@ -40,10 +49,23 @@ def _element(connection, snapshot: int, table: str, column: str | None, text: st
     ).fetchone()[0]
 
 
-def test_upgrade_creates_exactly_the_three_schema_tables(empty_database) -> None:
+def test_the_first_migration_creates_exactly_the_three_schema_tables(empty_database) -> None:
     assert _tables(empty_database) == []
+    command.upgrade(alembic_config(empty_database), "0001")
+    assert _tables(empty_database) == SCHEMA_TABLES
+
+
+def test_upgrade_to_head_creates_exactly_the_six_tables(empty_database) -> None:
     command.upgrade(alembic_config(empty_database), "head")
     assert _tables(empty_database) == TABLES
+
+
+def test_the_second_migration_comes_down_alone_and_leaves_the_schema_tables(scratch_database) -> None:
+    config = alembic_config(scratch_database)
+    command.downgrade(config, "0001")
+    assert _tables(scratch_database) == SCHEMA_TABLES
+    command.upgrade(config, "head")
+    assert _tables(scratch_database) == TABLES
 
 
 def test_downgrade_removes_them_and_upgrade_brings_them_back(scratch_database) -> None:
@@ -54,9 +76,91 @@ def test_downgrade_removes_them_and_upgrade_brings_them_back(scratch_database) -
     assert _tables(scratch_database) == TABLES
 
 
-def test_no_users_queries_or_traces_yet(scratch_database) -> None:
-    """They arrive at step 8, with user_id from the first moment (DR-08)."""
-    assert not {"users", "queries", "traces"} & set(_tables(scratch_database))
+# --------------------------------------------------------------------------
+# users, queries, traces (step 8)
+# --------------------------------------------------------------------------
+
+
+def _local_user(connection) -> int:
+    return connection.execute("select id from users where email = %s", (LOCAL_USER,)).fetchone()[0]
+
+
+def _query(connection, user: int | None, outcome: str = "answered", conformance: str | None = "conforms") -> uuid.UUID:
+    query_id = uuid.uuid4()
+    connection.execute(
+        "insert into queries (id, user_id, question, created_at, outcome, had_ambiguity, conformance_result, "
+        "cost_estimate, duration_ms) values (%s, %s, 'q', now(), %s, false, %s, 0.000254, 12)",
+        (query_id, user, outcome, conformance),
+    )
+    return query_id
+
+
+def test_the_migration_seeds_one_local_user_who_cannot_log_in(scratch_database) -> None:
+    """Until step 11 every query belongs to this user. A null hash is a
+    user nobody can log in as."""
+    with psycopg.connect(scratch_database) as connection:
+        assert connection.execute("select email, password_hash from users").fetchall() == [(LOCAL_USER, None)]
+
+
+def test_an_email_is_held_once(scratch_database) -> None:
+    with psycopg.connect(scratch_database) as connection:
+        with pytest.raises(psycopg.errors.UniqueViolation):
+            connection.execute("insert into users (email) values (%s)", (LOCAL_USER,))
+
+
+def test_a_query_belongs_to_a_user_who_exists(scratch_database) -> None:
+    """DR-08: user identity from the moment the table exists."""
+    with psycopg.connect(scratch_database) as connection:
+        _query(connection, _local_user(connection))
+        connection.commit()
+        with pytest.raises(psycopg.errors.NotNullViolation):
+            _query(connection, None)
+        connection.rollback()
+        with pytest.raises(psycopg.errors.ForeignKeyViolation):
+            _query(connection, 999999)
+
+
+def test_an_outcome_and_a_conformance_result_are_ones_the_design_names(scratch_database) -> None:
+    with psycopg.connect(scratch_database) as connection:
+        user = _local_user(connection)
+        for outcome in ("answered", "not_answerable", "validation_failed", "model_failed", "execution_failed"):
+            _query(connection, user, outcome, None)
+        for conformance in ("conforms", "diverged", "incomplete", "not_checked"):
+            _query(connection, user, "answered", conformance)
+        connection.commit()
+        with pytest.raises(psycopg.errors.CheckViolation):
+            _query(connection, user, "guessed")
+        connection.rollback()
+        with pytest.raises(psycopg.errors.CheckViolation):
+            _query(connection, user, "answered", "probably")
+
+
+def test_a_trace_is_one_per_query_and_needs_its_query(scratch_database) -> None:
+    with psycopg.connect(scratch_database) as connection:
+        query_id = _query(connection, _local_user(connection))
+        body = json.dumps({"trace_version": 1})
+        connection.execute("insert into traces (query_id, trace_version, body) values (%s, 1, %s)", (query_id, body))
+        connection.commit()
+        with pytest.raises(psycopg.errors.UniqueViolation):
+            connection.execute("insert into traces (query_id, trace_version, body) values (%s, 1, %s)", (query_id, body))
+        connection.rollback()
+        with pytest.raises(psycopg.errors.ForeignKeyViolation):
+            connection.execute("insert into traces (query_id, trace_version, body) values (%s, 1, %s)", (uuid.uuid4(), body))
+
+
+def test_the_five_extracted_columns_are_on_queries_and_the_body_is_jsonb(scratch_database) -> None:
+    """DD-07 and figure 4: a history list never reads the traces table."""
+    with psycopg.connect(scratch_database) as connection:
+        columns = dict(
+            connection.execute(
+                "select table_name || '.' || column_name, data_type from information_schema.columns "
+                "where table_name in ('queries', 'traces')"
+            ).fetchall()
+        )
+    for name in ("outcome", "had_ambiguity", "conformance_result", "cost_estimate", "duration_ms", "user_id"):
+        assert f"queries.{name}" in columns
+    assert columns["traces.body"] == "jsonb" and columns["queries.id"] == "uuid"
+    assert set(name for name in columns if name.startswith("traces.")) == {"traces.query_id", "traces.trace_version", "traces.body"}
 
 
 def test_at_most_one_snapshot_is_current(scratch_database) -> None:
