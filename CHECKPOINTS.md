@@ -8099,6 +8099,50 @@ never leave a single candidate where there are several places). Suite:
 **Kept: C and D.** Stop 3 follows: the development questions end to end
 once, eight model calls, then smoke.
 
+### Stop 3: the development questions end to end, with C and D kept — 10 October 2026
+
+**STOPPED HERE FOR THE OWNER'S REVIEW, before the close.** Development
+run 3: the eight questions once, eight model calls, on `gpt-6-luna` at
+effort none and temperature 0, the prompt and the instrument unchanged
+since step 7. Full traces: `backend/eval/dev_runs/run3.txt` and
+`run3.json`. Then smoke: 32 passed, 0 failed, 0 skipped.
+
+    run 3 against step 7's run 1
+    d1  answered         incomplete -> incomplete   212 rows, as before
+    d2  not_answerable                              unchanged
+    d3  not_answerable                              unchanged
+    d4  answered         incomplete -> incomplete   7 rows, as before
+    d5  answered         incomplete -> incomplete   1 row; no join, as before
+    d6  not_answerable                              unchanged
+    d7  answered         DIVERGED   -> incomplete   7 rows
+    d8  not_answerable                              as it should be
+
+    every question: one attempt, no retry, no validator rejection, no
+    table named that was not in its prompt, the validated and executed
+    text the same by hash. The tables in each prompt are those of run 1.
+    cost: 14,861 tokens in, 378 out, $0.001675, and one smoke call.
+
+- **d7 no longer diverges.** The tree now hangs `customer_demographics`
+  and `date_dim` on `catalog_sales`, by the billing demographics key (C,
+  then the alphabet between billing and shipping) and by the sold date
+  (D). The model made exactly those two joins, as it did in run 1, when
+  the tree had both on `catalog_returns` and the trace said diverged.
+  Conformance is `incomplete`, not `conforms`: two selected joins are not
+  used, the return to its sale and `customer`, tables retrieval brought
+  that the answer does not need (item 56). Its warnings are unchanged,
+  `arbitrary_choice` and `multi_anchor`: the choices are still the
+  alphabet's, they now happen to be the ones the model also makes.
+- **d2, d3 and d6 are declined as before, each for the table retrieval
+  did not bring.** Nothing kept in this pass was aimed at them any more:
+  A-3 (d3) failed the keep-rule, B (d2) was left out, and d6's word is a
+  data value. They stay known limits.
+- **d5:** `web_page` now hangs on `web_sales` and not on `web_returns`
+  (C). Its SQL joins nothing, as in run 1, and reads the same but for
+  two column aliases.
+- **d1 and d4:** the same SQL as run 1 but for line breaks, so the
+  hashes differ and the rows do not. Temperature 0 does not repeat the
+  text (item 63).
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
