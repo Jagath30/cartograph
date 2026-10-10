@@ -7478,6 +7478,193 @@ d2, d3 or d6 newly holds `date_dim`, `catalog_sales` or `time_dim`.
 My reading, until ruled: **yes to both.** It is the stricter one and can
 only make a change harder to keep.
 
+### The three changes as proposed, and PREDICTIONS, before any code or run
+
+Written 10 October 2026 for stop 1. No code has changed and nothing has
+been run. Made from the recorded run 3, from the grid report at cut 0.4
+(`backend/eval/tuning/step6_alpha0.5_cut0.4.txt`, for which tables score
+between 0.4 and 0.5), from `backend/eval/dev_runs/run1.txt`, and from
+the code as read. What is derived and what is guessed is said. If a rule
+text changes at stop 1, its prediction is rewritten and committed again
+before the first run.
+
+**A FINDING FIRST, about change A.** In the code a rival IS a table
+within the margin: `_term` in `retriever.py` builds a term's rivals from
+`chosen.score - other.score < margin`, not joined. A table beaten by more
+than the margin was never a rival and is never set aside. d3's
+`catalog_sales` was set aside because 0.988 is inside the margin of
+1.000, not in spite of it. So "set aside only when beaten by more than
+the margin" has two readings, and they are far apart.
+
+**A, as proposed (reading A-1): within the margin, both stay.** A term's
+close calls are still found as today and still recorded on the term
+(FR-41). No table is set aside for one. Nothing replaces the set-aside:
+a table at the cut competes under the cap by its score. The loop in
+`retrieve` that settles the cap and the rivals together has nothing left
+to settle. `anchor_bound.set_aside_as_rivals` is always empty, and so
+the tree's close calls are too.
+
+*Reading A-2, not proposed:* a table is set aside when a term's nominee,
+an anchor, beats it by MORE than the margin, it is not joined to the
+nominee and no term nominates it. That is a new mechanism, not a
+correction: for most terms most tables are beaten by more than the
+margin, so it would set aside nearly every table no term names. It
+cannot be predicted from the record, and I do not recommend it.
+
+**A-1 predicted.** Derived: the tables that come back are exactly those
+set aside in run 3.
+
+    Q2  web_sales              Q4  web_site, catalog_sales
+    Q5  web_returns, catalog_returns      Q6  catalog_returns
+    Q7  store, catalog_sales, store_sales Q8  web_sales, catalog_sales
+    Q9  catalog_sales          Q11 web_sales, catalog_sales
+    Q12 web_returns            Q14 store_returns, catalog_returns
+    Q15 customer_address       Q16 web_site, catalog_page
+    unchanged: Q1, Q3, Q10, Q13
+
+Predicted anchors where the scores are on record:
+
+    Q2   catalog_sales, customer_address, catalog_returns, web_sales,
+         catalog_page; the cap cuts customer
+    Q4   web_sales, item, web_returns, web_site, web_page; cuts catalog_sales
+    Q5   store_returns, catalog_returns, web_returns, store_sales, reason
+    Q6   catalog_returns, catalog_sales, store_sales, store_returns,
+         catalog_page; cuts store
+    Q7   inventory, item, warehouse, store, web_sales; cuts catalog_returns
+    Q8   store_sales, web_sales, catalog_sales, promotion
+    Q9   unchanged
+    Q11  store_sales, date_dim, catalog_sales, store, web_sales; cuts
+         store_returns
+    Q12  catalog_returns, catalog_sales, call_center, store_returns,
+         web_returns; cuts catalog_page
+    Q14  promotion, store_returns, catalog_returns, web_returns,
+         store_sales; cuts catalog_sales, item, web_sales
+    Q15, Q16  one more table at the cut each; order at the cap is a guess
+
+- Gains: **d3 gets `catalog_sales`** (derived: 0.877, second of 24).
+  **Q14 gets `store_returns`**, an expected table (derived).
+- Losses, if both open points are read strictly: **Q8** has three sales
+  tables where its tree was exact (derived). **Q5** and **Q11** raise
+  `many_to_many`, two more returns tables meeting at `reason` and two
+  more sales tables at `date_dim` (guess, from the tree's rules). **Q14
+  may lose `item`** to the cap and **Q16 may lose `customer`** (guesses;
+  either may return as a bridge).
+- Close calls: 21 on 12 becomes 0. Tables beyond the expected: 34
+  becomes about 40. Alphabet-decided attachments: more, not fewer.
+- d2, d6: unchanged. d7: unchanged (guess).
+- **Verdict predicted: NOT KEPT**, on Q8 alone if the exact tree is held;
+  and on Q14 or Q16 if an expected table falls to the cap, however the
+  open points are ruled.
+
+**B. The margin IS on the anchor scores' scale.** The margin is a
+difference between two combined scores under one query, at this alpha
+(piece 8); an anchor's score is a combined score, the best of its
+table's elements (ruling f); and ruling c already applies the margin to
+differences between table scores. So B can be stated with no new number.
+A caveat, recorded: the margin was calibrated as noise between two
+sibling columns, not as noise in one table's distance from a fixed cut.
+
+*The near-miss rule:* a table is a near-miss when its score for the
+whole question is below the cut by less than the margin
+(`cut - score < margin`, so 0.393 to 0.5 today) and a foreign key joins
+it directly to at least one anchor. It is never an anchor, never a seed,
+never counted under the cap, and nothing attaches to it. Near-misses are
+taken best score first.
+
+*What "admitted" means is not settled by the brief. Two readings:*
+
+- **B-1, into the tree.** After every anchor is attached, each near-miss
+  is attached by one join to an anchor; several candidate joins go to
+  DD-12's rules like any attachment. It is not protected: under the
+  subgraph bound a near-miss is cut before any tree table.
+- **B-2, beside the tree.** A near-miss is added to the subgraph shown
+  to the model, after the tree's tables and before tables on tied
+  alternatives, as the bound allows. No join is selected for it. The
+  bound records what it left out.
+
+**B predicted.** Derived from the cut 0.4 report: 36 tables on 14
+questions score between 0.4 and 0.5 and join an anchor (none in Q6 and
+Q15; five in Q5 and Q7; six in Q13). Tables between 0.393 and 0.4 are
+not on record.
+
+- B-1: **Q7 gains `date_dim`**, an expected table (derived); d2 gains
+  `date_dim` (derived: 0.492, joined to `customer`). Q4 and Q13 do not
+  gain their missing table: `date_dim` and `item` are below 0.4 there.
+  Losses: Q4, Q5 and Q11 raise warnings where they raised none (guess:
+  `store_sales` reaching `item` beside `web_sales` in Q4 is a pivot);
+  Q8 gains `customer`. Tables beyond the expected: 34 becomes about 69.
+  **Verdict predicted: NOT KEPT.**
+- B-2: no tree changes, so no verdict, part, warning or count of the
+  sixteen changes (derived). d2 is shown `date_dim` (derived). Q7's
+  `date_dim` is shown and is not in its tree. A join the model makes to
+  a near-miss is not among the selected joins, so step 7's check will
+  read it as diverged or incomplete. **Verdict predicted: KEPT, on d2
+  alone**, if a table shown and not joined counts as brought in.
+- d3, d6: unchanged by either (`time_dim` scored 0.288).
+
+**C, as proposed.** The preferences shape cannot express it: a
+preference names one route between two tables, and this tie is between
+two places to attach (item 65). The smallest extension is a second kind
+of entry, in a hand-written `backend/overlays/tpcds.preferences.yaml`
+that the generator copies into `tpcds.yaml` (item 33):
+
+    preferences:
+      - attach_to:   store_sales
+        rather_than: store_returns
+        because: >-
+          Operator default. A return refers to its sale, so a table
+          either could carry is taken to describe the sale.
+      (and the same for catalog and for web)
+
+*The rule.* It applies in the join tree only, to one attachment, when
+its equally short candidate routes end at different tree tables and both
+named tables are among those ends. Then the candidates ending at
+`rather_than` are withdrawn. One left: it is chosen, the rule is
+`preference`, and the trace says so quietly, naming the entry (FR-45).
+Several left: the alphabet chooses among them, the choice is arbitrary
+and is warned exactly as today, and the entry is recorded as having
+narrowed it. Checked at ingestion: both are tables, a foreign key joins
+them directly, and `because` is required. It never applies to the table
+being attached, to a bridge inside a route, to two keys of one table, or
+between two tables in the PathFinder.
+
+*The order, DD-12 amended again:* shortest; then question evidence
+beyond the margin; then a declared preference; then the alphabet. In
+`choose`, evidence moves ahead of `preferred`. Evidence is consulted
+once, over all the tied candidates; it is not consulted again after a
+preference has narrowed them. No preference of the first kind is
+declared for TPC-DS, so nothing live changes from the reorder alone.
+
+**C predicted.** Derived from run 3's `attached` lines.
+
+- All nine alphabet-decided returns attachments move to the sales table:
+  Q2 `catalog_page`, `customer`; Q3 `customer_address`, `catalog_page`,
+  `customer`; Q6 `store`; Q9 `store`, `customer_demographics`; Q16
+  `customer_demographics`. Nine becomes none.
+- Five are decided outright by the preference and stop warning: Q2 and
+  Q3 `catalog_page`, Q6 `store`, Q9 `store` and `customer_demographics`.
+  Four stay arbitrary among what is left,
+  billing against shipping: Q2 and Q3 `customer`, Q3 `customer_address`,
+  Q16 `customer_demographics`.
+- **Q3 gains its expected join**, `cs_bill_addr_sk` to `ca_address_sk`,
+  with the `arbitrary_choice` it expects.
+- Q12's two attachments to `catalog_returns` stay: evidence decided
+  them, and evidence now comes first. Q16's `customer` still hangs on
+  `customer_demographics`. No tree gains or loses a table.
+- d7: `customer_demographics` and `customer` hang on `catalog_sales`;
+  `date_dim` too, by `cs_ship_date_sk` unless evidence decides (guess:
+  it still diverges on the date key, on one join where it was two). d5:
+  `web_page` hangs on `web_sales`.
+- Billing against shipping, and `store` against `customer_address`, are
+  untouched; their smoke lines stay green.
+- **Verdict predicted: KEPT**, on Q3's join.
+
+**Together.** If A and B-1 are not kept, C stands alone, or with B-2,
+which changes no tree. No interaction predicted.
+
+**Time.** Every change is in the pure core. Predicted: retrieval and
+tree stay under 200 ms at the largest, against one second (NFR-02).
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
