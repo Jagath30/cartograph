@@ -123,9 +123,11 @@ class _Teller:
             for a in joined
             if a.selected.id in against or any(use.get(self._key(j)) in ("present", "partial") for j in a.selected.joins)
         ]
-        # What is told: the choices that touched the answer, or the whole
-        # plan when no query was compared with it.
-        self.told = self.used if self.checked else joined
+        # What is told: the choices that touched the answer (rule 2). When
+        # no answer was given none did, and the plan is one sentence; its
+        # choices are in the trace's detail.
+        self.answered = outcome == "answered"
+        self.told = self.used
         self.untold = [a for a in joined if a not in self.told]
         # Each declared reason is given once (rule 3).
         self._reasons_given: list[str] = []
@@ -189,7 +191,7 @@ class _Teller:
         if len(route.joins) == 1:
             return self.thing(route.joins[0], beside)
         between = [name for name in route.tables[1:-1]]
-        moments = [self._thing(j)[1] for j in route.joins if self._thing(j)[1] in MOMENTS.values()]
+        moments = list(dict.fromkeys(self._thing(j)[1] for j in route.joins if self._thing(j)[1] in MOMENTS.values()))
         return f"a route through {self.tables(between)}" + (f" ({_listed(moments)})" if moments else "")
 
     def _because(self, attachment) -> str:
@@ -247,6 +249,11 @@ class _Teller:
         joined = [a for a in paths.attachments if a.selected is not None]
         if not joined:
             return f"Only {self.table(paths.tables[0])} was needed, so there was nothing to link."
+        if not self.answered:
+            return (
+                f"A plan was made linking {self.tables(paths.tables)}. No answer came of it, so none of its "
+                "choices affected one."
+            )
         if not self.told:
             return (
                 f"The plan linked {self.tables(paths.tables)}; the query used none of those links, "
@@ -324,10 +331,12 @@ class _Teller:
             return "No plan was made, so nothing was set aside."
         if not any(a.selected is not None for a in paths.attachments):
             return "With one table there was nothing to choose between."
+        if not self.answered:
+            return "No answer was given, so nothing that was chosen affected one."
         said = []
         for attachment in self.told:
             tied = self._others(attachment, "tied")
-            withdrawn = self._others(attachment, "withdrawn")
+            withdrawn = [phrase for phrase in self._others(attachment, "withdrawn") if phrase not in tied]
             if tied and attachment.rule == "alphabetical":
                 said.append(f"Not used: {_listed(tied)}. {ASK_AGAIN_ONE if len(tied) == 1 else ASK_AGAIN_SEVERAL}")
             elif tied:

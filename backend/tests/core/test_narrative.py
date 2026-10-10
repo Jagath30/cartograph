@@ -336,11 +336,29 @@ def test_a_query_that_used_none_of_the_plan_is_told_so_and_nothing_alarms() -> N
     assert "arbitrary" not in whole(narrative)
 
 
-def test_when_no_query_ran_the_whole_plan_is_told() -> None:
-    route = told([reply(status="not_answerable")], *D4).route
-    for name in ("to the billed customer's demographics", "to its web site", "to its web page"):
-        assert name in route
-    assert "did not use" not in route
+@pytest.mark.parametrize(
+    ("script", "executor"),
+    [([reply(status="not_answerable")], None), ([reply(D4_SQL)], Runs(failure="database_error")), ([reply("DROP TABLE item")], None)],
+)
+def test_a_plan_that_gave_no_answer_is_one_sentence_and_asks_nothing_of_the_reader(script, executor) -> None:
+    """Rule 2 is about choices that touched the answer. Where none was
+    given, none did: no alternative is named, nothing is called arbitrary
+    and the reader is not told to ask again. The choices stay in the
+    trace's detail."""
+    made = document(script, *D4, executor=executor)
+    narrative = made.narrative
+    assert narrative.route == (
+        "A plan was made linking customer demographics, web sales, web site and web page. No answer came of it, "
+        "so none of its choices affected one."
+    )
+    assert narrative.not_taken == "No answer was given, so nothing that was chosen affected one."
+    assert "arbitrary" not in whole(narrative) and "ask again" not in whole(narrative) and "longer" not in whole(narrative)
+    assert made.paths.attachments[1].alternatives, "the choice is still in the trace's detail"
+
+
+def test_a_route_through_a_table_gives_each_date_once() -> None:
+    not_taken = told([reply(BRIDGE_SQL)], "item", "date_dim").not_taken
+    assert "date of return and date of return" not in not_taken and "(date of return)" in not_taken
 
 
 def test_one_table_has_nothing_to_link_or_to_choose() -> None:
@@ -636,3 +654,31 @@ def test_a_query_stopped_at_the_time_limit_and_one_never_run() -> None:
     assert again(made, execution=late).result == "The query was run and was stopped at the time limit of 30s. No rows came back."
     never = made.execution.model_copy(update={"failure": "not_reachable", "error": "the warehouse could not be reached"})
     assert again(made, execution=never).result == "The query was not run: the warehouse could not be reached."
+
+
+def test_a_reading_is_not_listed_both_as_not_used_and_as_set_aside() -> None:
+    """Two routes through one table can read alike in plain words. Named
+    once, as not used: that is the one the reader can ask for."""
+    made = document([reply(BRIDGE_SQL)], "item", "date_dim")
+    seed, attached = made.paths.attachments
+    twin = attached.alternatives[0].model_copy(update={"status": "withdrawn"})
+    paths = made.paths.model_copy(
+        update={"attachments": [seed, attached.model_copy(update={"alternatives": [*attached.alternatives, twin]})]}
+    )
+    not_taken = again(made, paths=paths).not_taken
+    assert "Set aside by a declared preference" not in not_taken
+    assert not_taken.count("a route through catalog sales (ship date)") == 1
+
+
+def test_a_route_whose_two_steps_are_the_same_kind_of_date_names_it_once() -> None:
+    """A return and a sale can both be dated by a date of return: "(date
+    of return and date of return)" tells the reader nothing twice."""
+    made = document([reply(BRIDGE_SQL)], "item", "date_dim")
+    seed, attached = made.paths.attachments
+    through = next(a for a in attached.alternatives if a.id.startswith("inventory."))
+    dated = next(join for join in through.joins if join.to_table == "date_dim")
+    twice = through.model_copy(update={"joins": [dated, dated], "id": "twice"})
+    paths = made.paths.model_copy(
+        update={"attachments": [seed, attached.model_copy(update={"alternatives": [twice]})]}
+    )
+    assert "Not used: a route through inventory (date). " in again(made, paths=paths).not_taken
