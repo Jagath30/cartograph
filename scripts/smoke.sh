@@ -133,6 +133,13 @@ expect "migrations are at head" "(head)" \
   docker compose exec -T backend alembic current
 expect "the three schema tables exist" "schema_edges,schema_elements,schema_snapshots" \
   pg 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "select string_agg(tablename, '"'"','"'"' order by tablename) from pg_tables where schemaname = '"'"'public'"'"' and tablename like '"'"'schema_%'"'"'"'
+# The second migration (step 8). queries carries user_id from the moment it
+# exists (DR-08), and until step 11 every query belongs to one local user,
+# whom the migration itself seeds.
+equal "users, queries and traces exist" "queries,traces,users" \
+  "$(app_sql "select string_agg(tablename, ',' order by tablename) from pg_tables where schemaname = 'public' and tablename in ('users', 'queries', 'traces')" 2>/dev/null || true)"
+equal "the local user is seeded, and is the only user" "local@cartograph.invalid" \
+  "$(app_sql "select string_agg(email, ',') from users" 2>/dev/null || true)"
 
 stage "Frontend"
 expect "page served and titled" "Cartograph" curl -sf "$WEB"
@@ -264,6 +271,43 @@ else
       "$(grep '^PIPELINE' <<<"$answered" || true)"
     contains "the trace reports the joins the executed SQL made, with Postgres's plan as witness" "WITNESS PASS" \
       "$(grep '^WITNESS' <<<"$answered" || true)"
+  fi
+fi
+
+# The API (step 8), asked over HTTP as a browser would ask it. The schema
+# graph, then one question through POST and its stored trace read back
+# through GET: the two must be identical, and the store must have gained
+# exactly one query and one trace. ONE MORE PAID MODEL CALL; without
+# OPENAI_API_KEY the server answers 503 and these are clean SKIPs.
+stage "The API: asked, stored, read back (IR-02, IR-03, IR-06, FR-27, NFR-13)"
+if [[ "$wh_tables" == "0" ]]; then
+  for line in "the schema graph is served as nodes and edges" "one question through POST is answered, with rows and a trace" \
+              "its stored trace read back through GET is identical" "exactly one query and one trace were stored"; do
+    pending "$line -- warehouse is empty"
+  done
+elif [[ "$current" != "1" ]]; then
+  for line in "the schema graph is served as nodes and edges" "one question through POST is answered, with rows and a trace" \
+              "its stored trace read back through GET is identical" "exactly one query and one trace were stored"; do
+    pending "$line -- no schema snapshot stored"
+  done
+else
+  stored_before="$(app_sql "select (select count(*) from queries) || ',' || (select count(*) from traces)" 2>/dev/null || true)"
+  api_code=0
+  api="$(docker compose exec -T backend python -m app.smoke_api 2>/dev/null)" || api_code=$?
+  contains "the schema graph is served as nodes and edges" "SCHEMA PASS  24 nodes, $overlay_fks edges, 425 columns" \
+    "$(grep '^SCHEMA' <<<"$api" || true)"
+  if [[ "$api_code" == "3" ]]; then
+    pending "one question through POST is answered, with rows and a trace -- needs OPENAI_API_KEY (one paid model call)"
+    pending "its stored trace read back through GET is identical -- needs OPENAI_API_KEY"
+    pending "exactly one query and one trace were stored -- needs OPENAI_API_KEY"
+  else
+    contains "one question through POST is answered, with rows and a trace" "POST PASS" \
+      "$(grep '^POST' <<<"$api" || true)"
+    contains "its stored trace read back through GET is identical" "READBACK PASS" \
+      "$(grep '^READBACK' <<<"$api" || true)"
+    stored_after="$(app_sql "select (select count(*) from queries) || ',' || (select count(*) from traces)" 2>/dev/null || true)"
+    equal "exactly one query and one trace were stored" \
+      "$(( ${stored_before%,*} + 1 )),$(( ${stored_before#*,} + 1 ))" "$stored_after"
   fi
 fi
 

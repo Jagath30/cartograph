@@ -323,3 +323,9 @@ def test_a_trace_assembled_beside_real_looking_credentials_holds_none_of_them() 
     text = document([reply(BILL)], *ADDRESS).model_dump_json().lower()
     for word in ("sk-", "bearer ", "postgresql://", "password", "authorization"):
         assert word not in text, word
+
+
+def test_a_cost_is_kept_to_a_hundred_millionth_of_a_dollar() -> None:
+    priced = ModelReply("m", "m", None, reply(BILL), 1924, 0, 0, 0.1 * 1924 / 1_000_000 + 1e-19, 5)
+    made = document([priced], *ADDRESS)
+    assert made.cost_usd == 0.0001924 and made.generation.attempts[0].cost_usd == 0.0001924

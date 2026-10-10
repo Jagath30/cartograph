@@ -405,6 +405,12 @@ def preferences_hash(snapshot: SchemaSnapshot) -> str:
     return hashlib.sha256(json.dumps(content, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
+def _dollars(amount: float) -> float:
+    """To a hundred-millionth of a dollar, as the model client logs it:
+    a sum of floats otherwise reads 0.00019240000000000001."""
+    return round(amount, 8)
+
+
 def edge_text(edge: Edge) -> str:
     return " and ".join(f"{a[0]}.{a[1]} = {b[0]}.{b[1]}" for a, b in edge)
 
@@ -477,7 +483,7 @@ def assemble(trace, context: Context, query_id: UUID, user_id: int, created_at: 
         timings=dict(trace.timings),
         tokens_in=trace.tokens_in,
         tokens_out=trace.tokens_out,
-        cost_usd=trace.cost_usd,
+        cost_usd=_dollars(trace.cost_usd),
         had_ambiguity=had_ambiguity(marks),
         duration_ms=sum(trace.timings.values()),
         narrative=narrative,
@@ -670,7 +676,7 @@ def _generation(trace) -> Generation:
                 tokens_in=reply.tokens_in,
                 tokens_cached=reply.tokens_cached,
                 tokens_out=reply.tokens_out,
-                cost_usd=reply.cost_usd,
+                cost_usd=_dollars(reply.cost_usd),
                 duration_ms=reply.duration_ms,
                 findings=list(attempt.findings),
                 tables_outside_prompt=list(attempt.tables_outside_prompt),
