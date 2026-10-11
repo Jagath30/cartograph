@@ -1,4 +1,4 @@
-"""The trace document at trace_version 1 (Design section 04, DD-05, DD-07,
+"""The trace document at trace_version 2 (Design section 04, DD-05, DD-07,
 DR-09, DR-15, IR-04; items 34, 62, 64 and 70).
 
 Assembled from the orchestrator's in-memory trace by a pure function. The
@@ -22,7 +22,7 @@ D7 = ("catalog_sales", "catalog_returns", "customer_demographics", "customer", "
 
 def test_an_answered_question_has_every_section() -> None:
     made = document([reply(BILL)], *ADDRESS, question="Where are catalogue buyers billed?")
-    assert made.trace_version == 1 and made.outcome == "answered" and made.code is None
+    assert made.trace_version == 2 and made.outcome == "answered" and made.code is None
     assert (made.query_id, made.user_id, made.created_at) == (QUERY_ID, USER_ID, WHEN)
     assert made.question == "Where are catalogue buyers billed?"
     for section in ("subgraph", "paths", "generation", "validation", "execution"):

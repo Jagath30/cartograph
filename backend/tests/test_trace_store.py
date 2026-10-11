@@ -61,7 +61,7 @@ def test_the_five_extracted_columns_are_lifted_at_write_time(scratch_database) -
         ).fetchone()
     assert row == (
         written.user_id, written.question, written.created_at, "answered", True, "conforms",
-        Decimal("0.000254"), 4321, 1,
+        Decimal("0.000254"), 4321, 2,
     )  # fmt: skip
 
 
@@ -134,6 +134,27 @@ def test_a_body_of_another_version_is_not_read_as_this_one(scratch_database) -> 
     written = made(user=store.local_user_id())
     store.save(written)
     with psycopg.connect(scratch_database) as connection:
-        connection.execute("update traces set trace_version = 2")
-    with pytest.raises(ValueError, match="trace_version 2"):
+        connection.execute("update traces set trace_version = 3")
+    with pytest.raises(ValueError, match="reads trace_version 1 and 2 and the stored trace is trace_version 3"):
         store.load(written.query_id)
+
+
+def test_a_trace_written_at_version_1_is_still_read(scratch_database) -> None:
+    """DD-07: version 1 is version 2 without `plain` on its warnings. Such
+    a trace is read as it was written, and is not rewritten (DD-06)."""
+    store = TraceStore(scratch_database)
+    written = made(user=store.local_user_id())
+    store.save(written)
+    assert written.paths.warnings and all("plain" in w for w in written.model_dump(mode="json")["paths"]["warnings"])
+    with psycopg.connect(scratch_database) as connection:
+        connection.execute(
+            """
+            update traces set trace_version = 1, body = jsonb_set(
+                jsonb_set(body, '{trace_version}', '1'), '{paths,warnings}',
+                (select jsonb_agg(w - 'plain') from jsonb_array_elements(body->'paths'->'warnings') w))
+            """
+        )
+    old = store.load(written.query_id)
+    assert old.trace_version == 1 and [w.plain for w in old.paths.warnings] == [None] * len(written.paths.warnings)
+    assert [w.text for w in old.paths.warnings] == [w.text for w in written.paths.warnings]
+    assert old.narrative == written.narrative

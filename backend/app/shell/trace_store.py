@@ -20,7 +20,7 @@ from uuid import UUID
 
 import psycopg
 
-from app.core.trace_document import TRACE_VERSION, TraceDocument
+from app.core.trace_document import READABLE_VERSIONS, TraceDocument
 
 LOCAL_USER_EMAIL = "local@cartograph.invalid"
 
@@ -63,6 +63,7 @@ class TraceStore:
         if row is None:
             return None
         version, body = row
-        if version != TRACE_VERSION:
-            raise ValueError(f"this build reads trace_version {TRACE_VERSION} and the stored trace is trace_version {version}")
+        if version not in READABLE_VERSIONS:
+            read = " and ".join(str(known) for known in READABLE_VERSIONS)
+            raise ValueError(f"this build reads trace_version {read} and the stored trace is trace_version {version}")
         return TraceDocument.model_validate(body)

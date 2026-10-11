@@ -6,7 +6,9 @@ into this document, and composes the narrative once (DD-06). The models
 are Pydantic: a malformed trace cannot be written because one cannot be
 constructed (DD-07, IR-11), and the type stored is the type served.
 
-trace_version 1. Section 04's shape, with what the build has changed:
+trace_version 2. Section 04's shape, with what the build has changed.
+Version 2 (step 9) adds one field to version 1, `plain` on each warning,
+and changes nothing else:
 
   schema_ref    the snapshot's id and hash, and the hash of the
                 preferences in force (item 70): the snapshot hash does not
@@ -23,6 +25,8 @@ trace_version 1. Section 04's shape, with what the build has changed:
   paths.warnings
                 each marked against the joins the executed SQL made (item
                 64; DD-21 as amended). See app.core.warning_marks.
+                Each loud one also holds `plain`, a sentence for the
+                amber block in the narrative's words.
   generation.tables_shown
                 the tables the model was shown. A decline is a statement
                 about these and no others (item 62).
@@ -50,11 +54,15 @@ from pydantic import BaseModel, ConfigDict
 
 from app.core.conformance import Edge, edges_of
 from app.core.explainer import describe_path
-from app.core.narrative import Narrative, narrate
+from app.core.narrative import Narrative, narrate, plain_warnings
 from app.core.snapshot import SchemaSnapshot
 from app.core.warning_marks import Ran, had_ambiguity, mark_warnings
 
-TRACE_VERSION = 1
+TRACE_VERSION = 2
+# What this build can read. Version 1 is version 2 without `plain` on its
+# warnings: a trace written then still renders (DD-07), and is never
+# rewritten (DD-06).
+READABLE_VERSIONS = (1, 2)
 # How many scored elements are kept, best first. Every table's score is
 # kept whatever this is.
 CANDIDATES_KEPT = 50
@@ -256,6 +264,10 @@ class Warning(Section):
     other_joins: list[str]
     state: WarningState
     loud: bool
+    # trace_version 2. For a loud warning, one sentence in the narrative's
+    # plain words (app.core.narrative.plain_warnings); None for a quiet
+    # one, and in every trace written at version 1.
+    plain: str | None = None
 
 
 class SubgraphBound(Section):
@@ -446,10 +458,17 @@ def assemble(trace, context: Context, query_id: UUID, user_id: int, created_at: 
         "tables": {entry.name: table(entry.name) for entry in context.snapshot.tables},
         "columns": {f"{c.table}.{c.name}": column(c.table, c.name) for c in context.snapshot.columns},
     }
-    narrative = narrate(
-        outcome=trace.outcome, message=trace.message, retrieval=retrieval, subgraph=subgraph, paths=paths,
-        generation=generation, validation=validation, execution=execution, names=names,
-    )  # fmt: skip
+    sections = {
+        "outcome": trace.outcome, "message": trace.message, "retrieval": retrieval, "subgraph": subgraph,
+        "generation": generation, "validation": validation, "execution": execution, "names": names,
+    }  # fmt: skip
+    # Each loud warning gains its plain sentence, composed once like the
+    # narrative and stored with it (DD-06).
+    plain = plain_warnings(paths=paths, **sections)
+    paths = paths.model_copy(
+        update={"warnings": [w.model_copy(update={"plain": said}) for w, said in zip(paths.warnings, plain)]}
+    )
+    narrative = narrate(paths=paths, **sections)
 
     settings = located.retrieval.settings if located.retrieval is not None else None
     return TraceDocument(

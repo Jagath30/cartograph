@@ -49,6 +49,28 @@ THE FIVE PARTS, each a string (ruling 8 at stop 1), in this order:
              shown, and says it is a statement about those tables and not
              about the warehouse (item 62).
 
+A PLAIN SENTENCE FOR EACH LOUD WARNING (step 9, the owner's ruling at stop
+1; trace_version 2). The amber block at the head of the panel is for the
+same reader, and a warning's `text` is the Explainer's, in the Explainer's
+words. `plain_warnings` gives each LOUD warning one sentence in the words
+above, stored with the warning; a quiet warning gets None, and so does a
+loud one this module cannot place, so that the panel falls back to `text`
+and nothing is guessed. By the state the warning is in:
+
+  followed           "This answer uses X. It could equally have used Y;
+                     nothing in your question said which. If you meant the
+                     other, the answer may differ."
+  other_route_taken  "This answer uses Y, not X as planned. ..." Y is
+                     named only when the query made the whole of it;
+                     made in part, the sentence says the answer does not
+                     use X and lists what X was tied with.
+  unknown            "The plan chose X. It could equally have used Y; ...
+                     it is not confirmed which this answer uses."
+
+Only what the choice was TIED with is offered as equal: what a declared
+preference set aside is in `not_taken` and not in the alarm. The five
+strings do not read `plain` and are what they were.
+
 Nothing here decides anything about the answer. Every sentence is derived
 from a fact in the trace; nothing is narrated by a model (DD-14).
 """
@@ -60,6 +82,9 @@ from app.core.narrative_words import KEY_SUFFIX, MOMENTS, ONE, PAIRS, ROLES, TAB
 ASK_AGAIN_ONE = "If you meant the other, the answer may differ; ask again naming it."
 ASK_AGAIN_SEVERAL = "If you meant one of those, the answer may differ; ask again naming it."
 ARBITRARY = "nothing in your question said which you meant, so the choice was made alphabetically: it is arbitrary."
+MAY_DIFFER_ONE = "If you meant the other, the answer may differ."
+MAY_DIFFER_SEVERAL = "If you meant one of those, the answer may differ."
+NOT_SAID = "nothing in your question said which"
 
 
 class Narrative(BaseModel):
@@ -77,6 +102,29 @@ def narrate(*, outcome, message, retrieval, subgraph, paths, generation, validat
     name. The other arguments are the sections of the trace document."""
     tell = _Teller(outcome, message, retrieval, subgraph, paths, generation, validation, execution, names)
     return Narrative(found=tell.found(), route=tell.route(), not_taken=tell.not_taken(), sql=tell.sql(), result=tell.result())
+
+
+def plain_warnings(*, outcome, message, retrieval, subgraph, paths, generation, validation, execution, names) -> list[str | None]:
+    """One for each warning of `paths`, in their order: a plain sentence
+    for a loud one, None for a quiet one. The arguments are `narrate`'s."""
+    tell = _Teller(outcome, message, retrieval, subgraph, paths, generation, validation, execution, names)
+    return [tell.alarm(warning) for warning in paths.warnings]
+
+
+def _role_alone(mine: tuple, theirs: list[tuple]) -> str | None:
+    """ "the shipped-to customer's", for "the shipped-to customer's
+    demographics" when the billed customer's demographics were just named.
+    Only for ONE alternative that differs from the chosen in its role
+    alone, is nobody else's, and is someone's something; otherwise None,
+    and it is said whole. `mine` and each of `theirs` are (owner, part),
+    a part as `_Teller._thing` gives it."""
+    if len(theirs) != 1:
+        return None
+    (owner, (kind, role, thing)), (my_owner, (my_kind, _, my_thing)) = theirs[0], mine
+    if kind == my_kind == "adj" and thing == my_thing and owner is None and my_owner is None and "'s " in thing:
+        whose = thing.split("'s ", 1)[0]
+        return f"the {role} {whose}'s"
+    return None
 
 
 def _listed(items) -> str:
@@ -483,16 +531,86 @@ class _Teller:
 
         for warning in paths.warnings:
             if warning.code == "many_to_many" and warning.loud:
-                pivot = self.table(warning.about[0]) if warning.about else "one table"
-                said += (
-                    f" Take care: more than one table is linked through {pivot}, so their records are paired with "
-                    "one another and totals can be counted more than once."
-                )
+                said += f" Take care: {self._counted_twice(warning)}"
         asked = len(self.generation.attempts)
         if asked > 1:
             earlier = "reply was" if asked == 2 else "replies were"
             said = f"The model was asked {asked} times; the earlier {earlier} not accepted. {said}"
         return said
+
+    def _counted_twice(self, warning) -> str:
+        pivot = self.table(warning.about[0]) if warning.about else "one table"
+        return (
+            f"more than one table is linked through {pivot}, so their records are paired with "
+            "one another and totals can be counted more than once."
+        )
+
+    # ---- a plain sentence for a loud warning ------------------------------
+
+    def alarm(self, warning) -> str | None:
+        if not warning.loud:
+            return None
+        if warning.code == "many_to_many":
+            return _capital(self._counted_twice(warning))
+        if warning.code == "preference_not_applied":
+            return "A preference is declared for this warehouse that could not be applied to this choice, so it decided nothing."
+        if warning.code not in ("arbitrary_choice", "multi_anchor") or not warning.about:
+            return None
+        # A warning is about the route chosen and then those it tied with.
+        chosen_id, tied_ids = warning.about[0], warning.about[1:]
+        attachment = next((a for a in self.paths.attachments if a.selected is not None and a.selected.id == chosen_id), None)
+        if attachment is None:
+            return None
+        tied = [a for a in attachment.alternatives if a.id in tied_ids]
+        if not tied:
+            return None
+
+        selected = attachment.selected
+        beside = selected.joins[0].from_table if len(selected.joins) == 1 else None
+        theirs = {a.id: self._reading(a, beside) for a in tied}
+        # Whose the chosen one is, is said only when another's is.
+        owned = any(owner for owner, _ in theirs.values())
+        mine = (self.one(beside) if owned and beside is not None else None, self._reading(selected, beside)[1])
+        chosen = self._grouped([mine])[0]
+        several = len(dict.fromkeys(theirs.values())) > 1
+        may_differ = MAY_DIFFER_SEVERAL if several else MAY_DIFFER_ONE
+
+        if warning.state == "other_route_taken":
+            taken = [a.id for a in tied if self._made_by_the_query(a)]
+            if not taken:
+                return (
+                    f"This answer does not use {chosen}, which was planned. The query went by one of those it was "
+                    f"tied with: {_listed(self._grouped(list(theirs.values())))}. They were equally valid; {NOT_SAID}. "
+                    f"{may_differ}"
+                )
+            used = _listed(self._grouped([theirs[i] for i in taken]))
+            rest = [reading for i, reading in theirs.items() if i not in taken]
+            also = f" It could equally have used {_listed(self._grouped(rest))}." if rest else ""
+            return f"This answer uses {used}, not {chosen} as planned.{also} They were equally valid; {NOT_SAID}. {may_differ}"
+
+        equally = f"It could equally have used {self._others_said(mine, list(theirs.values()))}; {NOT_SAID}."
+        if warning.state == "unknown":
+            return (
+                f"The plan chose {chosen}. {equally} "
+                "Part of the query could not be read, so it is not confirmed which this answer uses."
+            )
+        return f"This answer uses {chosen}. {equally} {may_differ}"
+
+    def _others_said(self, mine: tuple, theirs: list[tuple]) -> str:
+        return _role_alone(mine, theirs) or _listed(self._grouped(theirs))
+
+    def _made_by_the_query(self, route) -> bool:
+        """The executed SQL makes every join of this route, on every
+        column of its key. A route made in part is not named as what the
+        answer uses: that would say more than is known."""
+        made = {
+            frozenset({(e.left_table, e.left_column), (e.right_table, e.right_column)}) for e in self.paths.actual_edges
+        }
+        return all(
+            frozenset({(join.from_table, start), (join.to_table, end)}) in made
+            for join in route.joins
+            for start, end in zip(join.from_columns, join.to_columns)
+        )
 
     def _no_query(self) -> str:
         if self.outcome == "not_answerable":
