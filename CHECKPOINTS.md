@@ -8973,6 +8973,20 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     fourteen days old, in a commit of its own (the owner's ruling 7 at
     stop 2). The whole tree went from 8 high to 7; the production tree
     from 3 high to 2, `next` and `source-map-js`.
+    **A FAULT OF MINE in taking it.** The first commit, `9b407c5`, held
+    a lockfile that `npm ci` refuses: `@img/sharp-linux-arm` 0.35.5 was
+    published at 13:47:45.455, half a second after the cutoff of
+    13:47:45, so npm dropped it. The image build failed, and I did not
+    see it: the build was chained to a `grep` whose exit status was
+    read in its place, smoke then passed on the OLD image with `sharp`
+    0.35.4, and the commit says "Smoke 39, 0, 0" of a build that never
+    ran. The same fault as `a20c08e` at step 8. Fixed forward in the
+    next commit, history not rewritten: resolved again with the cutoff
+    a few minutes on, `npm ci` proved from the lockfile before it was
+    applied, the image built with its own exit status read (0), `sharp`
+    0.35.5 seen installed in the container, and smoke 39, 0, 0. A build,
+    a test run and smoke are each run so that their own exit status is
+    what is read, and never as a link in a chain that ends in a commit.
 81. **Accepted: the lint chain to `braces`** (step 9, the owner's
     ruling). `npm audit` reports five high findings that are one:
     `braces` 3.0.3 has a stack-exhaustion denial of service and no fixed
