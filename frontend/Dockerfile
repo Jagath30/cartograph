@@ -6,6 +6,11 @@ ENV NODE_ENV=development
 
 WORKDIR /app
 
+# npm pinned (step 9). The image's own npm 10.9.8 crashes while resolving
+# vitest's peers ("Cannot read properties of null (reading 'edgesOut')");
+# 11.20.0 does not. The lockfile is made with this version.
+RUN npm install -g npm@11.20.0
+
 # Lockfile first: this layer then survives every source edit.
 COPY package.json package-lock.json ./
 RUN npm ci
