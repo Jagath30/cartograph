@@ -68,7 +68,7 @@ function Stored() {
 
 export default function Ask() {
   return (
-    <main className="mx-auto max-w-[1240px] p-8 font-sans">
+    <main className="mx-auto max-w-[1880px] px-5 py-6 font-sans">
       <h1 className="text-xl font-semibold">Ask a question</h1>
       {/* useSearchParams needs a boundary for the production build. */}
       <Suspense fallback={<p className="mt-6 text-sm text-gray-500">&hellip;</p>}>
