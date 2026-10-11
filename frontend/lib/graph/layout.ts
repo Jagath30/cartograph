@@ -7,7 +7,7 @@ import dagre from "@dagrejs/dagre";
 
 import type { GraphColumn, GraphEdge, GraphModel, GraphNode } from "./model";
 
-export const NODE_WIDTH = 280;
+export const NODE_WIDTH = 300;
 export const HEADER_HEIGHT = 52;
 export const ROW_HEIGHT = 24;
 export const FOOTER_HEIGHT = 30;
@@ -67,7 +67,7 @@ export function layout(model: GraphModel, view: View): Placed {
   const graph = new dagre.graphlib.Graph({ multigraph: true });
   // Left to right: the table that holds a key sits left of the one it
   // points at, so a fact table leads and its dimensions follow.
-  graph.setGraph({ rankdir: "LR", nodesep: 36, ranksep: 140, marginx: 24, marginy: 24 });
+  graph.setGraph({ rankdir: "LR", nodesep: 36, ranksep: 110, marginx: 24, marginy: 24 });
   graph.setDefaultEdgeLabel(() => ({}));
 
   const listed = new Map<string, GraphColumn[]>();

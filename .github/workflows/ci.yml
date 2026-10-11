@@ -37,6 +37,9 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      # The production build is the frontend's only automated check, and it
-      # catches what `next dev` tolerates.
+      # The pure parts: a trace into nodes and edges, the layout, and the
+      # guard that every request goes through lib/api.ts (IR-16). No
+      # browser and no server.
+      - run: npm test
+      # The production build catches what `next dev` tolerates.
       - run: npm run build

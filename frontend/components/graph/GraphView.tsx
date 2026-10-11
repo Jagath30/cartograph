@@ -62,6 +62,8 @@ export function GraphView({ model }: { model: GraphModel }) {
         data: { placed: at, expanded: expanded.has(at.node.id), onToggle: toggle },
         draggable: false,
         selectable: false,
+        // Above every line: a join passes behind a table it does not touch.
+        zIndex: 100,
       })),
     [placed, expanded, toggle],
   );
@@ -92,8 +94,9 @@ export function GraphView({ model }: { model: GraphModel }) {
   return (
     <div>
       <div
-        className="rounded-md border border-gray-200 bg-gray-50"
-        style={{ height: Math.min(Math.max(placed.height + 40, 320), 680) }}
+        className="w-full rounded-md border border-gray-200 bg-gray-50"
+        // The picture's own shape, so that fitting it leaves no empty band.
+        style={{ aspectRatio: `${placed.width} / ${placed.height}`, minHeight: 280, maxHeight: 720 }}
       >
         <ReactFlow
           // A new layout is a new picture: fit it afresh.

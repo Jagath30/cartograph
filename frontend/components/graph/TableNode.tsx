@@ -55,8 +55,8 @@ export function TableNode({ data }: NodeProps<TableNodeType>) {
           title={`${column.readable} (${column.dataType})`}
         >
           <Handle type="target" position={Position.Left} id={`in:${column.name}`} isConnectable={false} style={HIDDEN} />
-          <span className="truncate font-mono">{column.name}</span>
-          <span className="ml-auto shrink-0 truncate text-[11px] text-gray-500">{short(column.readable)}</span>
+          <span className="shrink-0 font-mono">{column.name}</span>
+          <span className="ml-auto min-w-0 truncate text-[11px] text-gray-500">{short(column.readable)}</span>
           {(column.primaryKey || column.foreignKey) && (
             <span className="shrink-0 rounded bg-gray-100 px-1 text-[9px] font-medium uppercase text-gray-600">
               {column.primaryKey ? "pk" : "fk"}
