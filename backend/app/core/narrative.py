@@ -19,7 +19,10 @@ keys and its direction, stays in the trace's `paths` for the detail view
      says the choice is arbitrary. It does not name the alternatives.
      `not_taken` names them, once: "Not used: ...", then ONE "If you meant
      one of those, the answer may differ; ask again naming it." for all
-     the arbitrary choices together, then what a declared preference or
+     the arbitrary choices together, then any of them the query itself
+     took in place of the one planned, in a sentence of its own ("The
+     plan did not choose X; the query used it.": what was used is never
+     listed as not used), then what a declared preference or
      the question's wording set aside, the longer routes, and the unused
      part of the plan.
   3. A declared preference's reason is given once in a narrative, as a
@@ -430,12 +433,18 @@ class _Teller:
         if not self.answered:
             return "No answer was given, so nothing that was chosen affected one."
         arbitrary: list[tuple] = []
+        # Tied with the route chosen, and the route the query itself took.
+        # It was used, so it is never listed as not used (the owner's
+        # ruling at stop 3 of step 9); it is told in a sentence of its own.
+        taken: list[tuple] = []
         by_wording: list[tuple] = []
         by_preference: list[tuple] = []
         for attachment in self.told:
             tied = self._others(attachment, "tied")
             if attachment.rule == "alphabetical":
-                arbitrary += tied
+                routes = [a for a in attachment.alternatives if a.status == "tied"]
+                for route, reading in zip(routes, tied):
+                    (taken if self._made_by_the_query(route) else arbitrary).append(reading)
             elif attachment.rule == "question_evidence":
                 by_wording += tied
             else:
@@ -449,7 +458,11 @@ class _Teller:
             names = self._grouped(arbitrary)
             one = len(dict.fromkeys(arbitrary)) == 1
             said.append(f"Not used: {_listed(names)}. {ASK_AGAIN_ONE if one else ASK_AGAIN_SEVERAL}")
-        if any(warning.state == "other_route_taken" for warning in paths.warnings):
+        if taken:
+            one = len(dict.fromkeys(taken)) == 1
+            said.append(f"The plan did not choose {_listed(self._grouped(taken))}; the query used {'it' if one else 'them'}.")
+        elif any(warning.state == "other_route_taken" for warning in paths.warnings):
+            # It made part of another route: which one it went by is not known.
             said.append("The query itself used one of these and not the one planned.")
         if by_wording:
             said.append(f"Set aside by the wording of your question: {_listed(self._grouped(by_wording))}.")

@@ -340,10 +340,54 @@ def test_a_choice_the_query_went_against_is_told_and_never_called_unused() -> No
     assert "the billing address" in narrative.route and "it is arbitrary" in narrative.route
     assert "none of those links" not in narrative.route
     assert "did not affect this answer" not in narrative.not_taken
-    assert narrative.not_taken.startswith(
-        f"Not used: the shipping address. {ASK_AGAIN_ONE} The query itself used one of these and not the one planned."
+    # What the query used is never listed as not used (stop 3 of step 9).
+    assert "Not used" not in narrative.not_taken
+    assert narrative.not_taken.startswith("The plan did not choose the shipping address; the query used it.")
+    assert "the query used it" not in told([reply(BILL)], *ADDRESS).not_taken
+
+
+CUSTOMER_DATES = ("customer", "date_dim")
+LAST_REVIEW = "SELECT d.d_year FROM customer c JOIN date_dim d ON c.c_last_review_date_sk = d.d_date_sk"
+BOTH_OTHERS = (
+    "SELECT d.d_year FROM customer c JOIN date_dim d ON c.c_last_review_date_sk = d.d_date_sk "
+    "JOIN date_dim s ON c.c_first_shipto_date_sk = s.d_date_sk"
+)
+HALF_A_BRIDGE = "SELECT i.i_category FROM store_sales ss JOIN item i ON ss.ss_item_sk = i.i_item_sk"
+
+
+def test_an_alternative_the_query_used_is_not_listed_as_not_used_and_has_its_own_sentence() -> None:
+    """The owner's ruling at stop 3 of step 9. The narrative said "Not
+    used: ... the web sale's date of sale" and then "the query itself used
+    one of these": it contradicted itself."""
+    not_taken = told([reply(LAST_REVIEW)], *CUSTOMER_DATES).not_taken
+    assert not_taken.startswith(
+        f"Not used: the date of first shipment. {ASK_AGAIN_ONE} "
+        "The plan did not choose the date of last review; the query used it."
     )
-    assert "The query itself" not in told([reply(BILL)], *ADDRESS).not_taken
+    assert not_taken.count("last review") == 1
+    assert "The query itself" not in not_taken
+
+
+def test_two_alternatives_the_query_used_are_one_sentence() -> None:
+    not_taken = told([reply(BOTH_OTHERS)], *CUSTOMER_DATES).not_taken
+    assert not_taken.startswith(
+        "The plan did not choose the dates of first shipment and last review; the query used them."
+    )
+    assert "Not used" not in not_taken and "ask again" not in not_taken
+
+
+def test_an_alternative_the_query_made_only_part_of_is_still_among_those_not_used() -> None:
+    """One join of a route of two is not the route: it is not said to
+    have been used, and the old sentence stands."""
+    not_taken = told([reply(HALF_A_BRIDGE)], "item", "date_dim").not_taken
+    assert not_taken.startswith("Not used: a route through ")
+    assert "a route through store sales (date of sale)" in not_taken.split("The query itself")[0]
+    assert "The query itself used one of these and not the one planned." in not_taken
+    assert "the query used it" not in not_taken
+
+
+def test_what_the_query_followed_is_told_as_before() -> None:
+    assert told([reply(BILL)], *ADDRESS).not_taken.startswith(f"Not used: the shipping address. {ASK_AGAIN_ONE}")
 
 
 def test_a_query_that_used_none_of_the_plan_is_told_so_and_nothing_alarms() -> None:
