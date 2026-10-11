@@ -8969,6 +8969,10 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     commit was resolved (`--before=2026-09-27T11:38:34Z`), and so was not
     taken with `next` 16.3.6 and the `brace-expansion` fixes. All three
     are in the production tree: `npm audit --omit=dev` reports 3 high.
+    **`sharp` 0.35.5 taken on 11 October at 13:47 UTC**, once it was
+    fourteen days old, in a commit of its own (the owner's ruling 7 at
+    stop 2). The whole tree went from 8 high to 7; the production tree
+    from 3 high to 2, `next` and `source-map-js`.
 81. **Accepted: the lint chain to `braces`** (step 9, the owner's
     ruling). `npm audit` reports five high findings that are one:
     `braces` 3.0.3 has a stack-exhaustion denial of service and no fixed
