@@ -29,6 +29,11 @@ bound 10, three joins, margin 0.107051.
 - Installs only through the backend image; tests inside the container.
   Commits on `main`; never push, `--all` and `--tags` least of all;
   `step2-backup` stays local. `docker compose down`, never `down -v`.
+- Frontend packages at exact versions at least two weeks old, resolved
+  with `--before`. Every pre-push check includes `npm audit --omit=dev`:
+  a high or critical finding in the production tree blocks the push
+  until ruled on (item 82). No `rm -rf`, and nothing is deleted through
+  a shell variable: the literal path is named and the owner asked.
 - Tests first; mutate any rule that decides; predictions and keep-rules
   are committed before the run they judge; nothing is tuned to one
   question; no threshold is chosen by looking at results.
@@ -44,7 +49,7 @@ is not imported, before step 10.
 - Step 9, next: the frontend; 74 (what the panel is given).
 - Step 10: 47, 48, 53, 54, 60, 61, 63, 66; heldout's first run.
 - Step 11: 76 (the local user, and the queries it owns).
-- Step 12: 1, 8, 9, 10, 14, 18, 41, 73, 77. Owed to the Design: DD-01,
+- Step 12: 1, 8, 9, 10, 14, 18, 41, 73, 77, 80. Owed to the Design: DD-01,
   DD-06, DD-07, DD-12 to 16, DD-19, DD-21, FR-13, IR-05, section 04.
 - Step 14: 75. Future work, no step: 55, 56, 67. Known limits: 62, 68,
   69, 78. Left behind: 79.
@@ -8949,3 +8954,46 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     by pattern; they are among the 45 dangling volumes Docker lists.
     Fourteen root-owned cache files of the clone remain under the
     session's scratch directory (item 8 is why). No `.env` remains there.
+80. **For step 12, before deployment: three patched packages the
+    two-week rule held back** (step 9, the owner's ruling). `next` 16.3.8
+    and `source-map-js` 1.2.2 were published on 30 September 2026 and
+    become two weeks old on 14 October. Both must be taken before
+    deployment, and their advisories assessed against how the system is
+    run: for `next`, Draft Mode content leaking through `use cache`, two
+    cache poisonings of SSG and ISR pages, information disclosure in the
+    dev server's MCP endpoint and in metadata image routes, and request
+    forgery in Image Optimization; for `source-map-js`, a denial of
+    service through source-map section offsets. `sharp` 0.35.5 (a
+    librsvg vulnerability) is the third: published 27 September at
+    13:46 UTC, it was two hours short of fourteen days when the security
+    commit was resolved (`--before=2026-09-27T11:38:34Z`), and so was not
+    taken with `next` 16.3.6 and the `brace-expansion` fixes. All three
+    are in the production tree: `npm audit --omit=dev` reports 3 high.
+81. **Accepted: the lint chain to `braces`** (step 9, the owner's
+    ruling). `npm audit` reports five high findings that are one:
+    `braces` 3.0.3 has a stack-exhaustion denial of service and no fixed
+    version, and `micromatch`, `fast-glob`, `@next/eslint-plugin-next`
+    and `eslint-config-next` are flagged for pulling it in. npm's only
+    offered fix is `eslint-config-next` 14.2.35; it is never downgraded.
+    Dev-only, and never shipped.
+82. **Every pre-push check includes `npm audit --omit=dev`** (step 9, the
+    owner's ruling). A high or critical finding in the production tree
+    blocks the push until it is ruled on. At the time of writing there
+    are three (item 80).
+83. **FINDING: npm 10.9.8 cannot resolve vitest** (step 9). Adding
+    `vitest` 4.1.11 or 4.1.10 ends in "Cannot read properties of null
+    (reading 'edgesOut')", in arborist's `loadPeerSet`. Shown in
+    throwaway `node:22-slim` containers: it happens in an empty project
+    with no lockfile, with and without `--before`, lock-only or a full
+    install; it does not happen with `--legacy-peer-deps`. Which of
+    vitest's twelve peers trips it was not found. Resolved by npm
+    itself: 11.20.0 (22 September 2026) resolves it with normal peer
+    checks, and is pinned in `frontend/Dockerfile`. `npm ci` from the
+    lockfile it writes works under 10.9.8 too, which is what GitHub's
+    runner has; CI is not pinned. npm 11 also warns at `npm ci` that
+    `unrs-resolver` (lint) has an install script "not yet covered by
+    allowScripts", and records six entries nested under
+    `@tailwindcss/oxide-wasm32-wasi` that npm 10 left out.
+    `npm audit` does not flag vite 8.3.1, though GitHub lists three
+    advisories of 6 October against it; they are in its dev server, which
+    `vitest run` does not open, and 8.3.1 is kept by the owner's rule.
