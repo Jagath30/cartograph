@@ -7,6 +7,9 @@ Explainer's: "customer demographics row", "surrogate key". So each loud
 warning also carries `plain`, composed once by the narrative module from
 its own role vocabulary (DD-06) and stored with it.
 
+Each ends as the narrative does: "... the answer may differ; ask again
+naming it." (stop 2, ruling 10).
+
   A   only a loud warning has one; a quiet one has None.
   B   followed: what the answer uses, what it could equally have used,
       that the question did not say, and that the answer may differ.
@@ -29,7 +32,7 @@ from types import SimpleNamespace
 import pytest
 from tracing import document, reply
 
-from app.core.narrative import MAY_DIFFER_ONE, MAY_DIFFER_SEVERAL, _role_alone, plain_warnings
+from app.core.narrative import ASK_AGAIN_ONE, ASK_AGAIN_SEVERAL, ASK_AGAIN_UNSURE, _role_alone, plain_warnings
 from app.core.trace_document import TRACE_VERSION, TraceDocument
 
 D4 = ("customer_demographics", "web_sales", "web_site", "web_page")
@@ -103,14 +106,15 @@ def test_the_owners_example_word_for_word() -> None:
     """Stop 1, ruling 2."""
     assert loud(D4_SQL, *D4) == [
         "This answer uses the billed customer's demographics. It could equally have used the shipped-to "
-        "customer's; nothing in your question said which. If you meant the other, the answer may differ."
+        "customer's; nothing in your question said which. If you meant the other, the answer may differ; "
+        "ask again naming it."
     ]
 
 
 def test_a_pair_with_a_phrase_of_its_own_is_said_whole() -> None:
     assert loud(BILL, *ADDRESS) == [
         f"This answer uses the billing address. It could equally have used the shipping address; {NOT_SAID}. "
-        f"{MAY_DIFFER_ONE}"
+        f"{ASK_AGAIN_ONE}"
     ]
 
 
@@ -119,14 +123,14 @@ def test_the_noun_is_dropped_only_when_it_ends_a_possessive() -> None:
     shipped-to" would stand for nothing."""
     assert loud(CUSTOMER_SQL, *CUSTOMER) == [
         f"This answer uses the billed customer. It could equally have used the shipped-to customer; {NOT_SAID}. "
-        f"{MAY_DIFFER_ONE}"
+        f"{ASK_AGAIN_ONE}"
     ]
 
 
 def test_several_alternatives_are_grouped_as_the_narrative_groups_them_and_asked_about_as_several() -> None:
     assert loud(FIRST_SALE, *CUSTOMER_DATES) == [
         "This answer uses the date of first purchase. It could equally have used the dates of first shipment and "
-        f"last review; {NOT_SAID}. {MAY_DIFFER_SEVERAL}"
+        f"last review; {NOT_SAID}. {ASK_AGAIN_SEVERAL}"
     ]
 
 
@@ -134,9 +138,9 @@ def test_a_choice_between_two_places_says_whose_each_is() -> None:
     """d7's date table could hang on the sale or on the customer."""
     assert loud(D7_SQL, *D7) == [
         "This answer uses the billed customer's demographics. It could equally have used the shipped-to "
-        f"customer's; {NOT_SAID}. {MAY_DIFFER_ONE}",
+        f"customer's; {NOT_SAID}. {ASK_AGAIN_ONE}",
         "This answer uses the catalog sale's date of sale. It could equally have used the customer's dates of first "
-        f"purchase, first shipment and last review; {NOT_SAID}. {MAY_DIFFER_SEVERAL}",
+        f"purchase, first shipment and last review; {NOT_SAID}. {ASK_AGAIN_SEVERAL}",
     ]
 
 
@@ -147,9 +151,15 @@ def test_what_a_declared_preference_set_aside_is_not_offered_as_equal() -> None:
         assert "ship date" not in sentence and "return" not in sentence
 
 
-def test_the_two_endings() -> None:
-    assert MAY_DIFFER_ONE == "If you meant the other, the answer may differ."
-    assert MAY_DIFFER_SEVERAL == "If you meant one of those, the answer may differ."
+def test_it_ends_as_the_narrative_does() -> None:
+    """Stop 2, ruling 10: one ending, in the narrative's own words, so
+    the amber block and the account beneath it ask the same thing."""
+    assert ASK_AGAIN_ONE == "If you meant the other, the answer may differ; ask again naming it."
+    assert ASK_AGAIN_SEVERAL == "If you meant one of those, the answer may differ; ask again naming it."
+    made = document([reply(D7_SQL)], *D7)
+    assert ASK_AGAIN_SEVERAL in made.narrative.not_taken
+    one, several = (w.plain for w in made.paths.warnings if w.loud)
+    assert one.endswith(ASK_AGAIN_ONE) and several.endswith(ASK_AGAIN_SEVERAL)
 
 
 # ---- C: the query took the other route ---------------------------------------
@@ -160,7 +170,7 @@ def test_a_query_that_took_the_other_route_is_told_what_the_answer_uses() -> Non
     assert warning.state == "other_route_taken"
     assert warning.plain == (
         "This answer uses the shipping address, not the billing address as planned. They were equally valid; "
-        f"{NOT_SAID}. {MAY_DIFFER_ONE}"
+        f"{NOT_SAID}. {ASK_AGAIN_ONE}"
     )
 
 
@@ -169,7 +179,7 @@ def test_with_several_the_one_the_query_took_is_named_and_the_rest_are_still_off
     assert warning.state == "other_route_taken"
     assert warning.plain == (
         "This answer uses the date of last review, not the date of first purchase as planned. It could equally have "
-        f"used the date of first shipment. They were equally valid; {NOT_SAID}. {MAY_DIFFER_SEVERAL}"
+        f"used the date of first shipment. They were equally valid; {NOT_SAID}. {ASK_AGAIN_SEVERAL}"
     )
 
 
@@ -196,7 +206,7 @@ def test_a_route_of_two_joins_is_named_as_used_when_the_query_made_both() -> Non
         "This answer uses a route through store sales (date of sale), not a route through catalog returns "
         "(date of return) as planned. It could equally have used "
     )
-    assert warning.plain.endswith(f". They were equally valid; {NOT_SAID}. {MAY_DIFFER_SEVERAL}")
+    assert warning.plain.endswith(f". They were equally valid; {NOT_SAID}. {ASK_AGAIN_SEVERAL}")
 
 
 def test_a_route_made_in_part_is_not_named_as_what_the_answer_uses() -> None:
@@ -210,7 +220,7 @@ def test_a_route_made_in_part_is_not_named_as_what_the_answer_uses() -> None:
         "went by one of those it was tied with: a route through "
     )
     assert "a route through store sales (date of sale)" in warning.plain
-    assert warning.plain.endswith(f". They were equally valid; {NOT_SAID}. {MAY_DIFFER_SEVERAL}")
+    assert warning.plain.endswith(f". They were equally valid; {NOT_SAID}. {ASK_AGAIN_SEVERAL}")
 
 
 # ---- when the noun is dropped -----------------------------------------------
@@ -254,9 +264,12 @@ def test_an_unread_query_is_not_said_to_use_either() -> None:
     assert warning.state == "unknown" and warning.loud
     assert warning.plain == (
         f"The plan chose the billing address. It could equally have used the shipping address; {NOT_SAID}. "
-        "Part of the query could not be read, so it is not confirmed which this answer uses."
+        "Part of the query could not be read, so it is not confirmed which this answer uses. "
+        "To be sure of the one you meant, ask again naming it."
     )
     assert "This answer uses" not in warning.plain
+    # There is no "the other" to mean when it is not known which was used.
+    assert "the other" not in warning.plain and warning.plain.endswith(ASK_AGAIN_UNSURE)
 
 
 # ---- E: totals counted more than once ---------------------------------------

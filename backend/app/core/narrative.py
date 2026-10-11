@@ -59,13 +59,15 @@ and nothing is guessed. By the state the warning is in:
 
   followed           "This answer uses X. It could equally have used Y;
                      nothing in your question said which. If you meant the
-                     other, the answer may differ."
+                     other, the answer may differ; ask again naming it."
+                     The ending is the narrative's own, word for word.
   other_route_taken  "This answer uses Y, not X as planned. ..." Y is
                      named only when the query made the whole of it;
                      made in part, the sentence says the answer does not
                      use X and lists what X was tied with.
   unknown            "The plan chose X. It could equally have used Y; ...
-                     it is not confirmed which this answer uses."
+                     it is not confirmed which this answer uses. To be
+                     sure of the one you meant, ask again naming it."
 
 Only what the choice was TIED with is offered as equal: what a declared
 preference set aside is in `not_taken` and not in the alarm. The five
@@ -82,9 +84,9 @@ from app.core.narrative_words import KEY_SUFFIX, MOMENTS, ONE, PAIRS, ROLES, TAB
 ASK_AGAIN_ONE = "If you meant the other, the answer may differ; ask again naming it."
 ASK_AGAIN_SEVERAL = "If you meant one of those, the answer may differ; ask again naming it."
 ARBITRARY = "nothing in your question said which you meant, so the choice was made alphabetically: it is arbitrary."
-MAY_DIFFER_ONE = "If you meant the other, the answer may differ."
-MAY_DIFFER_SEVERAL = "If you meant one of those, the answer may differ."
 NOT_SAID = "nothing in your question said which"
+# Where it is not known which was used, there is no "the other" to mean.
+ASK_AGAIN_UNSURE = "To be sure of the one you meant, ask again naming it."
 
 
 class Narrative(BaseModel):
@@ -573,7 +575,8 @@ class _Teller:
         mine = (self.one(beside) if owned and beside is not None else None, self._reading(selected, beside)[1])
         chosen = self._grouped([mine])[0]
         several = len(dict.fromkeys(theirs.values())) > 1
-        may_differ = MAY_DIFFER_SEVERAL if several else MAY_DIFFER_ONE
+        # The ending is the narrative's own (the owner's ruling at stop 2 of step 9).
+        ask_again = ASK_AGAIN_SEVERAL if several else ASK_AGAIN_ONE
 
         if warning.state == "other_route_taken":
             taken = [a.id for a in tied if self._made_by_the_query(a)]
@@ -581,20 +584,21 @@ class _Teller:
                 return (
                     f"This answer does not use {chosen}, which was planned. The query went by one of those it was "
                     f"tied with: {_listed(self._grouped(list(theirs.values())))}. They were equally valid; {NOT_SAID}. "
-                    f"{may_differ}"
+                    f"{ask_again}"
                 )
             used = _listed(self._grouped([theirs[i] for i in taken]))
             rest = [reading for i, reading in theirs.items() if i not in taken]
             also = f" It could equally have used {_listed(self._grouped(rest))}." if rest else ""
-            return f"This answer uses {used}, not {chosen} as planned.{also} They were equally valid; {NOT_SAID}. {may_differ}"
+            return f"This answer uses {used}, not {chosen} as planned.{also} They were equally valid; {NOT_SAID}. {ask_again}"
 
         equally = f"It could equally have used {self._others_said(mine, list(theirs.values()))}; {NOT_SAID}."
         if warning.state == "unknown":
             return (
                 f"The plan chose {chosen}. {equally} "
-                "Part of the query could not be read, so it is not confirmed which this answer uses."
+                "Part of the query could not be read, so it is not confirmed which this answer uses. "
+                f"{ASK_AGAIN_UNSURE}"
             )
-        return f"This answer uses {chosen}. {equally} {may_differ}"
+        return f"This answer uses {chosen}. {equally} {ask_again}"
 
     def _others_said(self, mine: tuple, theirs: list[tuple]) -> str:
         return _role_alone(mine, theirs) or _listed(self._grouped(theirs))

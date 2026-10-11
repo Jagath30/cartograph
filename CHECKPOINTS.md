@@ -8997,3 +8997,25 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     `npm audit` does not flag vite 8.3.1, though GitHub lists three
     advisories of 6 October against it; they are in its dev server, which
     `vitest run` does not open, and 8.3.1 is kept by the owner's rule.
+    **Ruled at stop 2 of step 9:** the push at the close of step 9 is
+    allowed with the remaining production findings recorded (`next`
+    until 16.3.8, `source-map-js` until 1.2.2). Both are taken once they
+    are two weeks old, on 14 October, and in any case before step 12.
+84. **Counted, nothing changed: where the date table hangs when a sales
+    table is present** (step 9, the owner's ruling 11 at stop 2; to be
+    decided before step 10). In the sixteen trees of the step 6 report
+    as the pipeline now builds them (`eval/pass_07b/c_and_d.json`, C and
+    D kept), `date_dim` is in two, questions 1 and 11, and in both it is
+    attached to `store_sales` by the sold date: once by the question's
+    wording, once as the shortest route. It is attached to a page or a
+    customer table by the alphabet, with a sales table present, in NONE
+    of the sixteen. In the other fourteen it is not in the tree at all
+    (item 68). It did happen once in step 9, outside that report: the
+    demonstration question "Which gender spent more on the web in the
+    year 2002?" hung `date_dim` on `web_page` by its access date,
+    alphabetically (`web_page` sorts before `web_sales`), with
+    `web_sales` in the tree and its sold date tied. The model joined the
+    sold date all the same, the trace reads `diverged`, and the
+    `multi_anchor` warning is loud as `other_route_taken`. In d7 of the
+    development questions the same tie fell to `catalog_sales`, which
+    sorts before `customer`.
