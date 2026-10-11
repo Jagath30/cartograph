@@ -207,7 +207,8 @@ export function GraphView({ model }: { model: GraphModel }) {
           zoomActivationKeyCode="Control"
           zoomOnDoubleClick={false}
         >
-          <Controls showInteractive={false} />
+          {/* Top left: the first rank is one table, centred, so that corner is clear. */}
+          <Controls showInteractive={false} position="top-left" />
         </ReactFlow>
       </div>
 
