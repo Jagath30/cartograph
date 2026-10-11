@@ -16,6 +16,9 @@ import { TableNode, type TableNodeType } from "./TableNode";
 const nodeTypes = { table: TableNode };
 const edgeTypes = { key: KeyEdge };
 
+/** The largest the picture is drawn when it is fitted to its canvas. */
+const FIT_MAX_ZOOM = 1.15;
+
 /** How far apart, in the path's own units, the points are that stand for a curve. */
 const SAMPLE_EVERY = 10;
 
@@ -171,8 +174,9 @@ export function GraphView({ model }: { model: GraphModel }) {
         // The picture's own shape, so that fitting it leaves no empty band.
         style={{
           aspectRatio: `${placed.width} / ${placed.height}`,
-          minHeight: 280,
-          maxHeight: 900,
+          // Never taller than the picture at its largest: one table alone
+          // is not given a screen of empty canvas.
+          maxHeight: Math.min(900, Math.ceil(placed.height * FIT_MAX_ZOOM)),
           cursor: hovered ? "pointer" : undefined,
         }}
         onMouseMove={onMove}
@@ -188,7 +192,7 @@ export function GraphView({ model }: { model: GraphModel }) {
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           fitView
-          fitViewOptions={{ padding: 0, maxZoom: 1.15 }}
+          fitViewOptions={{ padding: 0, maxZoom: FIT_MAX_ZOOM }}
           minZoom={0.2}
           maxZoom={2}
           nodesConnectable={false}
@@ -236,6 +240,7 @@ export function GraphView({ model }: { model: GraphModel }) {
         </p>
       )}
 
+      {routes.length > 0 && (
       <details className="mt-3 text-sm">
         <summary className="cursor-pointer text-gray-700">
           The {routes.length} {routes.length === 1 ? "join" : "joins"} drawn, in words
@@ -268,6 +273,7 @@ export function GraphView({ model }: { model: GraphModel }) {
           ))}
         </ul>
       </details>
+      )}
     </div>
   );
 }

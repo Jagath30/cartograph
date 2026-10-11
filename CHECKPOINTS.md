@@ -8980,6 +8980,10 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     owner's ruling). A high or critical finding in the production tree
     blocks the push until it is ruled on. At the time of writing there
     are three (item 80).
+    **Ruled at stop 2 of step 9:** the push at the close of step 9 is
+    allowed with the remaining production findings recorded (`next`
+    until 16.3.8, `source-map-js` until 1.2.2). Both are taken once they
+    are two weeks old, on 14 October, and in any case before step 12.
 83. **FINDING: npm 10.9.8 cannot resolve vitest** (step 9). Adding
     `vitest` 4.1.11 or 4.1.10 ends in "Cannot read properties of null
     (reading 'edgesOut')", in arborist's `loadPeerSet`. Shown in
@@ -8997,10 +9001,6 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     `npm audit` does not flag vite 8.3.1, though GitHub lists three
     advisories of 6 October against it; they are in its dev server, which
     `vitest run` does not open, and 8.3.1 is kept by the owner's rule.
-    **Ruled at stop 2 of step 9:** the push at the close of step 9 is
-    allowed with the remaining production findings recorded (`next`
-    until 16.3.8, `source-map-js` until 1.2.2). Both are taken once they
-    are two weeks old, on 14 October, and in any case before step 12.
 84. **Counted, nothing changed: where the date table hangs when a sales
     table is present** (step 9, the owner's ruling 11 at stop 2; to be
     decided before step 10). In the sixteen trees of the step 6 report

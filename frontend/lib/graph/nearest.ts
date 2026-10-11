@@ -24,7 +24,6 @@ export function distanceToSegment(p: Point, a: Point, b: Point): number {
 }
 
 export function distanceToLine(p: Point, points: Point[]): number {
-  if (points.length === 0) return Infinity;
   if (points.length === 1) return Math.hypot(p.x - points[0].x, p.y - points[0].y);
   let nearest = Infinity;
   for (let index = 1; index < points.length; index += 1) {

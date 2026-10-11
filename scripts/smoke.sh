@@ -143,6 +143,7 @@ equal "the local user is seeded, and is the only user" "local@cartograph.invalid
 
 stage "Frontend"
 expect "page served and titled" "Cartograph" curl -sf "$WEB"
+expect "/ask is served" "Ask a question" curl -sf "$WEB/ask"
 
 stage "Tests"
 if docker compose exec -T backend pytest -q >/dev/null 2>&1; then
