@@ -73,10 +73,7 @@ function Answer({ result, stored }: { result: QueryOut; stored: boolean }) {
 
       {trace.subgraph && trace.subgraph.nodes.length > 0 && (
         <section data-ask="graph">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-600">
-            The tables, and the joins between them
-          </h2>
-          <GraphView model={fromTrace(trace)} />
+          <GraphView model={fromTrace(trace)} heading="The tables, and the joins between them" />
         </section>
       )}
 

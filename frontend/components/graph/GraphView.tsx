@@ -3,7 +3,7 @@
 import "@xyflow/react/dist/style.css";
 
 import { useCallback, useMemo, useRef, useState, type MouseEvent } from "react";
-import { Controls, ReactFlow } from "@xyflow/react";
+import { ReactFlow, ReactFlowProvider, useReactFlow } from "@xyflow/react";
 
 import { layout } from "@/lib/graph/layout";
 import { identifiers, type GraphEdge, type GraphModel } from "@/lib/graph/model";
@@ -68,15 +68,64 @@ function Sample({ line, loud = false }: { line: LineStyle; loud?: boolean }) {
   );
 }
 
+const TOOL =
+  "flex h-8 w-8 items-center justify-center rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50";
+
+/**
+ * Zoom, beside the heading and never on the picture: the same three
+ * buttons React Flow's own controls give, with the same names.
+ */
+function Zoom() {
+  const flow = useReactFlow();
+  return (
+    <div role="toolbar" aria-label="Control Panel" className="flex items-center gap-1" data-graph="zoom">
+      <button type="button" className={TOOL} aria-label="Zoom In" title="Zoom In" onClick={() => flow.zoomIn()}>
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+          <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.6" />
+        </svg>
+      </button>
+      <button type="button" className={TOOL} aria-label="Zoom Out" title="Zoom Out" onClick={() => flow.zoomOut()}>
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+          <path d="M1 6h10" stroke="currentColor" strokeWidth="1.6" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        className={TOOL}
+        aria-label="Fit View"
+        title="Fit View"
+        onClick={() => flow.fitView({ padding: 0, maxZoom: FIT_MAX_ZOOM })}
+      >
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none">
+          <path d="M1 4V1h3M8 1h3v3M11 8v3H8M4 11H1V8" stroke="currentColor" strokeWidth="1.4" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+/** The graph, with its heading and its zoom buttons above it. */
+export function GraphView({ model, heading }: { model: GraphModel; heading: string }) {
+  return (
+    <ReactFlowProvider>
+      <div className="mb-3 flex items-center justify-between gap-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">{heading}</h2>
+        <Zoom />
+      </div>
+      <Graph model={model} />
+    </ReactFlowProvider>
+  );
+}
+
 /**
  * The graph of one trace (DD-18, FR-31, FR-45). It draws the model it is
  * given and composes nothing: every sentence shown is one the trace stored.
  *
  * Pointing at a line shows what that join means; a click pins it until the
  * next click. The wheel scrolls the page, not the graph: zoom is Ctrl and
- * the wheel, a pinch, or the buttons.
+ * the wheel, a pinch, or the buttons above it.
  */
-export function GraphView({ model }: { model: GraphModel }) {
+function Graph({ model }: { model: GraphModel }) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const [showOther, setShowOther] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -99,7 +148,7 @@ export function GraphView({ model }: { model: GraphModel }) {
   const pressed = useRef<{ x: number; y: number } | null>(null);
   const lineAt = useCallback((event: MouseEvent): string | null => {
     const over = event.target as Element;
-    if (!canvas.current || over.closest(".react-flow__node, .react-flow__controls, .react-flow__panel")) return null;
+    if (!canvas.current || over.closest(".react-flow__node, .react-flow__panel")) return null;
     return nearestLine({ x: event.clientX, y: event.clientY }, sampled(canvas.current));
   }, []);
   const onMove = useCallback(
@@ -115,7 +164,7 @@ export function GraphView({ model }: { model: GraphModel }) {
   const onClick = useCallback(
     (event: MouseEvent) => {
       const over = event.target as Element;
-      if (over.closest(".react-flow__node, .react-flow__controls, .react-flow__panel")) return;
+      if (over.closest(".react-flow__node, .react-flow__panel")) return;
       // The end of a drag that moved the picture is not a click on it.
       const from = pressed.current;
       if (from && Math.hypot(event.clientX - from.x, event.clientY - from.y) > 4) return;
@@ -246,10 +295,7 @@ export function GraphView({ model }: { model: GraphModel }) {
           zoomOnPinch
           zoomActivationKeyCode="Control"
           zoomOnDoubleClick={false}
-        >
-          {/* Top left: the first rank is one table, centred, so that corner is clear. */}
-          <Controls showInteractive={false} position="top-left" />
-        </ReactFlow>
+        />
         {pointed && tip && (
           <div
             role="tooltip"
