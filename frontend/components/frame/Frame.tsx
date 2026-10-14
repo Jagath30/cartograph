@@ -12,7 +12,7 @@ const LINK = "rounded-sm underline-offset-4 hover:underline";
 /** The frame's top line. Not a heading: each page has its own one h1. */
 export function Header() {
   return (
-    <header className="border-b border-gray-200">
+    <header className="border-b border-solid border-gray-200">
       <div className={`${WIDTH} flex items-center justify-between py-3`}>
         <Link href="/ask" className={`flex items-center gap-2 text-gray-900 ${LINK}`}>
           <Glyph />
@@ -28,8 +28,9 @@ export function Header() {
 
 export function Footer() {
   return (
-    <footer className="mt-12 border-t border-gray-200">
-      <p className={`${WIDTH} py-4 text-xs text-gray-600`}>
+    // One light hairline above it, and the line of text centred in a band.
+    <footer className="border-t border-solid border-gray-200">
+      <p className={`${WIDTH} py-3 text-center text-xs text-gray-600`}>
         Built by Jagath S Manjunath &middot;{" "}
         <a href={REPOSITORY} className={LINK}>
           Source on GitHub

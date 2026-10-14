@@ -6,3 +6,13 @@
   outline: 2px solid #111827;
   outline-offset: 2px;
 }
+
+/* Except the main landmark. The skip link moves focus to it so that the
+   next Tab starts there; it is not a control, and outlined it drew a
+   near-black line under the header and another above the footer. This
+   rule is outside Tailwind's layers, as the one above is, so a utility
+   class on <main> could not undo that one. */
+main:focus,
+main:focus-visible {
+  outline: none;
+}

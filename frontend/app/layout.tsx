@@ -18,7 +18,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SkipLink />
         <Header />
         {/* tabIndex -1: the skip link moves focus here, not only the view. */}
-        <main id="main" tabIndex={-1} className="flex-1 focus:outline-none">
+        <main id="main" tabIndex={-1} className="flex-1 pb-10">
           {children}
         </main>
         <Footer />

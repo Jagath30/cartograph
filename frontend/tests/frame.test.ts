@@ -51,10 +51,26 @@ test("each page has exactly one h1, and no page brings a main landmark of its ow
   expect(read("components/frame/Frame.tsx")).not.toMatch(/<h[1-6][\s>]/);
 });
 
-test("the frame keeps amber for the loud warnings: none in it", () => {
+// Tailwind's amber classes, and the amber hex values of its palette. The
+// colours, not the word: a comment may name amber.
+const AMBER_COLOUR =
+  /\b(?:bg|text|border|ring|outline|fill|stroke|from|via|to|decoration|shadow|accent|caret|divide)-amber-\d{2,3}\b|#(?:fffbeb|fef3c7|fde68a|fcd34d|fbbf24|f59e0b|d97706|b45309|92400e|78350f|451a03)\b/i;
+
+test("the frame keeps amber for the loud warnings: no amber colour in it", () => {
   for (const path of ["components/frame/Frame.tsx", "components/frame/Glyph.tsx", "app/layout.tsx", "app/not-found.tsx", "app/globals.css", "app/icon.svg"]) {
-    expect(read(path), path).not.toMatch(/amber|#f59e0b|#fbbf24|#d97706/i);
+    expect(read(path), path).not.toMatch(AMBER_COLOUR);
   }
+});
+
+test("the amber test looks for colours, not the word", () => {
+  expect("/* amber is kept for the warnings */").not.toMatch(AMBER_COLOUR);
+  for (const colour of ["bg-amber-50", "border-amber-400", "text-amber-950", "#f59e0b", "#FBBF24"]) {
+    expect(`className="x ${colour}"`).toMatch(AMBER_COLOUR);
+  }
+});
+
+test("the main landmark draws no outline when the skip link focuses it", () => {
+  expect(read("app/globals.css")).toMatch(/main:focus,\s*main:focus-visible\s*\{\s*outline: none;/);
 });
 
 test("the 404 page sends the reader back to Ask", () => {
