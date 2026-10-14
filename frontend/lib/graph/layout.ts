@@ -35,6 +35,8 @@ export type PlacedNode = {
 export type Placed = {
   nodes: PlacedNode[];
   edges: GraphEdge[];
+  /** The lines that placed the tables (`shapingEdges`). */
+  shaping: GraphEdge[];
   /** Where each line goes, by edge id (lib/graph/router.ts). */
   routes: Map<string, Point[]>;
   /** Keys between these tables that are not drawn in this view. */
@@ -47,8 +49,44 @@ export type Placed = {
 };
 
 /** The joins that place the tables: the plan's own (the owner's ruling on
- *  the graph at step 9). Every other line is drawn, and moves no table. */
+ *  the graph at step 9). Every other line is drawn, and moves no table
+ *  that the plan joins. */
 export const SHAPING: ReadonlySet<EdgeKind> = new Set<EdgeKind>(["used", "planned"]);
+
+/** The legend's order of the kinds of line, the plan's own first. */
+const LEGEND = ["actual", "used", "planned", "alternative:tied", "alternative:withdrawn", "other"];
+const legendPlace = (edge: GraphEdge) =>
+  LEGEND.indexOf(edge.kind === "alternative" ? `alternative:${edge.status ?? "tied"}` : edge.kind);
+
+/**
+ * The lines that place the tables (the owner's ruling after b8b505d): the
+ * plan's own joins, and for each table the plan does not join, one drawn
+ * line that reaches it from the tables already placed, the first in the
+ * legend's order of kinds and then by edge id. Taken one table at a time,
+ * so that the shaping stays a tree: every shaping join one column apart,
+ * and the plan's tables where the plan puts them. Each added line is given
+ * to the layout as running FROM the table already placed, so a table
+ * outside the plan stands one column beyond the table it joins. A table
+ * with no drawn line at all is left where the layout puts it.
+ */
+export function shapingEdges(nodes: GraphNode[], drawn: GraphEdge[]): { edge: GraphEdge; from: string; to: string }[] {
+  const plan = drawn.filter((edge) => SHAPING.has(edge.kind));
+  const shaping = plan.map((edge) => ({ edge, from: edge.fromTable, to: edge.toTable }));
+  const placed = new Set(plan.flatMap((edge) => [edge.fromTable, edge.toTable]));
+  const tables = new Set(nodes.map((node) => node.id));
+  if (placed.size === 0) return shaping;
+  for (;;) {
+    const reaching = drawn
+      .filter((edge) => placed.has(edge.fromTable) !== placed.has(edge.toTable))
+      .filter((edge) => tables.has(edge.fromTable) && tables.has(edge.toTable))
+      .sort((a, b) => legendPlace(a) - legendPlace(b) || a.id.localeCompare(b.id));
+    const first = reaching[0];
+    if (!first) return shaping;
+    const [from, to] = placed.has(first.fromTable) ? [first.fromTable, first.toTable] : [first.toTable, first.fromTable];
+    shaping.push({ edge: first, from, to });
+    placed.add(to);
+  }
+}
 
 /** Where a row's line meets its table, measured from the table's top. */
 export function rowCentre(index: number): number {
@@ -91,8 +129,9 @@ export function layout(model: GraphModel, view: View): Placed {
     listed.set(node.id, columns);
     graph.setNode(node.id, { width: NODE_WIDTH, height: nodeHeight(columns.length) });
   }
-  for (const edge of drawn.filter((edge) => SHAPING.has(edge.kind))) {
-    graph.setEdge(edge.fromTable, edge.toTable, {}, edge.id);
+  const shaping = shapingEdges(model.nodes, drawn);
+  for (const { edge, from, to } of shaping) {
+    graph.setEdge(from, to, {}, edge.id);
   }
   dagre.layout(graph);
 
@@ -115,6 +154,7 @@ export function layout(model: GraphModel, view: View): Placed {
   return {
     nodes,
     edges: drawn,
+    shaping: shaping.map(({ edge }) => edge),
     routes,
     otherKeys: model.edges.length - drawn.length,
     bounds,

@@ -11,6 +11,7 @@ import { fromTrace } from "./fromTrace";
 import { runAlongside, tablesUnder } from "./router";
 import {
   SHAPING,
+  shapingEdges,
   FOOTER_HEIGHT,
   HEADER_HEIGHT,
   NODE_WIDTH,
@@ -174,7 +175,7 @@ describe("sizes and places", () => {
     expect(placed.nodes.map((at) => Math.round(at.x))).toEqual(without.nodes.map((at) => Math.round(at.x)));
   });
 
-  test("no drawn line lies on a table it does not join, nor runs alongside another, in any view of any stored answer", () => {
+  test("no drawn line lies on a table it does not join in any view, nor runs alongside another in the closed view", () => {
     for (const model of [MODEL, GENDER, DAYS]) {
       const views: View[] = [
         CLOSED,
@@ -187,7 +188,10 @@ describe("sizes and places", () => {
         for (const edge of placed.edges) {
           expect(tablesUnder(placed.routes.get(edge.id)!, boxes, [edge.fromTable, edge.toTable]), edge.id).toEqual([]);
         }
-        // No two lines run alongside each other without crossing.
+        // No two lines run alongside each other without crossing, in the
+        // closed view, the one a reader sees first (the owner's rule after
+        // the lanes). Opened views are measured and recorded, not held.
+        if (view !== CLOSED) continue;
         for (let i = 0; i < placed.edges.length; i += 1) {
           for (let j = i + 1; j < placed.edges.length; j += 1) {
             const pair = `${placed.edges[i].id} | ${placed.edges[j].id}`;
@@ -228,5 +232,69 @@ describe("sizes and places", () => {
 
   test("the same model and view give the same picture", () => {
     expect(layout(GENDER, CLOSED)).toEqual(layout(GENDER, CLOSED));
+  });
+});
+
+describe("a table outside the plan stands beside a table it joins", () => {
+  // The plan joins sale to address. "maker" is outside the plan, joined to
+  // address by an equally valid line and to sale by a set-aside one;
+  // "region" is joined only to maker.
+  const OUTSIDE: GraphModel = {
+    nodes: [
+      node("sale", ["id", "address", "maker"]),
+      node("address", ["id", "maker", "region"]),
+      node("maker", ["id", "region"]),
+      node("region", ["id"]),
+    ],
+    edges: [
+      edge("planned", "sale.address", "address.id"),
+      { ...edge("alternative", "sale.maker", "maker.id"), status: "withdrawn" },
+      { ...edge("alternative", "address.maker", "maker.id"), status: "tied" },
+      { ...edge("alternative", "maker.region", "region.id"), status: "withdrawn" },
+    ],
+    undrawn: [],
+  };
+  const columnsOf = (placed: ReturnType<typeof layout>) => {
+    const xs = [...new Set(placed.nodes.map((at) => Math.round(at.x)))].sort((a, b) => a - b);
+    return Object.fromEntries(placed.nodes.map((at) => [at.node.id, xs.indexOf(Math.round(at.x)) + 1]));
+  };
+
+  test("joined to a plan table: the first line in the legend's order places it, one column beyond", () => {
+    const shaping = shapingEdges(OUTSIDE.nodes, OUTSIDE.edges);
+    expect(shaping.map(({ edge, from, to }) => [edge.id, from, to])).toEqual([
+      ["sale.address>address.id", "sale", "address"],
+      ["address.maker>maker.id", "address", "maker"],
+      ["maker.region>region.id", "maker", "region"],
+    ]);
+    expect(columnsOf(layout(OUTSIDE, CLOSED))).toEqual({ sale: 1, address: 2, maker: 3, region: 4 });
+  });
+
+  test("joined only through another table outside the plan: placed after it, beyond it", () => {
+    const placed = layout(OUTSIDE, CLOSED);
+    expect(placed.shaping.map((edge) => edge.id)).toContain("maker.region>region.id");
+    expect(columnsOf(placed).region - columnsOf(placed).maker).toBe(1);
+  });
+
+  test("the plan's tables stay where the plan alone puts them", () => {
+    const planOnly: GraphModel = { ...OUTSIDE, nodes: OUTSIDE.nodes.slice(0, 2), edges: OUTSIDE.edges.slice(0, 1) };
+    const alone = columnsOf(layout(planOnly, CLOSED));
+    const all = columnsOf(layout(OUTSIDE, CLOSED));
+    expect([all.sale, all.address]).toEqual([alone.sale, alone.address]);
+  });
+
+  test("a table with no drawn line is placed by no line; with no plan, nothing is", () => {
+    const lonely: GraphModel = { ...OUTSIDE, nodes: [...OUTSIDE.nodes, node("lonely", ["id"])] };
+    expect(shapingEdges(lonely.nodes, lonely.edges).map(({ edge }) => edge.id)).not.toContain("lonely");
+    expect(shapingEdges(OUTSIDE.nodes, OUTSIDE.edges.slice(1))).toEqual([]);
+  });
+
+  test("the shaping is a tree: one line per table placed, and every shaping join one column apart", () => {
+    for (const model of [OUTSIDE, GENDER, DAYS]) {
+      const placed = layout(model, CLOSED);
+      const shaped = new Set(placed.shaping.flatMap((edge) => [edge.fromTable, edge.toTable]));
+      expect(placed.shaping.length).toBe(shaped.size - 1);
+      const columns = columnsOf(placed);
+      for (const edge of placed.shaping) expect(Math.abs(columns[edge.toTable] - columns[edge.fromTable]), edge.id).toBe(1);
+    }
   });
 });

@@ -9074,23 +9074,34 @@ Deliberate deferrals, recorded while the reasoning is fresh:
 86. **`frontend/README.md` is create-next-app's boilerplate** (step 9). It
     still says to edit `app/page.tsx`, which no longer exists. It is
     rewritten at step 13, with the main README.
-87. **Five pairs of lines still run alongside without crossing, within 2
-    px over more than 20 px** (step 9, the owner's ruling after the lanes;
-    on record, not hidden). All in d5 of the development questions ("What
-    share of the money taken on the web was later refunded?"), and only
-    with every table opened:
-      every table opened   web_page.wp_access_date_sk -> date_dim and
-                           web_page.wp_creation_date_sk -> date_dim
-      opened, every key    the same pair;
-                           customer.c_first_sales_date_sk -> date_dim and
-                           customer.c_first_shipto_date_sk -> date_dim;
-                           customer.c_first_sales_date_sk -> date_dim and
-                           customer.c_last_review_date_sk -> date_dim;
-                           web_returns.wr_refunded_customer_sk -> customer
-                           and web_returns.wr_returning_customer_sk ->
-                           customer
-    Each pair leaves neighbouring rows of one table, 24 px apart, for the
-    same row of a table three columns away. In lanes 8 px apart, through
-    channels where the opened tables make the curves climb almost
-    upright, they come 1 to 2 px apart across without ever crossing. The
-    next commit changes d5's layout, and is measured again.
+87. **Lines that run alongside without crossing, within 2 px over more
+    than 20 px, in opened views** (step 9; on record, not hidden). The
+    rule, the owner's after the lanes: none in the closed view, the one a
+    reader sees first; in opened views they are counted and recorded.
+    The closed view of every stored answer has none.
+    After "a table outside the plan stands beside a table it joins": 14
+    pairs, all in d5 of the development questions ("What share of the
+    money taken on the web was later refunded?", which was declined), in
+    its opened views:
+      every key shown (2)
+        customer.c_current_hdemo_sk -> household_demographics and
+          web_page.wp_creation_date_sk -> date_dim
+        web_sales.ws_sold_date_sk -> date_dim and ws_ship_date_sk ->
+          date_dim
+      every table opened (6), and opened with every key (the same 6)
+        wr_refunded_customer_sk and wr_returning_customer_sk -> customer
+        wr_refunded_cdemo_sk and wr_refunded_hdemo_sk
+        wr_returning_cdemo_sk and wr_returning_hdemo_sk
+        ws_bill_cdemo_sk and ws_bill_hdemo_sk
+        ws_sold_date_sk and ws_ship_date_sk
+        ws_ship_cdemo_sk and ws_ship_hdemo_sk
+    Why: two keys on neighbouring rows of web_sales or web_returns reach
+    two tables that stand next to each other two or three columns away.
+    They run in neighbouring lanes, and where the opened tables make them
+    climb almost upright through a narrow channel they come 1 to 2 px
+    apart across, without crossing. Before the attachment rule there were
+    5 such pairs, all with every table opened. Keeping such lines their
+    rows' 24 px apart would not remove them either; only tracks (a line
+    crossing each channel square, in its own upright track) would, and
+    in d5 tracks would take the text below the floor: 9.9 and 8.3 px at
+    8 px a track, 10.9 and 9.0 px at 6 px.
