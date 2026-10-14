@@ -1,6 +1,6 @@
 "use client";
 
-import { BaseEdge, getBezierPath, type Edge, type EdgeProps } from "@xyflow/react";
+import { BaseEdge, type Edge, type EdgeProps } from "@xyflow/react";
 
 import type { GraphEdge } from "@/lib/graph/model";
 
@@ -8,6 +8,8 @@ import { AMBER, lineOf } from "./styles";
 
 export type KeyEdgeData = {
   edge: GraphEdge;
+  /** The line's path, routed round the tables (lib/graph/router.ts). */
+  d: string;
   /** Pointed at, or pinned. */
   lit: boolean;
   /** Another line is lit. */
@@ -19,13 +21,15 @@ export type KeyEdgeType = Edge<KeyEdgeData, "key">;
 /**
  * One join. Its kind decides the line (styles.ts); a join a loud warning
  * is about carries an amber band beneath it, the colour of the block at
- * the head of the panel. It takes no pointer itself: GraphView works out
- * which line the pointer is nearest (lib/graph/nearest.ts).
+ * the head of the panel. Its path is the router's, not React Flow's: a
+ * line goes round the tables it does not join. It takes no pointer itself:
+ * GraphView works out which line the pointer is nearest
+ * (lib/graph/nearest.ts).
  */
 export function KeyEdge(props: EdgeProps<KeyEdgeType>) {
-  const { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data } = props;
+  const { data } = props;
   if (!data) return null;
-  const [path] = getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition });
+  const path = data.d;
   const line = lineOf(data.edge);
   const width = data.lit ? line.width + 2 : line.width;
   const opacity = data.lit ? 1 : data.dimmed ? line.opacity * 0.3 : line.opacity;

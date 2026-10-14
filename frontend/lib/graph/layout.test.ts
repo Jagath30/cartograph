@@ -4,10 +4,13 @@
  */
 import { describe, expect, test } from "vitest";
 
+import storedV1 from "../../fixtures/trace-v1-days-of-the-week.json";
 import storedV2 from "../../fixtures/trace-v2-gender-diverged.json";
 import type { TraceDocument } from "../trace/types";
 import { fromTrace } from "./fromTrace";
+import { tablesUnder } from "./router";
 import {
+  SHAPING,
   FOOTER_HEIGHT,
   HEADER_HEIGHT,
   NODE_WIDTH,
@@ -21,6 +24,7 @@ import {
 import type { GraphEdge, GraphModel, GraphNode } from "./model";
 
 const GENDER = fromTrace(storedV2 as unknown as TraceDocument);
+const DAYS = fromTrace(storedV1 as unknown as TraceDocument);
 const CLOSED: View = { expanded: new Set(), showOther: false };
 
 function node(id: string, columns: string[], matched: string[] = []): GraphNode {
@@ -153,13 +157,48 @@ describe("sizes and places", () => {
     expect(open.nodes[1].height).toBe(closed.nodes[1].height);
   });
 
-  test("the table that holds a key is to the left of the table it points at", () => {
-    for (const model of [MODEL, GENDER]) {
+  test("a plan's join puts the table that holds the key one column left of the table it points at", () => {
+    for (const model of [MODEL, GENDER, DAYS]) {
       const placed = layout(model, CLOSED);
-      const at = new Map(placed.nodes.map((node) => [node.node.id, node]));
-      for (const drawn of placed.edges) {
-        expect(at.get(drawn.fromTable)!.x + NODE_WIDTH).toBeLessThanOrEqual(at.get(drawn.toTable)!.x);
+      const columns = [...new Set(placed.nodes.map((at) => Math.round(at.x)))].sort((a, b) => a - b);
+      const column = new Map(placed.nodes.map((at) => [at.node.id, columns.indexOf(Math.round(at.x))]));
+      for (const drawn of placed.edges.filter((edge) => SHAPING.has(edge.kind))) {
+        expect(column.get(drawn.toTable)! - column.get(drawn.fromTable)!, drawn.id).toBe(1);
       }
+    }
+  });
+
+  test("only the plan's joins place the tables: the other lines move none", () => {
+    const placed = layout(MODEL, CLOSED);
+    const without = layout({ ...MODEL, edges: MODEL.edges.filter((edge) => SHAPING.has(edge.kind)) }, CLOSED);
+    expect(placed.nodes.map((at) => Math.round(at.x))).toEqual(without.nodes.map((at) => Math.round(at.x)));
+  });
+
+  test("no drawn line lies on a table it does not join, in any view of any stored answer", () => {
+    for (const model of [MODEL, GENDER, DAYS]) {
+      const views: View[] = [
+        CLOSED,
+        { expanded: new Set(), showOther: true },
+        { expanded: new Set(model.nodes.map((node) => node.id)), showOther: true },
+      ];
+      for (const view of views) {
+        const placed = layout(model, view);
+        const boxes = placed.nodes.map((at) => ({ id: at.node.id, x: at.x, y: at.y, width: at.width, height: at.height }));
+        for (const edge of placed.edges) {
+          expect(tablesUnder(placed.routes.get(edge.id)!, boxes, [edge.fromTable, edge.toTable]), edge.id).toEqual([]);
+        }
+      }
+    }
+  });
+
+  test("the bounds hold every table and every line", () => {
+    const placed = layout(GENDER, CLOSED);
+    const { x, y, width, height } = placed.bounds;
+    for (const points of placed.routes.values()) {
+      for (const p of points) expect(p.x >= x && p.x <= x + width && p.y >= y && p.y <= y + height).toBe(true);
+    }
+    for (const at of placed.nodes) {
+      expect(at.x >= x && at.x + at.width <= x + width && at.y >= y && at.y + at.height <= y + height).toBe(true);
     }
   });
 
@@ -167,10 +206,10 @@ describe("sizes and places", () => {
     for (const view of [CLOSED, { expanded: new Set(["web_sales", "date_dim"]), showOther: true }]) {
       const placed = layout(GENDER, view);
       for (const a of placed.nodes) {
-        expect(a.x).toBeGreaterThanOrEqual(0);
-        expect(a.y).toBeGreaterThanOrEqual(0);
-        expect(a.x + a.width).toBeLessThanOrEqual(placed.width);
-        expect(a.y + a.height).toBeLessThanOrEqual(placed.height);
+        expect(a.x).toBeGreaterThanOrEqual(placed.bounds.x);
+        expect(a.y).toBeGreaterThanOrEqual(placed.bounds.y);
+        expect(a.x + a.width).toBeLessThanOrEqual(placed.bounds.x + placed.width);
+        expect(a.y + a.height).toBeLessThanOrEqual(placed.bounds.y + placed.height);
         for (const b of placed.nodes) {
           if (a === b) continue;
           const apart = a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;

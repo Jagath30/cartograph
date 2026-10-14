@@ -8,13 +8,23 @@ import { Controls, ReactFlow } from "@xyflow/react";
 import { layout } from "@/lib/graph/layout";
 import { identifiers, type GraphEdge, type GraphModel } from "@/lib/graph/model";
 import { nearestLine, type Sampled } from "@/lib/graph/nearest";
+import { pathOf } from "@/lib/graph/router";
 import { TIP_WIDTH, tooltipAt, type Placement } from "@/lib/graph/tooltip";
 
 import { KeyEdge, type KeyEdgeType } from "./KeyEdge";
 import { AMBER, LINES, ORDER, lineOf, type LineStyle } from "./styles";
 import { TableNode, type TableNodeType } from "./TableNode";
 
-const nodeTypes = { table: TableNode };
+/**
+ * Nothing to see: it covers everything drawn, so that fitting the picture
+ * to its canvas keeps a line that goes above or below the tables. React
+ * Flow fits to its nodes alone.
+ */
+function Bounds({ data }: { data: { width: number; height: number } }) {
+  return <div style={{ width: data.width, height: data.height }} aria-hidden="true" />;
+}
+
+const nodeTypes = { table: TableNode, bounds: Bounds };
 const edgeTypes = { key: KeyEdge };
 
 /** The largest the picture is drawn when it is fitted to its canvas. */
@@ -120,18 +130,30 @@ export function GraphView({ model }: { model: GraphModel }) {
   // What the caption tells: the line pointed at, or else the one pinned.
   const told = hovered ?? pinned;
 
-  const nodes: TableNodeType[] = useMemo(
-    () =>
-      placed.nodes.map((at) => ({
+  const nodes = useMemo(
+    () => [
+      {
+        id: "__bounds",
+        type: "bounds",
+        position: { x: placed.bounds.x, y: placed.bounds.y },
+        data: { width: placed.bounds.width, height: placed.bounds.height },
+        draggable: false,
+        selectable: false,
+        focusable: false,
+        style: { pointerEvents: "none" as const },
+        zIndex: -1,
+      },
+      ...placed.nodes.map((at): TableNodeType => ({
         id: at.node.id,
         type: "table",
         position: { x: at.x, y: at.y },
         data: { placed: at, expanded: expanded.has(at.node.id), onToggle: toggle },
         draggable: false,
         selectable: false,
-        // Above every line: a join passes behind a table it does not touch.
+        // Above every line.
         zIndex: 100,
       })),
+    ],
     [placed, expanded, toggle],
   );
 
@@ -146,7 +168,7 @@ export function GraphView({ model }: { model: GraphModel }) {
           target: edge.toTable,
           sourceHandle: `out:${edge.fromColumns[0]}`,
           targetHandle: `in:${edge.toColumns[0]}`,
-          data: { edge, lit, dimmed: told !== null && !lit },
+          data: { edge, d: pathOf(placed.routes.get(edge.id) ?? []), lit, dimmed: told !== null && !lit },
           zIndex: ORDER[lineOf(edge).key] + (lit ? 10 : 0),
           selectable: false,
         };

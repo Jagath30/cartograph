@@ -5,7 +5,8 @@
  */
 import dagre from "@dagrejs/dagre";
 
-import type { GraphColumn, GraphEdge, GraphModel, GraphNode } from "./model";
+import type { EdgeKind, GraphColumn, GraphEdge, GraphModel, GraphNode } from "./model";
+import { columnsOf, route, type Box, type Point } from "./router";
 
 export const NODE_WIDTH = 272;
 export const HEADER_HEIGHT = 52;
@@ -34,11 +35,25 @@ export type PlacedNode = {
 export type Placed = {
   nodes: PlacedNode[];
   edges: GraphEdge[];
+  /** Where each line goes, by edge id (lib/graph/router.ts). */
+  routes: Map<string, Point[]>;
   /** Keys between these tables that are not drawn in this view. */
   otherKeys: number;
+  /** Everything drawn, tables and lines: a line may pass above the
+   *  highest table or below the lowest. */
+  bounds: { x: number; y: number; width: number; height: number };
   width: number;
   height: number;
 };
+
+/** The joins that place the tables: the plan's own (the owner's ruling on
+ *  the graph at step 9). Every other line is drawn, and moves no table. */
+export const SHAPING: ReadonlySet<EdgeKind> = new Set<EdgeKind>(["used", "planned"]);
+
+/** Where a row's line meets its table, measured from the table's top. */
+export function rowCentre(index: number): number {
+  return HEADER_HEIGHT + index * ROW_HEIGHT + ROW_HEIGHT / 2;
+}
 
 export function drawnEdges(model: GraphModel, view: View): GraphEdge[] {
   return model.edges.filter((edge) => view.showOther || edge.kind !== "other");
@@ -76,7 +91,7 @@ export function layout(model: GraphModel, view: View): Placed {
     listed.set(node.id, columns);
     graph.setNode(node.id, { width: NODE_WIDTH, height: nodeHeight(columns.length) });
   }
-  for (const edge of drawn) {
+  for (const edge of drawn.filter((edge) => SHAPING.has(edge.kind))) {
     graph.setEdge(edge.fromTable, edge.toTable, {}, edge.id);
   }
   dagre.layout(graph);
@@ -95,12 +110,70 @@ export function layout(model: GraphModel, view: View): Placed {
       hidden: node.columns.length - columns.length,
     };
   });
-  const size = graph.graph();
+  const routes = routeAll(nodes, drawn);
+  const bounds = boundsOf(nodes, routes);
   return {
     nodes,
     edges: drawn,
+    routes,
     otherKeys: model.edges.length - drawn.length,
-    width: size.width ?? 0,
-    height: size.height ?? 0,
+    bounds,
+    width: bounds.width,
+    height: bounds.height,
   };
+}
+
+/** Every drawn line's route. Brackets beside one column are numbered in
+ *  the order of their edges' ids, so that they stand apart, the same way
+ *  every time. */
+export function routeAll(nodes: PlacedNode[], edges: GraphEdge[]): Map<string, Point[]> {
+  const boxes = new Map<string, Box>(
+    nodes.map((at) => [at.node.id, { id: at.node.id, x: at.x, y: at.y, width: at.width, height: at.height }]),
+  );
+  const columns = columnsOf([...boxes.values()]);
+  const columnOf = (id: string) => columns.findIndex((column) => column.boxes.some((box) => box.id === id));
+  const rowOf = (id: string, name: string) => {
+    const at = nodes.find((placed) => placed.node.id === id)!;
+    return at.y + rowCentre(at.columns.findIndex((column) => column.name === name));
+  };
+  const ordered = [...edges].sort((a, b) => a.id.localeCompare(b.id));
+  const bracketsBeside = new Map<number, number>();
+  for (const edge of ordered) {
+    const column = columnOf(edge.fromTable);
+    if (column === columnOf(edge.toTable)) bracketsBeside.set(column, (bracketsBeside.get(column) ?? 0) + 1);
+  }
+  const placed = new Map<number, number>();
+  const routes = new Map<string, Point[]>();
+  for (const edge of ordered) {
+    const from = boxes.get(edge.fromTable)!;
+    const to = boxes.get(edge.toTable)!;
+    const column = columnOf(edge.fromTable);
+    const sameColumn = column === columnOf(edge.toTable);
+    const index = sameColumn ? (placed.get(column) ?? 0) : 0;
+    if (sameColumn) placed.set(column, index + 1);
+    routes.set(
+      edge.id,
+      route(
+        { box: from, y: rowOf(edge.fromTable, edge.fromColumns[0]) },
+        { box: to, y: rowOf(edge.toTable, edge.toColumns[0]) },
+        columns,
+        { index, count: bracketsBeside.get(column) ?? 1 },
+      ),
+    );
+  }
+  return routes;
+}
+
+function boundsOf(nodes: PlacedNode[], routes: Map<string, Point[]>) {
+  const xs = nodes.flatMap((at) => [at.x, at.x + at.width]);
+  const ys = nodes.flatMap((at) => [at.y, at.y + at.height]);
+  for (const points of routes.values()) {
+    xs.push(...points.map((point) => point.x));
+    ys.push(...points.map((point) => point.y));
+  }
+  // The margin dagre leaves, kept all round.
+  const margin = 10;
+  const x = Math.min(...xs) - margin;
+  const y = Math.min(...ys) - margin;
+  return { x, y, width: Math.max(...xs) + margin - x, height: Math.max(...ys) + margin - y };
 }
