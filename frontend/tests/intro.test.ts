@@ -10,16 +10,21 @@ import { DATA, LEAD, STEPS } from "../lib/ask/intro";
 const read = (path: string) => readFileSync(fileURLToPath(new URL(`../${path}`, import.meta.url)), "utf8");
 const intro = read("components/ask/Intro.tsx");
 
-test("the copy, as ruled, with the step that is not true left out", () => {
+test("the copy, as the owner corrected it", () => {
   expect(LEAD).toBe(
-    "Cartograph answers questions about a retail data warehouse in plain English. It shows which tables it used, how it joined them, and any choice it made with no basis.",
+    "Cartograph answers plain-English questions about a retail data warehouse. It shows which tables it used, how it joined them, and any choice it made with no basis.",
   );
   expect(STEPS).toEqual([
     "Finds the tables your question is about, out of the warehouse's 24.",
-    "Writes the SQL, checks it against its plan, and runs it on a read-only connection.",
+    "Picks the joins between them, and says which other routes it set aside, and why.",
+    "Has a language model write the SQL, then checks it against the plan and runs it on a read-only connection.",
   ]);
   expect(STEPS.join(" ")).not.toContain("own keys");
   expect(DATA).toBe("The data is a synthetic TPC-DS retail warehouse: sales and returns through stores, catalogs and the web.");
+});
+
+test("three steps in a row at desktop width", () => {
+  expect(intro).toContain('className="grid gap-4 md:grid-cols-3"');
 });
 
 test("each example is one card, a button named by its question, showing what it shows", () => {

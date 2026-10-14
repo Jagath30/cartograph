@@ -1,21 +1,17 @@
 /**
- * What the empty page says (polish B). Every sentence true of Cartograph
- * as built; one the owner wrote is left out because it is not:
- *
- *   "Joins them by the warehouse's own keys, and says which routes it set
- *   aside, and why."
- *
- * Five of the 107 relationships the graph joins by are not the
- * warehouse's own keys: they are declared by hand in the overlay
- * (CHECKPOINTS.md, items 16 and 41), and plans use them (a return joined
- * to its sale). The steps are numbered as shown.
+ * What the empty page says (polish B, its words as the owner corrected
+ * them). Every sentence true of Cartograph as built: the joins include
+ * five relationships declared by hand, so the step says the joins are
+ * picked, not that they are the warehouse's own keys; and a language
+ * model writes the SQL, which Cartograph then checks and runs.
  */
 export const LEAD =
-  "Cartograph answers questions about a retail data warehouse in plain English. It shows which tables it used, how it joined them, and any choice it made with no basis.";
+  "Cartograph answers plain-English questions about a retail data warehouse. It shows which tables it used, how it joined them, and any choice it made with no basis.";
 
 export const STEPS = [
   "Finds the tables your question is about, out of the warehouse's 24.",
-  "Writes the SQL, checks it against its plan, and runs it on a read-only connection.",
+  "Picks the joins between them, and says which other routes it set aside, and why.",
+  "Has a language model write the SQL, then checks it against the plan and runs it on a read-only connection.",
 ];
 
 export const DATA =
