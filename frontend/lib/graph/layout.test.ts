@@ -8,7 +8,7 @@ import storedV1 from "../../fixtures/trace-v1-days-of-the-week.json";
 import storedV2 from "../../fixtures/trace-v2-gender-diverged.json";
 import type { TraceDocument } from "../trace/types";
 import { fromTrace } from "./fromTrace";
-import { tablesUnder } from "./router";
+import { runAlongside, tablesUnder } from "./router";
 import {
   SHAPING,
   FOOTER_HEIGHT,
@@ -174,7 +174,7 @@ describe("sizes and places", () => {
     expect(placed.nodes.map((at) => Math.round(at.x))).toEqual(without.nodes.map((at) => Math.round(at.x)));
   });
 
-  test("no drawn line lies on a table it does not join, in any view of any stored answer", () => {
+  test("no drawn line lies on a table it does not join, nor runs alongside another, in any view of any stored answer", () => {
     for (const model of [MODEL, GENDER, DAYS]) {
       const views: View[] = [
         CLOSED,
@@ -186,6 +186,13 @@ describe("sizes and places", () => {
         const boxes = placed.nodes.map((at) => ({ id: at.node.id, x: at.x, y: at.y, width: at.width, height: at.height }));
         for (const edge of placed.edges) {
           expect(tablesUnder(placed.routes.get(edge.id)!, boxes, [edge.fromTable, edge.toTable]), edge.id).toEqual([]);
+        }
+        // No two lines run alongside each other without crossing.
+        for (let i = 0; i < placed.edges.length; i += 1) {
+          for (let j = i + 1; j < placed.edges.length; j += 1) {
+            const pair = `${placed.edges[i].id} | ${placed.edges[j].id}`;
+            expect(runAlongside(placed.routes.get(placed.edges[i].id)!, placed.routes.get(placed.edges[j].id)!), pair).toBe(false);
+          }
         }
       }
     }

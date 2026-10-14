@@ -9074,3 +9074,23 @@ Deliberate deferrals, recorded while the reasoning is fresh:
 86. **`frontend/README.md` is create-next-app's boilerplate** (step 9). It
     still says to edit `app/page.tsx`, which no longer exists. It is
     rewritten at step 13, with the main README.
+87. **Five pairs of lines still run alongside without crossing, within 2
+    px over more than 20 px** (step 9, the owner's ruling after the lanes;
+    on record, not hidden). All in d5 of the development questions ("What
+    share of the money taken on the web was later refunded?"), and only
+    with every table opened:
+      every table opened   web_page.wp_access_date_sk -> date_dim and
+                           web_page.wp_creation_date_sk -> date_dim
+      opened, every key    the same pair;
+                           customer.c_first_sales_date_sk -> date_dim and
+                           customer.c_first_shipto_date_sk -> date_dim;
+                           customer.c_first_sales_date_sk -> date_dim and
+                           customer.c_last_review_date_sk -> date_dim;
+                           web_returns.wr_refunded_customer_sk -> customer
+                           and web_returns.wr_returning_customer_sk ->
+                           customer
+    Each pair leaves neighbouring rows of one table, 24 px apart, for the
+    same row of a table three columns away. In lanes 8 px apart, through
+    channels where the opened tables make the curves climb almost
+    upright, they come 1 to 2 px apart across without ever crossing. The
+    next commit changes d5's layout, and is measured again.

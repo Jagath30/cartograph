@@ -9,6 +9,11 @@ import {
   BRACKET_EDGE,
   BRACKET_STEP,
   bracketOffset,
+  LANE,
+  LANE_MIN,
+  lanes,
+  routeLines,
+  runAlongside,
   CLEARANCE,
   OUTSIDE,
   columnsOf,
@@ -202,5 +207,95 @@ describe("the path drawn", () => {
 
   test("an unknown table is refused, not drawn across", () => {
     expect(() => route({ box: box("x", 0, 0), y: 0 }, { box: B, y: 0 }, THREE)).toThrow();
+  });
+});
+
+describe("each line its own lane", () => {
+  test("two lines through one gap run at heights LANE apart, in the order of their courses", () => {
+    const heights = lanes(THREE[1], [
+      { id: "lower", course: 170, start: 160 },
+      { id: "upper", course: 150, start: 140 },
+    ]);
+    expect(heights.get("lower")! - heights.get("upper")!).toBe(LANE);
+    // Centred on their mean course, 160, within the gap 128 to 192.
+    expect([heights.get("upper"), heights.get("lower")]).toEqual([156, 164]);
+  });
+
+  test("routed together, two lines that once shared a run each have their own", () => {
+    const a1 = box("a1", 0, 100);
+    const a2 = box("a2", 0, 250, 100);
+    const routes = routeLines(
+      [
+        { id: "one", from: { box: a1, y: 150 }, to: { box: B, y: 170 } },
+        { id: "two", from: { box: a2, y: 260 }, to: { box: B, y: 200 } },
+      ],
+      columnsOf([a1, a2, M1, M2, B]),
+    );
+    const levelOne = routes.get("one")![1].y;
+    const levelTwo = routes.get("two")![1].y;
+    expect(Math.abs(levelOne - levelTwo)).toBeGreaterThanOrEqual(LANE_MIN);
+    expect(runAlongside(routes.get("one")!, routes.get("two")!)).toBe(false);
+  });
+
+  test("in a narrow gap the lanes come closer, never under LANE_MIN, and keep CLEARANCE", () => {
+    // A gap of 20 between two tables: 4 usable after CLEARANCE on each side.
+    const narrow = columnsOf([box("p", 300, 0, 100), box("q", 300, 100 + 2 * CLEARANCE + 12, 100)])[0];
+    const [, [low, high]] = freeGaps(narrow);
+    expect(high - low).toBe(12);
+    const heights = lanes(narrow, [
+      { id: "x", course: 110, start: 0 },
+      { id: "y", course: 112, start: 0 },
+      { id: "z", course: 114, start: 0 },
+    ]);
+    const between = ["x", "y", "z"].map((id) => heights.get(id)!).filter((y) => y >= low && y <= high).sort((a, b) => a - b);
+    expect(between.length).toBe(3);
+    expect(between[1] - between[0]).toBeGreaterThanOrEqual(LANE_MIN);
+    expect(between[0]).toBe(low);
+    expect(between[2]).toBe(high);
+  });
+
+  test("a line that does not fit goes to the next nearest gap", () => {
+    const narrow = columnsOf([box("p", 300, 0, 100), box("q", 300, 100 + 2 * CLEARANCE + 12, 100)])[0];
+    const [above, [low, high], below] = freeGaps(narrow);
+    const heights = lanes(narrow, [
+      { id: "a", course: 110, start: 0 },
+      { id: "b", course: 111, start: 0 },
+      { id: "c", course: 112, start: 0 },
+      { id: "d", course: 140, start: 0 },
+    ]);
+    const inside = [...heights.values()].filter((y) => y >= low && y <= high);
+    expect(inside.length).toBe(3);
+    // d is farthest from the gap and goes round: above or below, whichever is nearer.
+    const d = heights.get("d")!;
+    expect(d === above[1] || d === below[0]).toBe(true);
+  });
+
+  test("above or below a column the lanes stack outward, LANE apart", () => {
+    const one = columnsOf([box("o", 300, 0, 100)])[0];
+    const heights = lanes(one, [
+      { id: "high", course: -40, start: 0 },
+      { id: "higher", course: -60, start: 0 },
+      { id: "low", course: 150, start: 0 },
+      { id: "lower", course: 170, start: 0 },
+    ]);
+    expect(heights.get("high")).toBe(-OUTSIDE);
+    expect(heights.get("higher")).toBe(-OUTSIDE - LANE);
+    expect(heights.get("low")).toBe(100 + OUTSIDE);
+    expect(heights.get("lower")).toBe(100 + OUTSIDE + LANE);
+  });
+});
+
+describe("running alongside", () => {
+  test("two level lines 1 px apart over 100 px run alongside; 3 px apart do not, at 2 px", () => {
+    expect(runAlongside([{ x: 0, y: 0 }, { x: 100, y: 0 }], [{ x: 0, y: 1 }, { x: 100, y: 1 }])).toBe(true);
+    expect(runAlongside([{ x: 0, y: 0 }, { x: 100, y: 0 }], [{ x: 0, y: 3 }, { x: 100, y: 3 }])).toBe(false);
+  });
+
+  test("two lines that cross, however shallow, do not", () => {
+    expect(runAlongside([{ x: 0, y: 0 }, { x: 200, y: 2 }], [{ x: 0, y: 2 }, { x: 200, y: 0 }])).toBe(false);
+  });
+
+  test("where two lines meet the same row is left out", () => {
+    expect(runAlongside([{ x: 0, y: 0 }, { x: 100, y: 50 }], [{ x: 0, y: 1 }, { x: 100, y: 50 }])).toBe(false);
   });
 });

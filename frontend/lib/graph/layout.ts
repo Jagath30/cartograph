@@ -6,7 +6,7 @@
 import dagre from "@dagrejs/dagre";
 
 import type { EdgeKind, GraphColumn, GraphEdge, GraphModel, GraphNode } from "./model";
-import { columnsOf, route, type Box, type Point } from "./router";
+import { columnsOf, routeLines, type Box, type Line, type Point } from "./router";
 
 export const NODE_WIDTH = 272;
 export const HEADER_HEIGHT = 52;
@@ -143,24 +143,19 @@ export function routeAll(nodes: PlacedNode[], edges: GraphEdge[]): Map<string, P
     if (column === columnOf(edge.toTable)) bracketsBeside.set(column, (bracketsBeside.get(column) ?? 0) + 1);
   }
   const placed = new Map<number, number>();
-  const routes = new Map<string, Point[]>();
-  for (const edge of ordered) {
-    const from = boxes.get(edge.fromTable)!;
-    const to = boxes.get(edge.toTable)!;
+  const lines: Line[] = ordered.map((edge) => {
     const column = columnOf(edge.fromTable);
     const sameColumn = column === columnOf(edge.toTable);
     const index = sameColumn ? (placed.get(column) ?? 0) : 0;
     if (sameColumn) placed.set(column, index + 1);
-    routes.set(
-      edge.id,
-      route(
-        { box: from, y: rowOf(edge.fromTable, edge.fromColumns[0]) },
-        { box: to, y: rowOf(edge.toTable, edge.toColumns[0]) },
-        columns,
-        { index, count: bracketsBeside.get(column) ?? 1 },
-      ),
-    );
-  }
+    return {
+      id: edge.id,
+      from: { box: boxes.get(edge.fromTable)!, y: rowOf(edge.fromTable, edge.fromColumns[0]) },
+      to: { box: boxes.get(edge.toTable)!, y: rowOf(edge.toTable, edge.toColumns[0]) },
+      bracket: sameColumn ? { index, count: bracketsBeside.get(column) ?? 1 } : undefined,
+    };
+  });
+  const routes = routeLines(lines, columns);
   return routes;
 }
 
