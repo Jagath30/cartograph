@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Inter is the sans-serif face everywhere (app/layout.tsx loads it); the
+   monospace face stays Tailwind's own. */
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
 /* Visible focus on everything that can take it, in the ink colour: the
    warnings' colour is kept for the warnings alone. */
 :where(a, button, summary, input, [tabindex]):focus-visible {

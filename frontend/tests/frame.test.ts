@@ -26,7 +26,7 @@ test("the favicon is the header's glyph: the same points, joined in the same ord
 
 test("the layout gives every page its landmarks, a skip link to main, and English", () => {
   const layout = read("app/layout.tsx");
-  expect(layout).toContain('<html lang="en">');
+  expect(layout).toContain('<html lang="en"');
   expect(layout).toContain('<main id="main" tabIndex={-1}');
   expect(read("components/frame/Frame.tsx")).toContain('href="#main"');
   expect(read("components/frame/Frame.tsx")).toMatch(/<header[\s>]/);
@@ -76,4 +76,13 @@ test("the main landmark draws no outline when the skip link focuses it", () => {
 
 test("the 404 page sends the reader back to Ask", () => {
   expect(read("app/not-found.tsx")).toContain('href="/ask"');
+});
+
+test("Inter is the sans-serif face, self-hosted, with its licence beside it", () => {
+  const layout = read("app/layout.tsx");
+  expect(layout).toContain('src: "./fonts/inter-latin-wght-normal.woff2"');
+  expect(layout).toContain("<html lang=\"en\" className={inter.variable}>");
+  expect(read("app/globals.css")).toContain("--font-sans: var(--font-inter)");
+  expect(read("app/fonts/OFL.txt")).toContain("SIL Open Font License, Version 1.1");
+  for (const path of ["app/layout.tsx", "app/globals.css"]) expect(read(path)).not.toMatch(/fonts\.googleapis|fonts\.gstatic|next\/font\/google/);
 });

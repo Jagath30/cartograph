@@ -17,7 +17,7 @@ export function AmberBlock({ trace }: { trace: TraceDocument }) {
   if (shown.length === 0) return null;
   return (
     <section
-      className="rounded-md border-2 border-amber-400 bg-amber-50 p-5 text-amber-950"
+      className="rounded-md border-2 border-amber-400 bg-amber-50 p-6 text-amber-950"
       role="alert"
       data-ask="amber"
     >
@@ -78,7 +78,7 @@ function Listed({ label, items }: { label: string; items: string[] }) {
   );
 }
 
-const HEAD = "mt-5 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0";
+const HEAD = "mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0";
 const SUMMARY = "cursor-pointer select-none rounded-md border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50";
 const BODY = "rounded-b-md border border-t-0 border-gray-200 bg-white px-4 py-4";
 
@@ -342,7 +342,7 @@ function Generated({ trace }: { trace: TraceDocument }) {
         </p>
 
         {generation && (
-          <details className="mt-5">
+          <details className="mt-6">
             <summary className="cursor-pointer text-sm text-gray-700">The prompt, exactly as it was sent</summary>
             <pre className={CODE}>{generation.prompt_system}</pre>
             <pre className={CODE}>{generation.prompt_user}</pre>
