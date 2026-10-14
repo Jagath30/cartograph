@@ -8,7 +8,8 @@
  *
  *   gender   by the billed customer's demographics women spent more on
  *            the web in 2002 (183.2M against 178.6M); by the shipped-to
- *            customer's, men (183.2M against 178.7M).
+ *            customer's, men (183.2M against 178.7M). Worded to bring back
+ *            both totals, not only the larger (stop 3 of step 9, fix 3).
  *   states   by billing or by shipping address the same five states lead,
  *            and every amount differs, Virginia's by 7%.
  *
@@ -18,7 +19,7 @@
 export type Example = { question: string; shows: string };
 
 export const EXAMPLES: Example[] = [
-  { question: "Which gender spent more on the web in the year 2002?", shows: "a choice made with no basis" },
+  { question: "How much did each gender spend on the web in the year 2002?", shows: "a choice made with no basis" },
   { question: "Which five states spent the most on the web?", shows: "a choice made with no basis" },
   { question: "How many customers were born in each country?", shows: "a quiet answer" },
   { question: "Which of our suppliers deliver late most often?", shows: "an honest decline" },
