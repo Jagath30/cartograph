@@ -8921,6 +8921,11 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     Reported, not patched around. Step 12's reduced warehouse needs them
     to count what the warehouse holds; smoke's "backend suite" line fails
     on any warehouse but scale factor 1 until then.
+    **Two more at step 9:** `tests/test_demo_questions.py` pins the
+    demonstration's gender totals at scale factor 1 (F 183,224,441.98 and
+    M 178,618,746.26 by the billed customer's demographics; F
+    178,673,143.87 and M 183,166,052.93 by the shipped-to's). Not fixed
+    now, by the owner's ruling.
 74. **For step 9: what the panel is given.** `paths.warnings[]` with
     `state` and `loud` (the amber block is the loud ones; DD-21);
     `narrative` as five strings; `paths.attachments[]` with the
@@ -9019,7 +9024,8 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     `npm audit` does not flag vite 8.3.1, though GitHub lists three
     advisories of 6 October against it; they are in its dev server, which
     `vitest run` does not open, and 8.3.1 is kept by the owner's rule.
-84. **Counted, nothing changed: where the date table hangs when a sales
+84. **RESOLVED at step 9, stop 3, ahead of step 10 as planned. Counted,
+    nothing changed: where the date table hangs when a sales
     table is present** (step 9, the owner's ruling 11 at stop 2; to be
     decided before step 10). In the sixteen trees of the step 6 report
     as the pipeline now builds them (`eval/pass_07b/c_and_d.json`, C and
@@ -9037,3 +9043,24 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     `multi_anchor` warning is loud as `other_route_taken`. In d7 of the
     development questions the same tie fell to `catalog_sales`, which
     sorts before `customer`.
+    **Decided at stop 3 of step 9, by the owner.** Asked again as "How
+    much did each gender spend on the web in the year 2002?", the plan hung
+    the date on the page once more, the model followed it once, and the
+    totals were about 4.7 times the web's real takings in 2002. Two
+    preferences of the second kind are declared: `web_sales` rather than
+    `web_page`, and `catalog_sales` rather than `catalog_page`, "because a
+    web (catalog) page is only what a sale was made through, so whatever
+    either could carry is taken to describe the sale (an operator's
+    default)". They decide every table that could hang on either side, the
+    date and the customer among them. The date of the gender plan now
+    hangs on `web_sales` by `ws_sold_date_sk`, and only the billed against
+    shipped-to choice is loud. The sixteen questions of the step 6 report
+    and four development questions, recorded before and after
+    (`eval/pass_07b/step9_before.json`, `step9_after.json`; the before run
+    is identical to `c_and_d.json`): no selected route moved in the 20
+    plans. Two changed only in how many routes were tied: question 12
+    (store_returns, 16 to 14) and question 16 (customer, 4 to 3).
+    Not decided: with the demographics in the plan, the customer hangs on
+    `customer_demographics` by its current demographics, alphabetically, a
+    separate tie; a third preference was declined. It is pinned as today's
+    behaviour in `tests/core/test_sale_over_page.py`.

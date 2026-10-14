@@ -353,6 +353,17 @@ preferences:
     because: >-
       a return refers to its sale, so whatever either could carry is
       taken to describe the sale (an operator's default)
+  - attach_to:   web_sales
+    rather_than: web_page
+    because: >-
+      a web page is only what a sale was made through, so whatever either
+      could carry is taken to describe the sale (an operator's default)
+  - attach_to:   catalog_sales
+    rather_than: catalog_page
+    because: >-
+      a catalog page is only what a sale was made through, so whatever
+      either could carry is taken to describe the sale (an operator's
+      default)
   - between: [catalog_sales, date_dim]
     prefer:
       - from: catalog_sales.cs_sold_date_sk

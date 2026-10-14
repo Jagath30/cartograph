@@ -197,7 +197,7 @@ def test_the_graph_rebuilt_from_rows_is_the_graph_live_ingestion_builds(store, s
     _, loaded = store.load_current(
         preferences=live_snapshot.preferences, attach_preferences=live_snapshot.attach_preferences
     )
-    assert len(live_snapshot.attach_preferences) == 3
+    assert len(live_snapshot.attach_preferences) == 5
 
     assert loaded == live_snapshot
     rebuilt, original = build_graph(loaded), build_graph(live_snapshot)

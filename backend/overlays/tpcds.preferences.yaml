@@ -36,6 +36,18 @@
 # carry on the returns table: nine times in the sixteen trees of the step 6
 # report. The alphabet is arbitrary and, on this schema, not neutral.
 #
+# Why a sale over its page (step 9, the owner's ruling at stop 3). A table
+# that could hang on a sale or on the page it was sold through, at equal
+# length, hung on the page whenever the alphabet said so: "web_page" sorts
+# before "web_sales". Asked "How much did each gender spend on the web in
+# the year 2002?", the plan filtered on the date the PAGE was last
+# accessed, and a query that followed it gave totals about 4.7 times the
+# web's real takings. A page is only what a sale was made through, so
+# whatever either could carry describes the sale: its date, its customer,
+# anything. The same holds of a catalog sale and its catalog page. These
+# two decide every table that could hang on either, the date and the
+# customer among them (CHECKPOINTS.md, item 84).
+#
 # Why the two dates. catalog_sales and web_sales each hold a sold date and
 # a ship date, and "ship" sorts before "sold": a question that named no
 # date was answered by the date the goods shipped (step 5, question 4).
@@ -58,6 +70,17 @@ preferences:
     because: >-
       a return refers to its sale, so whatever either could carry is
       taken to describe the sale (an operator's default)
+  - attach_to:   web_sales
+    rather_than: web_page
+    because: >-
+      a web page is only what a sale was made through, so whatever either
+      could carry is taken to describe the sale (an operator's default)
+  - attach_to:   catalog_sales
+    rather_than: catalog_page
+    because: >-
+      a catalog page is only what a sale was made through, so whatever
+      either could carry is taken to describe the sale (an operator's
+      default)
   - between: [catalog_sales, date_dim]
     prefer:
       - from: catalog_sales.cs_sold_date_sk

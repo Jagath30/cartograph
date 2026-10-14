@@ -303,27 +303,26 @@ def test_recorded_the_accepted_risk_a_stores_closing_date_is_as_near_as_the_date
     assert explain_tree(tree, tpcds).codes == {"multi_anchor"}
 
 
-def test_recorded_a_customer_is_as_near_to_a_web_page_as_to_a_web_sale(tpcds) -> None:
-    """Recorded, not wanted. web_sales, web_page, customer: customer is one
-    join from web_sales by the billing key and by the shipping key, and one
-    join from web_page by wp_customer_sk, the weakest-evidenced edge in the
-    graph (carried forward 40). Three candidates, two places. The alphabet
-    reads web_page before web_sales, so with nothing from the question the
-    tree takes wp_customer_sk -- no longer silently: it raises multi_anchor
-    and names the two routes through the sale."""
+def test_a_customer_as_near_to_a_web_page_as_to_a_web_sale_hangs_on_the_sale(tpcds) -> None:
+    """web_sales, web_page, customer: customer is one join from web_sales by
+    the billing key and by the shipping key, and one join from web_page by
+    wp_customer_sk, the weakest-evidenced edge in the graph (carried
+    forward 40). Until step 9 the alphabet read web_page before web_sales
+    and the tree took wp_customer_sk ("recorded, not wanted"). The overlay
+    now declares the sale over the page it was made through (step 9, stop
+    3; item 84): the page's route is set aside, and what is left is the
+    billing key against the shipping key, which nothing decides."""
     tree = _tree(tpcds, "web_sales", "web_page", "customer")
     attachment = tree.attachments[-1]
 
-    assert len(attachment.tied) == 3
-    assert attachment.path.id == "web_page.wp_customer_sk=customer.c_customer_sk"
-    assert attachment.tied_at_the_same_table == ()
-    assert sorted(path.joins[0].fk_columns[0] for path in attachment.tied_at_another_table) == [
-        "ws_bill_customer_sk",
-        "ws_ship_customer_sk",
-    ]
+    assert attachment.attached_to == "web_sales"
+    assert attachment.path.id == "web_sales.ws_bill_customer_sk=customer.c_customer_sk"
+    assert [path.id for path in attachment.withdrawn] == ["web_page.wp_customer_sk=customer.c_customer_sk"]
+    assert len(attachment.tied) == 2 and attachment.tied_at_another_table == ()
+    assert [path.joins[0].fk_columns[0] for path in attachment.tied_at_the_same_table] == ["ws_ship_customer_sk"]
     explanation = explain_tree(tree, tpcds)
-    assert explanation.codes == {"multi_anchor"}
-    warning = next(warning for warning in explanation.warnings if warning.code == "multi_anchor")
+    assert explanation.codes == {"arbitrary_choice"}
+    warning = next(warning for warning in explanation.warnings if warning.code == "arbitrary_choice")
     assert "bill customer surrogate key" in warning.text and "ship customer surrogate key" in warning.text
 
 

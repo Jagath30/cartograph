@@ -68,14 +68,16 @@ def test_the_overlays_preferences_are_their_source_and_the_source_exists() -> No
     assert yaml.safe_load(generated)["preferences"] == yaml.safe_load(source)["preferences"]
 
 
-def test_the_preferences_are_sales_over_returns_and_the_sold_date_and_nothing_else(overlay, snapshot) -> None:
+def test_the_preferences_are_sales_over_returns_and_pages_and_the_sold_date_and_nothing_else(overlay, snapshot) -> None:
     """Three between a return and its own sale, one a channel (ruling C).
-    Two that name the sold date over the ship date, for the two sales
-    tables that have both (ruling D). Nothing about billing against
-    shipping, or a store against a customer's address: those stay
-    arbitrary (DD-12, DD-21)."""
+    Two between a sale and the page it was made through, for the two
+    channels that have pages (step 9, stop 3). Two that name the sold date
+    over the ship date, for the two sales tables that have both (ruling
+    D). Nothing about billing against shipping, or a store against a
+    customer's address: those stay arbitrary (DD-12, DD-21)."""
     assert [(p.attach_to, p.rather_than) for p in overlay.attach_preferences] == [
         ("store_sales", "store_returns"), ("catalog_sales", "catalog_returns"), ("web_sales", "web_returns"),
+        ("web_sales", "web_page"), ("catalog_sales", "catalog_page"),
     ]  # fmt: skip
     assert all(p.because for p in overlay.attach_preferences)
     assert [(p.between, p.prefer) for p in overlay.preferences] == [
@@ -97,7 +99,7 @@ def test_the_generator_ends_the_overlay_with_the_preferences() -> None:
         [key], RELATIONSHIPS_SOURCE.read_text(), NAMING_SOURCE.read_text(), PREFERENCES_SOURCE.read_text()
     )
     assert rendered.endswith("\n\n" + ri.preferences_section(PREFERENCES_SOURCE.read_text()))
-    assert len(parse_overlay(rendered).attach_preferences) == 3
+    assert len(parse_overlay(rendered).attach_preferences) == 5
     assert len(parse_overlay(rendered).preferences) == 2
 
 
