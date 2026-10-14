@@ -9105,3 +9105,9 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     crossing each channel square, in its own upright track) would, and
     in d5 tracks would take the text below the floor: 9.9 and 8.3 px at
     8 px a track, 10.9 and 9.0 px at 6 px.
+88. **A stored answer keeps no rows** (step 9, polish C; the owner's
+    words). A stored answer keeps no rows, so the page a 'Copy link'
+    opens shows the explanation, the graph and the SQL but no results.
+    Decide before step 11 (history) whether a stored answer should keep
+    its rows (they are capped at 1,000), or say plainly that they were
+    not kept.
