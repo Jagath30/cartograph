@@ -9064,3 +9064,13 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     `customer_demographics` by its current demographics, alphabetically, a
     separate tie; a third preference was declined. It is pinned as today's
     behaviour in `tests/core/test_sale_over_page.py`.
+85. **Kept for step 12: `health()` and `ready()` in `frontend/lib/api.ts`,
+    with the types `Health`, `Check` and `Readiness`** (step 9, the owner's
+    ruling). Only the step 1 page used them, and it is retired: "/" now
+    redirects to /ask. Step 12 may use them to tell a visitor that the
+    sleeping backend is waking (the free host's cold start). Remove them
+    at step 12's close if they are still unused. `eslint-config-next`
+    stays at 16.3.5 while `next` is at 16.3.8, by the same ruling.
+86. **`frontend/README.md` is create-next-app's boilerplate** (step 9). It
+    still says to edit `app/page.tsx`, which no longer exists. It is
+    rewritten at step 13, with the main README.
