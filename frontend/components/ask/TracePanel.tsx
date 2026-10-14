@@ -4,6 +4,7 @@ import { count, seconds } from "@/lib/ask/format";
 import { alarms, quietWarnings } from "@/lib/ask/warnings";
 import type { TraceDocument } from "@/lib/trace/types";
 
+import { CopyButton } from "./Actions";
 import { StageTimes } from "./StageIndicator";
 
 /**
@@ -205,7 +206,10 @@ function Generated({ trace }: { trace: TraceDocument }) {
     <details data-ask="generated">
       <summary className={SUMMARY}>Generated SQL &middot; validation &middot; timings &middot; cost</summary>
       <div className={BODY}>
-        <h3 className={HEAD}>The SQL {execution ? "that was run" : sql ? "the model wrote; it was not run" : ""}</h3>
+        <div className="flex items-center justify-between gap-4">
+          <h3 className={HEAD}>The SQL {execution ? "that was run" : sql ? "the model wrote; it was not run" : ""}</h3>
+          {sql && <CopyButton label="Copy SQL" text={() => sql} />}
+        </div>
         {sql ? <pre className={CODE}>{sql}</pre> : <p className="mt-2 text-sm text-gray-600">No SQL was written.</p>}
 
         {generation && (

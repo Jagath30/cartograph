@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
+import { CopyButton, ResultActions } from "@/components/ask/Actions";
 import { Ending } from "@/components/ask/Ending";
 import { ExampleQuestions } from "@/components/ask/ExampleQuestions";
 import { Intro } from "@/components/ask/Intro";
@@ -51,8 +52,15 @@ function Answer({ result, stored }: { result: QueryOut; stored: boolean }) {
     <div className="mt-6 space-y-6" data-ask="answer">
       <div>
         <p className="text-xl">{trace.question}</p>
-        <p className="mt-1 text-xs text-gray-500">
-          {stored ? "Read back from the store; asked" : "Asked"} {formatWhen(trace.created_at)}
+        <p className="mt-1 flex items-center gap-3 text-xs text-gray-500">
+          <span>
+            {stored ? "Read back from the store; asked" : "Asked"} {formatWhen(trace.created_at)}
+          </span>
+          <CopyButton
+            label="Copy link"
+            name="Copy link to this answer"
+            text={() => `${window.location.origin}/ask?id=${result.query_id}`}
+          />
         </p>
       </div>
 
@@ -61,9 +69,12 @@ function Answer({ result, stored }: { result: QueryOut; stored: boolean }) {
       <div className="grid grid-cols-2 items-start gap-8">
         <Narrative trace={trace} />
         <section data-ask="results">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">
-            {answered ? "Results" : "What happened"}
-          </h2>
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">
+              {answered ? "Results" : "What happened"}
+            </h2>
+            {answered && <ResultActions result={result} />}
+          </div>
           <div className="mt-3 space-y-3">
             {!answered && <Ending ending={endingOf(result)} />}
             {answered && <ResultTable result={result} />}
