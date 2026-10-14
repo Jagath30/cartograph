@@ -142,7 +142,11 @@ equal "the local user is seeded, and is the only user" "local@cartograph.invalid
   "$(app_sql "select string_agg(email, ',') from users" 2>/dev/null || true)"
 
 stage "Frontend"
-expect "page served and titled" "Cartograph" curl -sf "$WEB"
+# "/" is a temporary redirect to the application. The status and the
+# Location header are read from the response itself; the redirect is not
+# followed.
+equal "/ goes to /ask (307)" "307 /ask" \
+  "$(curl -s -o /dev/null -D - "$WEB/" | tr -d '\r' | awk 'NR == 1 { code = $2 } tolower($1) == "location:" { where = $2 } END { print code, where }')"
 expect "/ask is served" "Ask a question" curl -sf "$WEB/ask"
 
 stage "Tests"

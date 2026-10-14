@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
   // 127.0.0.1, and without this entry a page opened there is served and
   // never comes alive: its scripts are refused.
   allowedDevOrigins: ["127.0.0.1"],
+  // The application is /ask. Temporary (307), not permanent: history and
+  // login arrive at step 11, and "/" may become something else.
+  async redirects() {
+    return [{ source: "/", destination: "/ask", permanent: false }];
+  },
 };
 
 export default nextConfig;

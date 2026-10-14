@@ -42,7 +42,8 @@ function sources(directory: string): string[] {
 
 test("each page has exactly one h1, and no page brings a main landmark of its own", () => {
   const pages = sources("app").filter((path) => /(page|not-found)\.tsx$/.test(path));
-  expect(pages.length).toBeGreaterThanOrEqual(3);
+  // /ask and the 404 page; "/" is a redirect and has no page.
+  expect(pages.length).toBeGreaterThanOrEqual(2);
   for (const page of pages) {
     const text = read(page);
     expect((text.match(/<h1[\s>]/g) ?? []).length, page).toBe(1);
