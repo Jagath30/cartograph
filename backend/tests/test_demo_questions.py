@@ -42,7 +42,8 @@ def asked(sql: str, dsn: str):
 
 def test_the_billed_route_gives_the_pinned_totals_and_the_choice_is_loud(warehouse_dsn) -> None:  # noqa: F811
     trace, made = asked(BILLED, warehouse_dsn)
-    assert made.outcome == "answered" and made.validation.conformance in ("conforms", "incomplete")
+    # The plan holds four joins and the query makes two of them.
+    assert made.outcome == "answered" and made.validation.conformance == "incomplete"
     assert sorted(trace.execution.rows) == [("F", Decimal("183224441.98")), ("M", Decimal("178618746.26"))]
     loud = [w for w in made.paths.warnings if w.loud]
     assert [(w.code, w.state) for w in loud] == [("arbitrary_choice", "followed")]
@@ -51,6 +52,8 @@ def test_the_billed_route_gives_the_pinned_totals_and_the_choice_is_loud(warehou
 
 def test_the_shipped_to_route_turns_the_answer_round(warehouse_dsn) -> None:  # noqa: F811
     trace, made = asked(SHIPPED_TO, warehouse_dsn)
+    # The shipped-to key is not a join the plan chose.
+    assert made.outcome == "answered" and made.validation.conformance == "diverged"
     assert sorted(trace.execution.rows) == [("F", Decimal("178673143.87")), ("M", Decimal("183166052.93"))]
     loud = [w for w in made.paths.warnings if w.loud]
     assert [(w.code, w.state) for w in loud] == [("arbitrary_choice", "other_route_taken")]
