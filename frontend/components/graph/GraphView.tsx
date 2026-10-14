@@ -8,6 +8,7 @@ import { Controls, ReactFlow } from "@xyflow/react";
 import { layout } from "@/lib/graph/layout";
 import { identifiers, type GraphEdge, type GraphModel } from "@/lib/graph/model";
 import { nearestLine, type Sampled } from "@/lib/graph/nearest";
+import { TIP_WIDTH, tooltipAt, type Placement } from "@/lib/graph/tooltip";
 
 import { KeyEdge, type KeyEdgeType } from "./KeyEdge";
 import { AMBER, LINES, ORDER, lineOf, type LineStyle } from "./styles";
@@ -69,6 +70,8 @@ export function GraphView({ model }: { model: GraphModel }) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const [showOther, setShowOther] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
+  // Where the tooltip beside the pointer goes, worked out as the pointer moves.
+  const [tip, setTip] = useState<Placement | null>(null);
   const [pinned, setPinned] = useState<string | null>(null);
 
   const toggle = useCallback((table: string) => {
@@ -89,7 +92,16 @@ export function GraphView({ model }: { model: GraphModel }) {
     if (!canvas.current || over.closest(".react-flow__node, .react-flow__controls, .react-flow__panel")) return null;
     return nearestLine({ x: event.clientX, y: event.clientY }, sampled(canvas.current));
   }, []);
-  const onMove = useCallback((event: MouseEvent) => setHovered(lineAt(event)), [lineAt]);
+  const onMove = useCallback(
+    (event: MouseEvent) => {
+      setHovered(lineAt(event));
+      const box = canvas.current?.getBoundingClientRect();
+      setTip(
+        box ? tooltipAt({ x: event.clientX - box.left, y: event.clientY - box.top }, { width: box.width, height: box.height }) : null,
+      );
+    },
+    [lineAt],
+  );
   const onClick = useCallback(
     (event: MouseEvent) => {
       const over = event.target as Element;
@@ -144,6 +156,9 @@ export function GraphView({ model }: { model: GraphModel }) {
 
   const routes = placed.edges.filter((edge) => edge.kind !== "other");
   const shown = told ? placed.edges.find((edge) => edge.id === told) : undefined;
+  // The tooltip tells the line pointed at, beside the pointer; the strip
+  // above tells it too, and keeps a pinned one.
+  const pointed = hovered ? placed.edges.find((edge) => edge.id === hovered) : undefined;
   const legend = [...new Set(placed.edges.map((edge) => lineOf(edge).key))].sort((a, b) => ORDER[b] - ORDER[a]);
   const anyLoud = placed.edges.some((edge) => edge.loud);
 
@@ -170,7 +185,7 @@ export function GraphView({ model }: { model: GraphModel }) {
 
       <div
         ref={canvas}
-        className="w-full rounded-md border border-gray-200 bg-gray-50"
+        className="relative w-full rounded-md border border-gray-200 bg-gray-50"
         // The picture's own shape, so that fitting it leaves no empty band.
         style={{
           aspectRatio: `${placed.width} / ${placed.height}`,
@@ -180,7 +195,10 @@ export function GraphView({ model }: { model: GraphModel }) {
           cursor: hovered ? "pointer" : undefined,
         }}
         onMouseMove={onMove}
-        onMouseLeave={() => setHovered(null)}
+        onMouseLeave={() => {
+          setHovered(null);
+          setTip(null);
+        }}
         onMouseDown={(event) => (pressed.current = { x: event.clientX, y: event.clientY })}
         onClick={onClick}
       >
@@ -210,6 +228,16 @@ export function GraphView({ model }: { model: GraphModel }) {
           {/* Top left: the first rank is one table, centred, so that corner is clear. */}
           <Controls showInteractive={false} position="top-left" />
         </ReactFlow>
+        {pointed && tip && (
+          <div
+            role="tooltip"
+            data-graph="tooltip"
+            className="pointer-events-none absolute z-50 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-lg"
+            style={{ left: tip.left, top: tip.top, maxWidth: TIP_WIDTH }}
+          >
+            <span className="font-medium">{lineOf(pointed).label}.</span> {describe(pointed)}
+          </div>
+        )}
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-gray-700">
