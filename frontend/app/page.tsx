@@ -22,7 +22,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-xl p-10 font-sans">
+    <div className="mx-auto max-w-xl p-10 font-sans">
       <h1 className="text-2xl font-semibold">Cartograph</h1>
       <p className="mt-2 text-sm text-gray-500">
         Step 1 &mdash; the stack stands up empty.
@@ -54,6 +54,6 @@ export default function Home() {
           ))}
         </ul>
       )}
-    </main>
+    </div>
   );
 }

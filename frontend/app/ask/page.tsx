@@ -9,6 +9,7 @@ import { QuestionInput } from "@/components/ask/QuestionInput";
 import { ResultTable } from "@/components/ask/ResultTable";
 import { StageIndicator } from "@/components/ask/StageIndicator";
 import { AmberBlock, Disclosures, Narrative } from "@/components/ask/TracePanel";
+import { WIDTH } from "@/components/frame/Frame";
 import { GraphView } from "@/components/graph/GraphView";
 import { api, ApiError } from "@/lib/api";
 import { formatWhen } from "@/lib/ask/format";
@@ -148,12 +149,12 @@ function Asking() {
 
 export default function Ask() {
   return (
-    <main className="mx-auto max-w-[1880px] px-5 py-6 font-sans">
+    <div className={`${WIDTH} py-6 font-sans`}>
       <h1 className="mb-4 text-xl font-semibold">Ask a question</h1>
       {/* useSearchParams needs a boundary for the production build. */}
       <Suspense fallback={<p className="text-sm text-gray-500">&hellip;</p>}>
         <Asking />
       </Suspense>
-    </main>
+    </div>
   );
 }
