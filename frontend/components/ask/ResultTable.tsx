@@ -68,13 +68,13 @@ export function ResultTable({ result }: { result: QueryOut }) {
           </tbody>
         </table>
       </div>
+      {/* How many rows came back is said once, by the narrative beneath. */}
       <p className="mt-2 text-xs text-gray-600">
-        {count(result.rows.length)} {result.rows.length === 1 ? "row" : "rows"}.
         {result.truncated && (
-          <span className="ml-1 font-medium text-amber-800">
+          <span className="mr-1 font-medium text-amber-800">
             Showing the first {count(execution?.row_cap ?? result.rows.length)} rows: more matched than the limit allows.
           </span>
-        )}{" "}
+        )}
         Numbers are shown with separators and are otherwise as they came back; point at one for the raw value.
       </p>
     </div>
