@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 
 import { Ending } from "@/components/ask/Ending";
 import { ExampleQuestions } from "@/components/ask/ExampleQuestions";
+import { Intro } from "@/components/ask/Intro";
 import { QuestionInput } from "@/components/ask/QuestionInput";
 import { ResultTable } from "@/components/ask/ResultTable";
 import { StageIndicator } from "@/components/ask/StageIndicator";
@@ -130,7 +131,8 @@ function Asking() {
   return (
     <>
       <QuestionInput value={question} onChange={setQuestion} onAsk={ask} busy={busy} />
-      <ExampleQuestions onPick={ask} busy={busy} />
+      {/* Before any question: what Cartograph does, and the examples as cards. */}
+      {state.kind === "idle" && !reading ? <Intro onPick={ask} busy={busy} /> : <ExampleQuestions onPick={ask} busy={busy} />}
 
       {state.kind === "asking" && <StageIndicator startedAt={state.startedAt} />}
       {reading && <p className="mt-6 text-sm text-gray-500">Reading the stored query&hellip;</p>}

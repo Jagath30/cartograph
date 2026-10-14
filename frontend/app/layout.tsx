@@ -5,8 +5,7 @@ import { Footer, Header, SkipLink } from "@/components/frame/Frame";
 
 export const metadata: Metadata = {
   title: { default: "Cartograph", template: "%s · Cartograph" },
-  description:
-    "Ask a data warehouse a question in plain English, and see how the answer was built, and where a choice had no basis.",
+  description: "Plain-English questions over a data warehouse, answered in SQL, with every join explained.",
 };
 
 /** The frame on every page: a skip link, the header, the page as the
