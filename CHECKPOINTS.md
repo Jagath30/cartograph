@@ -7,55 +7,46 @@ to explain, and what the next single deliverable is.
 
 ---
 
-## Current state — 10 October 2026, kept current at every close
+## Current state — 15 October 2026, kept current at every close
 
-**What exists.** Steps 1 to 8 and a retrieval pass, tagged
-`checkpoint-01-stack` to `checkpoint-08-trace`. TPC-DS (24 tables, 107
-keys); ingestion and the graph; PathFinder, JoinTree, Explainer; hybrid
-retrieval over a stored, embedded snapshot; generation through
-`gpt-6-luna`, validated, checked and executed; the trace assembled, its
-warnings marked against the joins the SQL made, its narrative composed
-once, written in one transaction and served: `POST /api/v1/queries`,
-`GET /api/v1/queries/{id}`, `GET /api/v1/schema`. Two migrations; one
-seeded local user. DD-12's order: shortest, the wording beyond the
-margin, a declared preference, the alphabet. Five preferences. Smoke 38,
-0, 0. Suite 1229 pass, 2 skip. Settings: alpha 0.5, cut 0.5, cap 5,
-bound 10, three joins, margin 0.107051.
+**What exists.** Steps 1 to 9 and a retrieval pass, tagged
+`checkpoint-01-stack` to `checkpoint-09-frontend`. Steps 1 to 8's
+pipeline, its decisions unchanged but for two declared preferences (a
+sale over the page it was made through). Step 9: one page, `/ask`: the
+amber block when a choice had no basis; the narrative beside the results
+(copy, CSV); the graph of the plan and of the joins the SQL made; the
+detail behind disclosures; `?id=` reopens a stored answer. No WCAG 2.1 AA
+violation by axe; keyboard throughout. Smoke 39, 0, 0. Backend 1297
+pass, 2 skip; frontend 211.
 
 **Rules every session follows.**
 - `OPENAI_API_KEY` is never printed, displayed or read; `.env` is never
   opened. No `docker compose config`, `docker inspect`, `env`, `printenv`
-  or `set`. Presence is checked, never value.
-- Installs only through the backend image; tests inside the container.
-  Commits on `main`; never push, `--all` and `--tags` least of all;
-  `step2-backup` stays local. `docker compose down`, never `down -v`.
+  or `set`. Installs only through the images; tests inside the containers.
+- Commits on `main`; never push, `--all` and `--tags` least of all;
+  `step2-backup` stays local. `docker compose down`, never `down -v`. No
+  `rm -rf`, and nothing is deleted through a shell variable.
 - Frontend packages at exact versions at least two weeks old, resolved
-  with `--before`. Every pre-push check includes `npm audit --omit=dev`:
-  a high or critical finding in the production tree blocks the push
-  until ruled on (item 82). No `rm -rf`, and nothing is deleted through
-  a shell variable: the literal path is named and the owner asked.
+  with `--before`. Every pre-push check includes `npm audit --omit=dev`
+  (item 82).
 - Tests first; mutate any rule that decides; predictions and keep-rules
   are committed before the run they judge; nothing is tuned to one
   question; no threshold is chosen by looking at results.
+- A commit may claim a check passed only if that check's own exit status was read.
 
 **Frozen, never edited.** `backend/eval/questions.yaml`, `heldout.yaml`,
 `calibration.json`, `baseline_step5.txt`; `app/core/eval_set.py`,
-`eval_step6.py`; the step 7 instrument (`sql_reading.py`,
-`sql_validator.py`, `conformance.py`) and the prompt builder.
+`eval_step6.py`; the step 7 instrument and the prompt builder.
 `heldout.yaml` is not opened, run or embedded, and `app/core/heldout.py`
 is not imported, before step 10.
 
-**Open items, by step** (numbers are in "Carried forward", at the end).
-- Step 9, next: the frontend; 74 (what the panel is given).
-- Step 10: 47, 48, 53, 54, 60, 61, 63, 66; heldout's first run.
-- Step 11: 76 (the local user, and the queries it owns).
-- Step 12: 1, 8, 9, 10, 14, 18, 41, 73, 77, 80. Owed to the Design: DD-01,
-  DD-06, DD-07, DD-12 to 16, DD-19, DD-21, FR-13, IR-05, section 04.
-- Step 14: 75. Future work, no step: 55, 56, 67. Known limits: 62, 68,
-  69, 78. Left behind: 79.
-
-**How to resume.** Read this, the newest checkpoint entry and the items
-named; check `git status`; run `./scripts/smoke.sh` (two paid calls).
+**Next.** Before step 10: items 60 and 63, Q14 (item 67), 89 and 90.
+Step 10: 47, 48, 53, 54, 61, 66; heldout's first run. Step 11: 76, 88.
+Step 12: 1, 8, 9, 10, 14, 18, 41, 73, 77, 80, 85; owed to the Design:
+DD-01, 06, 07, 12 to 16, 19, 21, FR-13, IR-05, section 04. Step 13: 86, 90's
+README line. Step 14: 75. Future work: 55, 56. Known limits: 62, 68, 69,
+78, 87. Left behind: 79. **Resume:** read this, the newest entry and the
+items named; `git status`; `./scripts/smoke.sh` (two paid calls).
 
 ## checkpoint-01-stack — 12 September 2026
 
@@ -8524,6 +8515,114 @@ key-shaped string, no benchmark query text, no ignored file tracked; no
 frozen file differs from `116c82f`; nothing reads or names
 `heldout.yaml`. Tagged `checkpoint-08-trace`. Nothing is pushed.
 
+## checkpoint-09-frontend — 15 October 2026
+
+**What works now that did not before.** A reader who does not write SQL
+can ask a question in a browser and see what was answered and how. One
+page, `/ask` ("/" redirects there): the question and four examples; while
+it runs, the stages; then, in DD-19's order, the amber block when a
+choice that touched the answer had no basis, in one plain sentence; the
+narrative beside the results, which can be copied or downloaded as CSV;
+the graph of the plan, its alternatives and the joins the SQL made, each
+line told when pointed at; and behind three disclosures the joins in
+words, retrieval with its scores, and the SQL, its validation, timings,
+cost and prompt. `?id=` reopens a stored answer (without its rows, item
+88). It reads at 1280 and at 390 px, and at 200%. axe-core 4.13.0 finds
+no WCAG 2.1 A or AA violation on any page, size or disclosure; every
+control works by keyboard, Space included. 1297 backend tests pass and 2
+paid ones skip; 1216 pass and 83 skip with both database URLs and the
+key unset; 211 frontend tests pass. Smoke from a clean start: 39, 0, 0.
+
+**What changed behind it.** The backend's decisions changed only where
+the owner ruled: a plain sentence for each loud warning, stored with it
+(trace_version 2); the narrative's "how it was linked" as a summary, one
+sentence per table joined, the reasons left to the plan's record; what
+the query used never listed as not used; the plan's unused tables named
+as tables; two declared preferences, a web or catalog sale over the page
+it was made through (item 84). Stored answers keep their wording (DD-06).
+
+**What was built.**
+
+    frontend/app/ask              the page; /ask?id= for a stored answer
+    components/ask                the question, the stages, the amber
+                                  block, the narrative and the disclosures,
+                                  the results with copy and CSV, endings
+    components/graph              GraphView over React Flow: tables with
+                                  their columns, a line per key, a strip
+                                  and a tooltip for the line pointed at
+    lib/graph/layout, router      the plan's columns by dagre; lines routed
+                                  around the tables they do not join, each
+                                  in its own lane
+    lib/graph/nearest, tooltip    the line nearest the pointer; where the
+                                  tooltip stands
+    lib/ask/export                TSV for the clipboard, CSV with the
+                                  formula-injection guard
+    core/narrative.py             plain warnings; the route as a summary;
+                                  unused tables from what the query read
+    overlays                      two attach preferences (item 84)
+    the frame                     Inter, self-hosted (OFL), tabular figures;
+                                  a 404; a skip link; a visible focus ring
+
+**The numbers.**
+
+    backend suite                       1297 pass, 2 skip
+    CI conditions                       1216 pass, 83 skip
+    frontend suite                      211 pass
+    smoke, clean start                  39, 0, 0
+    axe, WCAG 2.1 A and AA              0 violations: empty page, 404,
+                                        the gender answer closed and each
+                                        disclosure opened, at 1280 and 390
+    npm audit --omit=dev                0 found
+    commits since checkpoint-08-trace   42
+
+**Faults of mine, recorded.**
+- 9b407c5 did not build: its lockfile lacked a package published half a
+  second after the `--before` cutoff, the build's status was read
+  through a grep, and the commit claimed a smoke run of a build that
+  never ran (a20c08e's fault at step 8, again). Repaired in 4498773.
+  Hence the rule: a commit may claim a check passed only if that check's
+  own exit status was read.
+- The states route named web sales unused and never named web site, from
+  step 8 until the close: it named the anchors of unused joins, not
+  tables. Fixed in 640b86a; a test now holds it to the account of the
+  query.
+- My first fix for that counted a told choice's planned route as read;
+  the sweep over the stored answers caught it before the commit.
+
+**To dissect.**
+- the router's lanes and brackets: how a line keeps its own lane, and
+  why lines alongside remain in opened views (item 87)
+- the shaping tree: which edges place a table, and the attachment rule
+  that stands a table beside the one it joins
+- the narrative's summary rules: what is told, what is counted, and why
+  a preference's reason lives in the plan's record
+- the unused tables: why tables and not joins, and why the tables read
+- the CSV injection rule: which leading characters, why an apostrophe
+  goes before them, and why a number that starts with + or - is spared
+- React Flow's window-wide key bindings: why Space never reached a
+  disclosure, and which bindings are off
+- unlayered CSS beating Tailwind's layered utilities: the focus ring and
+  `focus:outline-none`
+- nearest-line pointing over an SVG the pointer never touches
+- the exit-status lesson: a pipe's status is its last command's
+
+**Paid calls, the whole step.** 97 model calls on the ledger,
+$0.01040528: 63 through the page and the API, 34 in smoke runs. 24
+embeddings, at most $0.000024; there is no ledger for them (item 89).
+The project's model calls to date: 146, $0.01679913.
+
+**Next single deliverable.** Step 10: the evaluation, held-out set first
+run. Before it: items 60 and 63, Q14 (item 67), 89 and 90.
+
+**The close, 15 October 2026.** Clean start (`docker compose up -d
+--build --force-recreate`): every service healthy; smoke 39, 0, 0; the
+suites as above. The four examples asked fresh through the page; the
+console empty on each. Pre-push checks over the commits since `36c37e8`:
+no `.env`, no `tpcds_ri.sql`, no benchmark query text, no key-shaped
+string, no frozen file changed, `npm audit --omit=dev` 0 found,
+`step2-backup` not on the remote. Tagged `checkpoint-09-frontend`.
+Nothing is pushed.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
@@ -9111,3 +9210,16 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     Decide before step 11 (history) whether a stored answer should keep
     its rows (they are capped at 1,000), or say plainly that they were
     not kept.
+89. **Embedding spend has no ledger** (the close of step 9).
+    `MeteredEmbedder` only adds it up in memory, for the run that made
+    it, so the close could only bound step 9's embeddings (24 vectors,
+    at most $0.000024). Write each embedding call to the same `.spend`
+    ledger as model calls, before step 10's runs, so that the close's
+    figure is exact.
+90. **Which amount column a model sums is not flagged** (the close of
+    step 9). For "How much did each gender spend on the web in the year
+    2002?", by the billed customer's demographics, summing
+    `ws_ext_sales_price` gives 183.2M against 178.6M, and summing
+    `ws_net_paid` (the page's answer of 15 October) 164.7M against
+    160.3M. Cartograph explains joins, not measures. The README says so
+    plainly at step 13.
