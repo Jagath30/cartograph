@@ -13,7 +13,7 @@ export function Intro({ onPick, busy }: { onPick: (question: string) => void; bu
     <div className="mt-6 space-y-6" data-ask="intro">
       <p className="max-w-3xl text-base leading-relaxed text-gray-800">{LEAD}</p>
 
-      <ol className="grid gap-4 md:grid-cols-3" aria-label="How it works">
+      <ol className="grid gap-4 lg:grid-cols-3" aria-label="How it works">
         {STEPS.map((step, index) => (
           <li key={step} className="flex gap-3 rounded-md border border-gray-200 bg-white p-4 text-[15px] text-gray-800">
             <span
@@ -29,7 +29,7 @@ export function Intro({ onPick, busy }: { onPick: (question: string) => void; bu
 
       <div>
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Questions to start from</h2>
-        <div className="mt-3 grid gap-3 md:grid-cols-2" data-ask="examples">
+        <div className="mt-3 grid gap-3 lg:grid-cols-2" data-ask="examples">
           {EXAMPLES.map((example) => (
             <button
               key={example.question}

@@ -24,7 +24,7 @@ test("the copy, as the owner corrected it", () => {
 });
 
 test("three steps in a row at desktop width", () => {
-  expect(intro).toContain('className="grid gap-4 md:grid-cols-3"');
+  expect(intro).toContain('className="grid gap-4 lg:grid-cols-3"');
 });
 
 test("each example is one card, a button named by its question, showing what it shows", () => {

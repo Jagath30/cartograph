@@ -2,7 +2,7 @@
 
 import "@xyflow/react/dist/style.css";
 
-import { useCallback, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
 import { ReactFlow, ReactFlowProvider, useReactFlow } from "@xyflow/react";
 
 import { layout } from "@/lib/graph/layout";
@@ -29,6 +29,25 @@ const edgeTypes = { key: KeyEdge };
 
 /** The largest the picture is drawn when it is fitted to its canvas. */
 const FIT_MAX_ZOOM = 1.15;
+
+/** Below this width the page is one column, and the graph is dragged. */
+const WIDE = "(min-width: 1024px)";
+/** On a narrow screen the graph is never fitted smaller than this, so that
+ *  its titles stay at 12 px and its column text at 10 px; it is dragged. */
+const NARROW_MIN_ZOOM = 0.8;
+const NARROW_HEIGHT = 460;
+
+function useWide(): boolean {
+  return useSyncExternalStore(
+    (changed) => {
+      const query = window.matchMedia(WIDE);
+      query.addEventListener("change", changed);
+      return () => query.removeEventListener("change", changed);
+    },
+    () => window.matchMedia(WIDE).matches,
+    () => true,
+  );
+}
 
 /** How far apart, in the path's own units, the points are that stand for a curve. */
 const SAMPLE_EVERY = 10;
@@ -108,7 +127,7 @@ function Zoom() {
 export function GraphView({ model, heading }: { model: GraphModel; heading: string }) {
   return (
     <ReactFlowProvider>
-      <div className="mb-3 flex items-center justify-between gap-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">{heading}</h2>
         <Zoom />
       </div>
@@ -126,6 +145,7 @@ export function GraphView({ model, heading }: { model: GraphModel; heading: stri
  * the wheel, a pinch, or the buttons above it.
  */
 function Graph({ model }: { model: GraphModel }) {
+  const wide = useWide();
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const [showOther, setShowOther] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -237,6 +257,11 @@ function Graph({ model }: { model: GraphModel }) {
 
   return (
     <div data-graph="view">
+      {!wide && (
+        <p className="mb-2 text-xs text-gray-600" data-graph="narrow-note">
+          Drag to move around the graph; it reads best on a wider screen.
+        </p>
+      )}
       {/* Above the picture, so that it is in view while a line is pointed at. */}
       <p
         className="mb-2 min-h-[2.75rem] rounded border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800"
@@ -257,9 +282,10 @@ function Graph({ model }: { model: GraphModel }) {
       <div
         ref={canvas}
         className="relative w-full rounded-md border border-gray-200 bg-gray-50"
-        // The picture's own shape, so that fitting it leaves no empty band.
+        // The picture's own shape, so that fitting it leaves no empty band;
+        // on a narrow screen a fixed height, and the picture is dragged.
         style={{
-          aspectRatio: `${placed.width} / ${placed.height}`,
+          ...(wide ? { aspectRatio: `${placed.width} / ${placed.height}` } : { height: NARROW_HEIGHT }),
           // Never taller than the picture at its largest: one table alone
           // is not given a screen of empty canvas.
           maxHeight: Math.min(900, Math.ceil(placed.height * FIT_MAX_ZOOM)),
@@ -275,13 +301,15 @@ function Graph({ model }: { model: GraphModel }) {
       >
         <ReactFlow
           // A new layout is a new picture: fit it afresh.
-          key={`${showOther}:${[...expanded].sort().join(",")}`}
+          key={`${wide}:${showOther}:${[...expanded].sort().join(",")}`}
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           fitView
-          fitViewOptions={{ padding: 0, maxZoom: FIT_MAX_ZOOM }}
+          fitViewOptions={
+            wide ? { padding: 0, maxZoom: FIT_MAX_ZOOM } : { padding: 0, minZoom: NARROW_MIN_ZOOM, maxZoom: FIT_MAX_ZOOM }
+          }
           minZoom={0.2}
           maxZoom={2}
           nodesConnectable={false}

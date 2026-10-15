@@ -95,7 +95,8 @@ function Retrieved({ trace }: { trace: TraceDocument }) {
         ) : (
           <>
             <h3 className={HEAD}>Tables, by score</h3>
-            <table className="mt-2 text-sm">
+            <div className="mt-2 overflow-x-auto">
+            <table className="text-sm">
               <thead className="text-left text-xs text-gray-500">
                 <tr>
                   <th className="pr-6 font-medium">table</th>
@@ -117,6 +118,7 @@ function Retrieved({ trace }: { trace: TraceDocument }) {
                 ))}
               </tbody>
             </table>
+            </div>
             <p className="mt-2 text-sm text-gray-700">
               A table is an anchor from a score of <Score value={retrieval.anchor_bound.cut} />, and at most{" "}
               {retrieval.anchor_bound.cap} are taken.
@@ -160,7 +162,8 @@ function Retrieved({ trace }: { trace: TraceDocument }) {
             <h3 className={HEAD}>
               The {retrieval.candidates.length} best-scored of {count(retrieval.candidates_total)} tables and columns
             </h3>
-            <table className="mt-2 text-sm">
+            <div className="mt-2 overflow-x-auto">
+            <table className="text-sm">
               <thead className="text-left text-xs text-gray-500">
                 <tr>
                   <th className="pr-6 font-medium">rank</th>
@@ -188,6 +191,7 @@ function Retrieved({ trace }: { trace: TraceDocument }) {
                 ))}
               </tbody>
             </table>
+            </div>
           </>
         )}
       </div>
@@ -195,7 +199,8 @@ function Retrieved({ trace }: { trace: TraceDocument }) {
   );
 }
 
-const CODE = "mt-2 overflow-x-auto whitespace-pre-wrap break-words rounded bg-gray-50 p-3 font-mono text-xs text-gray-900";
+// Code keeps its lines: a wide one scrolls sideways inside its own box.
+const CODE = "mt-2 overflow-x-auto whitespace-pre rounded bg-gray-50 p-3 font-mono text-xs text-gray-900";
 
 /** The second: the SQL, how it was checked, what it took and what it cost (FR-17, FR-32, NFR-17). */
 function Generated({ trace }: { trace: TraceDocument }) {
@@ -206,7 +211,7 @@ function Generated({ trace }: { trace: TraceDocument }) {
     <details data-ask="generated">
       <summary className={SUMMARY}>Generated SQL &middot; validation &middot; timings &middot; cost</summary>
       <div className={BODY}>
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <h3 className={HEAD}>The SQL {execution ? "that was run" : sql ? "the model wrote; it was not run" : ""}</h3>
           {sql && <CopyButton label="Copy SQL" text={() => sql} />}
         </div>
@@ -333,7 +338,7 @@ function Generated({ trace }: { trace: TraceDocument }) {
           ${trace.cost_usd.toFixed(6)} &middot; {count(trace.tokens_in)} tokens in, {count(trace.tokens_out)} out
           &middot; model {trace.settings.model ?? "none"} at temperature {trace.settings.temperature ?? "—"}
         </p>
-        <p className="mt-1 font-mono text-xs text-gray-600">
+        <p className="mt-1 break-all font-mono text-xs text-gray-600">
           schema snapshot {trace.schema_ref.snapshot_id ?? "—"} {trace.schema_ref.hash.slice(0, 12)} &middot; preferences{" "}
           {trace.schema_ref.preferences_hash.slice(0, 12)} &middot; alpha {trace.settings.alpha ?? "—"} &middot; cut{" "}
           {trace.settings.anchor_cut ?? "—"} &middot; cap {trace.settings.anchor_cap ?? "—"} &middot; margin{" "}

@@ -52,7 +52,7 @@ function Answer({ result, stored }: { result: QueryOut; stored: boolean }) {
     <div className="mt-6 space-y-6" data-ask="answer">
       <div>
         <p className="text-xl">{trace.question}</p>
-        <p className="mt-1 flex items-center gap-3 text-xs text-gray-500">
+        <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-gray-500">
           <span>
             {stored ? "Read back from the store; asked" : "Asked"} {formatWhen(trace.created_at)}
           </span>
@@ -66,10 +66,11 @@ function Answer({ result, stored }: { result: QueryOut; stored: boolean }) {
 
       <AmberBlock trace={trace} />
 
-      <div className="grid grid-cols-2 items-start gap-8">
+      {/* Below 1024 px, one column, in reading order: the account, then the results. */}
+      <div className="grid items-start gap-8 lg:grid-cols-2">
         <Narrative trace={trace} />
         <section data-ask="results">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">
               {answered ? "Results" : "What happened"}
             </h2>
