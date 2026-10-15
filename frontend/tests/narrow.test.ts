@@ -16,7 +16,8 @@ test("the answer is one column below 1024 px, the account before the results", (
 
 test("wide tables and code scroll sideways inside their own box", () => {
   const panel = read("components/ask/TracePanel.tsx");
-  expect(panel.match(/<div className="mt-2 overflow-x-auto">/g)?.length).toBe(2);
+  expect(panel).toContain('const SIDEWAYS = "mt-2 overflow-x-auto";');
+  expect(panel.match(/<div className=\{SIDEWAYS\} role="region" aria-label="[^"]+" tabIndex=\{0\}>/g)?.length).toBe(2);
   expect(panel).toContain('overflow-x-auto whitespace-pre rounded');
   expect(read("components/ask/ResultTable.tsx")).toContain("overflow-auto");
 });

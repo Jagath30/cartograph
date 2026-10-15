@@ -322,6 +322,10 @@ function Graph({ model }: { model: GraphModel }) {
           nodesConnectable={false}
           nodesDraggable={false}
           elementsSelectable={false}
+          // A line is not a tab stop (polish D): focused, it showed nothing,
+          // and was named by identifiers. Pointing reads a line; the joins
+          // in words are under "The joins drawn, in words".
+          edgesFocusable={false}
           // The wheel belongs to the page. Zoom is Ctrl and the wheel, a
           // pinch (which a browser reports as the same), or the buttons.
           zoomOnScroll={false}

@@ -22,3 +22,9 @@ main:focus,
 main:focus-visible {
   outline: none;
 }
+
+/* React Flow's attribution keeps its place, in a grey that can be read:
+   its own #999 is 2.8:1 on the canvas, under WCAG's 4.5:1 (polish D). */
+.react-flow .react-flow__attribution a {
+  color: #4b5563;
+}

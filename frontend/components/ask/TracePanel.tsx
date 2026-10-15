@@ -81,6 +81,9 @@ function Listed({ label, items }: { label: string; items: string[] }) {
 const HEAD = "mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0";
 const SUMMARY = "cursor-pointer select-none rounded-md border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50";
 const BODY = "rounded-b-md border border-t-0 border-gray-200 bg-white px-4 py-4";
+// A table wider than the screen scrolls sideways in its own box, which
+// takes focus so that it can be scrolled by keyboard (polish D).
+const SIDEWAYS = "mt-2 overflow-x-auto";
 
 /** The first of the two disclosures: what retrieval found, with its scores (FR-09, FR-41). */
 function Retrieved({ trace }: { trace: TraceDocument }) {
@@ -95,7 +98,7 @@ function Retrieved({ trace }: { trace: TraceDocument }) {
         ) : (
           <>
             <h3 className={HEAD}>Tables, by score</h3>
-            <div className="mt-2 overflow-x-auto">
+            <div className={SIDEWAYS} role="region" aria-label="Tables, by score" tabIndex={0}>
             <table className="text-sm">
               <thead className="text-left text-xs text-gray-500">
                 <tr>
@@ -162,7 +165,7 @@ function Retrieved({ trace }: { trace: TraceDocument }) {
             <h3 className={HEAD}>
               The {retrieval.candidates.length} best-scored of {count(retrieval.candidates_total)} tables and columns
             </h3>
-            <div className="mt-2 overflow-x-auto">
+            <div className={SIDEWAYS} role="region" aria-label="The best-scored tables and columns" tabIndex={0}>
             <table className="text-sm">
               <thead className="text-left text-xs text-gray-500">
                 <tr>
@@ -202,6 +205,16 @@ function Retrieved({ trace }: { trace: TraceDocument }) {
 // Code keeps its lines: a wide one scrolls sideways inside its own box.
 const CODE = "mt-2 overflow-x-auto whitespace-pre rounded bg-gray-50 p-3 font-mono text-xs text-gray-900";
 
+/** A block of code. It takes focus, so that one wider than the screen can
+ * be scrolled by keyboard (polish D: axe's scrollable-region-focusable). */
+function Code({ label, children }: { label: string; children: string }) {
+  return (
+    <pre className={CODE} role="region" aria-label={label} tabIndex={0}>
+      {children}
+    </pre>
+  );
+}
+
 /** The second: the SQL, how it was checked, what it took and what it cost (FR-17, FR-32, NFR-17). */
 function Generated({ trace }: { trace: TraceDocument }) {
   const { generation, validation, execution, paths } = trace;
@@ -215,7 +228,7 @@ function Generated({ trace }: { trace: TraceDocument }) {
           <h3 className={HEAD}>The SQL {execution ? "that was run" : sql ? "the model wrote; it was not run" : ""}</h3>
           {sql && <CopyButton label="Copy SQL" text={() => sql} />}
         </div>
-        {sql ? <pre className={CODE}>{sql}</pre> : <p className="mt-2 text-sm text-gray-600">No SQL was written.</p>}
+        {sql ? <Code label="The SQL">{sql}</Code> : <p className="mt-2 text-sm text-gray-600">No SQL was written.</p>}
 
         {generation && (
           <>
@@ -238,7 +251,7 @@ function Generated({ trace }: { trace: TraceDocument }) {
                       {finding}
                     </span>
                   ))}
-                  {attempt.sql && attempt.sql !== sql && <pre className={CODE}>{attempt.sql}</pre>}
+                  {attempt.sql && attempt.sql !== sql && <Code label={`The SQL of attempt ${attempt.number}`}>{attempt.sql}</Code>}
                 </li>
               ))}
             </ul>
@@ -282,7 +295,7 @@ function Generated({ trace }: { trace: TraceDocument }) {
               On the read-only connection, limit {execution.statement_timeout ?? "not recorded"}, at most{" "}
               {count(execution.row_cap)} rows.
             </p>
-            {execution.error && <pre className={CODE}>{execution.error}</pre>}
+            {execution.error && <Code label="The database's message">{execution.error}</Code>}
           </>
         )}
 
@@ -349,8 +362,8 @@ function Generated({ trace }: { trace: TraceDocument }) {
         {generation && (
           <details className="mt-6">
             <summary className="cursor-pointer text-sm text-gray-700">The prompt, exactly as it was sent</summary>
-            <pre className={CODE}>{generation.prompt_system}</pre>
-            <pre className={CODE}>{generation.prompt_user}</pre>
+            <Code label="The prompt's system message">{generation.prompt_system}</Code>
+            <Code label="The prompt's user message">{generation.prompt_user}</Code>
           </details>
         )}
       </div>

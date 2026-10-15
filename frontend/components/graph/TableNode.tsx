@@ -53,7 +53,7 @@ export function TableNode({ data }: NodeProps<TableNodeType>) {
         <span className="truncate text-[15px] font-semibold leading-tight" data-graph="title">
           {node.readable}
         </span>
-        <span className="truncate font-mono text-[12px] text-gray-500">{node.id}</span>
+        <span className="truncate font-mono text-[12px] text-gray-600">{node.id}</span>
       </div>
 
       {columns.map((column) => (
