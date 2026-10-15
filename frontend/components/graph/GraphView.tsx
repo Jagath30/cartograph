@@ -306,10 +306,17 @@ function Graph({ model }: { model: GraphModel }) {
           edges={edges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          fitView
-          fitViewOptions={
-            wide ? { padding: 0, maxZoom: FIT_MAX_ZOOM } : { padding: 0, minZoom: NARROW_MIN_ZOOM, maxZoom: FIT_MAX_ZOOM }
-          }
+          // Wide: the whole picture, fitted. Narrow: the picture's top left,
+          // where the plan starts, at a zoom no smaller than NARROW_MIN_ZOOM.
+          fitView={wide}
+          fitViewOptions={{ padding: 0, maxZoom: FIT_MAX_ZOOM }}
+          onInit={(flow) => {
+            if (wide || !canvas.current) return;
+            const box = canvas.current.getBoundingClientRect();
+            const { x, y, width, height } = placed.bounds;
+            const zoom = Math.min(FIT_MAX_ZOOM, Math.max(NARROW_MIN_ZOOM, Math.min(box.width / width, box.height / height)));
+            flow.setViewport({ x: -x * zoom, y: -y * zoom, zoom });
+          }}
           minZoom={0.2}
           maxZoom={2}
           nodesConnectable={false}

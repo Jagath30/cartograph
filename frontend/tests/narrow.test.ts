@@ -27,3 +27,9 @@ test("on a narrow screen the graph keeps a readable zoom, is dragged, and says s
   expect(view).toContain("const NARROW_MIN_ZOOM = 0.8;");
   expect(view).toContain("Drag to move around the graph; it reads best on a wider screen.");
 });
+
+test("on a narrow screen the graph opens at the picture's top left, where the plan starts", () => {
+  const view = read("components/graph/GraphView.tsx");
+  expect(view).toContain("fitView={wide}");
+  expect(view).toContain("flow.setViewport({ x: -x * zoom, y: -y * zoom, zoom });");
+});
