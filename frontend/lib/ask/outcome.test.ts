@@ -36,9 +36,13 @@ describe("the five endings of the pipeline", () => {
   test("not answerable: the API's message and what the trace says of the tables shown", () => {
     expect(endingOf(result("not_answerable"))).toEqual({
       tone: "declined",
-      title: "No answer was given",
+      title: "Declined",
       lines: ["The API's message for not_answerable.", "What came back."],
     });
+  });
+
+  test("a decline's title does not repeat the narrative's opening", () => {
+    expect(endingOf(result("not_answerable")).title).not.toBe("No answer was given");
   });
 
   test("validation failed: every finding of the validator is shown (FR-32)", () => {

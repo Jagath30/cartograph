@@ -12,7 +12,7 @@ import { pathOf } from "@/lib/graph/router";
 import { TIP_WIDTH, tooltipAt, type Placement } from "@/lib/graph/tooltip";
 
 import { KeyEdge, type KeyEdgeType } from "./KeyEdge";
-import { AMBER, LINES, ORDER, lineOf, type LineStyle } from "./styles";
+import { AMBER, LINES, NO_BASIS, ORDER, lineOf, type LineStyle } from "./styles";
 import { TableNode, type TableNodeType } from "./TableNode";
 
 /**
@@ -270,6 +270,7 @@ function Graph({ model }: { model: GraphModel }) {
       >
         {shown ? (
           <>
+            {shown.loud && <span className="font-medium">{NO_BASIS}. </span>}
             <span className="font-medium">{lineOf(shown).label}.</span> {describe(shown)}
             {shown.description && <span className="ml-2 font-mono text-xs text-gray-500">{identifiers(shown)}</span>}
             {pinned === shown.id && <span className="ml-2 text-xs text-gray-500">(pinned; click again to release)</span>}
@@ -353,6 +354,7 @@ function Graph({ model }: { model: GraphModel }) {
             className="pointer-events-none absolute z-50 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-lg"
             style={{ left: tip.left, top: tip.top, maxWidth: TIP_WIDTH }}
           >
+            {pointed.loud && <span className="font-medium">{NO_BASIS}. </span>}
             <span className="font-medium">{lineOf(pointed).label}.</span> {describe(pointed)}
           </div>
         )}
@@ -367,7 +369,8 @@ function Graph({ model }: { model: GraphModel }) {
         ))}
         {anyLoud && (
           <span className="flex items-center gap-2">
-            <Sample line={LINES.used} loud />A choice made with no basis
+            <Sample line={LINES.used} loud />
+            {NO_BASIS}
           </span>
         )}
         {others > 0 && (
@@ -410,6 +413,7 @@ function Graph({ model }: { model: GraphModel }) {
                   <Sample line={lineOf(edge)} loud={edge.loud} />
                 </span>
                 <span>
+                  {edge.loud && <span className="font-medium">{NO_BASIS}. </span>}
                   <span className="text-gray-500">{lineOf(edge).label}.</span> {describe(edge)}
                   {edge.description && (
                     <span className="block font-mono text-xs text-gray-500">{identifiers(edge)}</span>

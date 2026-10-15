@@ -17,6 +17,8 @@ const INK = "#1d4ed8";
 const GREY = "#6b7280";
 
 export const AMBER = "#f59e0b";
+/** What the amber band says, in the legend and wherever a line is told. */
+export const NO_BASIS = "A choice made with no basis";
 
 export const LINES: Record<string, LineStyle> = {
   used: { key: "used", label: "Used by the query", stroke: INK, width: 3.5, opacity: 1 },

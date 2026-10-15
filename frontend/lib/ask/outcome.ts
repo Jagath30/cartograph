@@ -30,7 +30,9 @@ export function endingOf(result: QueryOut): Ending {
     case "answered":
       return { tone: "answered", title: "Answered", lines: said([trace.narrative.result]) };
     case "not_answerable":
-      return { tone: "declined", title: "No answer was given", lines: said([result.message, trace.narrative.result]) };
+      // The narrative's result opens "No answer was given."; the title
+      // does not say it again.
+      return { tone: "declined", title: "Declined", lines: said([result.message, trace.narrative.result]) };
     case "validation_failed":
       return {
         tone: "refused",

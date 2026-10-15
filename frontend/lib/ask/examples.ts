@@ -10,6 +10,12 @@
  *            the web in 2002 (183.2M against 178.6M); by the shipped-to
  *            customer's, men (183.2M against 178.7M). Worded to bring back
  *            both totals, not only the larger (stop 3 of step 9, fix 3).
+ *            The totals depend on which amount column the model sums,
+ *            and nothing flags that (item 90). By the billed customer's
+ *            demographics: 183.2M against 178.6M summing
+ *            ws_ext_sales_price, as measured above; 164.7M against 160.3M
+ *            summing ws_net_paid, as the page's answer of 15 October 2026
+ *            did.
  *   states   by billing or by shipping address the same five states lead,
  *            and every amount differs, Virginia's by 7%.
  *
