@@ -21,6 +21,8 @@ and is never an error.
   ONE       one record of a table: web sales -> web sale.
   THINGS    a table as something a record has: customer demographics ->
             customer's demographics.
+  PLURAL    a noun that ends a phrase and takes "were" though it names
+            one thing: the shipped-to customer's demographics were.
 """
 
 # Said at the end of a readable key name, and dropped.
@@ -86,3 +88,5 @@ THINGS: dict[str, str] = {
     "household demographics": "household's demographics",
     "customer address": "address",
 }
+
+PLURAL: frozenset[str] = frozenset({"demographics"})

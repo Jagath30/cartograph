@@ -127,7 +127,8 @@ def test_the_warnings_the_date_choice_is_reasoned_and_the_demographics_choice_is
 
 def test_the_panel_states_the_date_choice_as_having_a_basis() -> None:
     """Stop 3 ruling, 2c: the amber block holds the one choice with no
-    basis, and the narrative gives the date's basis, the declared reason."""
+    basis, and the narrative gives the date's basis, the declared default.
+    Its reason is in the plan's record, not the narrative (step 9, stop 3)."""
     made = document([reply(SALE_DATE_SQL)], *GENDER)
     loud = [w for w in made.paths.warnings if w.loud]
     assert [w.code for w in loud] == ["arbitrary_choice"]
@@ -135,6 +136,12 @@ def test_the_panel_states_the_date_choice_as_having_a_basis() -> None:
     assert "date" not in loud[0].plain
     route = made.narrative.route
     assert "its date of sale" in route
-    assert REASON.format("web").removesuffix(" (an operator's default)") in route
-    assert route.count("it is arbitrary") == 1
+    assert route == (
+        "The answer links each web sale to the billed customer's demographics. The shipped-to customer's "
+        "demographics were equally possible and nothing in your question chose between them, so the choice was "
+        "made alphabetically: it is arbitrary. It links each web sale to its date of sale, as this warehouse's "
+        "declared defaults have it. The plan also brought in web returns and web page; the query did not use "
+        "them. Each default, and its reason, is in \u201cThe plan, table by table\u201d, below."
+    )
+    assert REASON.format("web").removesuffix(" (an operator's default)") not in route
     assert made.paths.diverged is False

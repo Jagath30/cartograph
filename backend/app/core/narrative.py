@@ -13,10 +13,16 @@ keys and its direction, stays in the trace's `paths` for the detail view
 
   1. It speaks of MEANING. "The billed customer's demographics", not "a
      row" or "a surrogate key"; no table or column by its identifier.
-  2. `route` says, for each choice that touched the answer, what was used
-     and HOW it was chosen: the only route, the shortest, the wording of
-     the question, a declared preference, or the alphabet -- and then it
-     says the choice is arbitrary. It does not name the alternatives.
+  2. `route` is a SUMMARY (the owner's ruling at stop 3 of step 9): for
+     each table joined that touched the answer, one short sentence of
+     what it links and how that was decided: the only route, the
+     shortest, the wording of the question, "as this warehouse's declared
+     defaults have it", or by the alphabet -- and then it names what was
+     equally possible (or counts it, past three) and says the choice is
+     arbitrary. What a preference set aside is named under `not_taken`,
+     and no reason is quoted here: when a preference decided anything,
+     the route ends by pointing to "The plan, table by table", where
+     every reason is given in full.
      `not_taken` names them, once: "Not used: ...", then ONE "If you meant
      one of those, the answer may differ; ask again naming it." for all
      the arbitrary choices together, then any of them the query itself
@@ -25,8 +31,9 @@ keys and its direction, stays in the trace's `paths` for the detail view
      listed as not used), then what a declared preference or
      the question's wording set aside, the longer routes, and the unused
      part of the plan.
-  3. A declared preference's reason is given once in a narrative, as a
-     clause after "because".
+  3. A declared preference's reason is not quoted in the narrative; it is
+     in the plan's own record, "The plan, table by table" (the owner's
+     ruling at stop 3 of step 9; until then it was quoted once here).
   4. Longer routes get one sentence in all: "N longer routes also
      existed; the shortest was used." They were considered and lost.
   5. Choices in the part of the plan the query did not use get one
@@ -82,11 +89,16 @@ from a fact in the trace; nothing is narrated by a model (DD-14).
 
 from pydantic import BaseModel, ConfigDict
 
-from app.core.narrative_words import KEY_SUFFIX, MOMENTS, ONE, PAIRS, ROLES, TABLES, THINGS
+from app.core.narrative_words import KEY_SUFFIX, MOMENTS, ONE, PAIRS, PLURAL, ROLES, TABLES, THINGS
 
 ASK_AGAIN_ONE = "If you meant the other, the answer may differ; ask again naming it."
 ASK_AGAIN_SEVERAL = "If you meant one of those, the answer may differ; ask again naming it."
-ARBITRARY = "nothing in your question said which you meant, so the choice was made alphabetically: it is arbitrary."
+ARBITRARY = "equally possible and nothing in your question chose between them, so the choice was made alphabetically: it is arbitrary."
+DECLARED = "as this warehouse's declared defaults have it"
+# Ties beyond this many phrases are counted in the route, not named: they
+# are named once, under `not_taken`.
+NAMED_TIES = 3
+DEFAULTS = "Each default, and its reason, is in \u201cThe plan, table by table\u201d, below."
 NOT_SAID = "nothing in your question said which"
 # Where it is not known which was used, there is no "the other" to mean.
 ASK_AGAIN_UNSURE = "To be sure of the one you meant, ask again naming it."
@@ -168,11 +180,6 @@ def _sentence(text: str) -> str:
     return text if text.endswith((".", "!", "?")) else text + "."
 
 
-def _clause(reason: str) -> str:
-    """A declared reason as it reads after "because"."""
-    return reason.strip().rstrip(".")
-
-
 class _Teller:
     def __init__(self, outcome, message, retrieval, subgraph, paths, generation, validation, execution, names) -> None:
         self.outcome = outcome
@@ -206,8 +213,6 @@ class _Teller:
         self.answered = outcome == "answered"
         self.told = self.used
         self.untold = [a for a in joined if a not in self.told]
-        # Each declared reason is given once (rule 3).
-        self._reasons_given: list[str] = []
 
     @staticmethod
     def _key(edge) -> tuple:
@@ -311,15 +316,6 @@ class _Teller:
             phrases.append(phrase.strip())
         return phrases
 
-    def _because(self, attachment) -> str:
-        reasons = list(dict.fromkeys(_clause(r) for r in attachment.preference_reasons))
-        fresh = [r for r in reasons if r not in self._reasons_given]
-        given = len(fresh) < len(reasons)
-        self._reasons_given += fresh
-        if not fresh:
-            return ", for the reason already given"
-        return (", for the reason already given and because " if given else ", because ") + ", and because ".join(fresh)
-
     # ---- found ------------------------------------------------------------
 
     def found(self) -> str:
@@ -376,51 +372,58 @@ class _Teller:
             )
         said = []
         for position, attachment in enumerate(self.told):
-            said.append(self._used(attachment, first=position == 0))
-            said.append(self._basis(attachment))
+            said.append(self._linked(attachment, first=position == 0))
         if self.untold:
             not_used = self.tables(a.anchor for a in self.untold)
             said.append(f"The plan also brought in {not_used}; the query did not use {'it' if len(self.untold) == 1 else 'them'}.")
+        if any(self._declared(attachment) for attachment in self.told):
+            said.append(DEFAULTS)
         return " ".join(said)
 
-    def _used(self, attachment, first: bool) -> str:
-        """One sentence for what was used."""
-        opening = "The answer links" if first else "It also links"
+    @staticmethod
+    def _declared(attachment) -> bool:
+        """A declared preference took part in this choice."""
+        return (
+            attachment.rule == "preference"
+            or bool(attachment.preference_reasons)
+            or any(a.status == "withdrawn" for a in attachment.alternatives)
+        )
+
+    def _what(self, attachment) -> str:
+        """What one table joined links, without a full stop."""
         joins = attachment.selected.joins
         if len(joins) == 1:
-            return f"{opening} {self.link(joins[0])}."
+            return self.link(joins[0])
         ends = self.tables([attachment.anchor, attachment.attached_to])
         between = self.tables(attachment.selected.tables[1:-1])
-        return f"{opening} {ends} through {between}: {_listed(self.link(join) for join in joins)}."
+        return f"{ends} through {between}: {_listed(self.link(join) for join in joins)}"
+
+    def _linked(self, attachment, first: bool) -> str:
+        """One table joined: what it links, and how that was decided, in
+        one short sentence, or two when the choice was arbitrary."""
+        opening = "The answer links" if first else "It links"
+        what = f"{opening} {self._what(attachment)}"
+        tied = self._others(attachment, "tied")
+        if attachment.rule == "preference":
+            return f"{what}, {DECLARED}."
+        if attachment.rule == "only_path":
+            return f"{what}. It is the only route between them."
+        if attachment.rule == "question_evidence" and tied:
+            return f"{what}. The wording of your question pointed to this over {_count(len(tied), 'other reading', 'other readings')}."
+        if attachment.rule == "alphabetical" and tied:
+            readings = self._grouped(tied)
+            if len(readings) > NAMED_TIES:
+                others = _count(len(tied), "other reading", "other readings")
+            else:
+                others = _listed(readings)
+            several = len(tied) > 1 or readings[0].split(" ")[-1] in PLURAL
+            return f"{what}. {_capital(others)} {'were' if several else 'was'} {ARBITRARY}"
+        return f"{what}. It is the shortest route between them."
 
     def _others(self, attachment, status: str) -> list[tuple]:
         """The alternatives of one kind, each as (owner, part)."""
         beside = attachment.selected.joins[0].from_table if len(attachment.selected.joins) == 1 else None
         return [self._reading(a, beside) for a in attachment.alternatives if a.status == status]
-
-    def _basis(self, attachment) -> str:
-        """How it was chosen: one wording for each rule of DD-12. The
-        alternatives are counted here and named under what was not used."""
-        tied = len(self._others(attachment, "tied"))
-        withdrawn = len(self._others(attachment, "withdrawn"))
-        if attachment.rule == "only_path":
-            return "It is the only route between them."
-        if not (tied or withdrawn):
-            return "It is the shortest route between them."
-        if attachment.rule == "question_evidence":
-            return f"The wording of your question pointed to this over {_count(tied, 'other reading', 'other readings')}."
-        if attachment.rule == "preference":
-            return (
-                f"{_count(tied + withdrawn, 'other reading was', 'other readings were')} equally possible; "
-                f"a preference declared for this warehouse chose this one{self._because(attachment)}."
-            )
-        # The alphabet. The word "arbitrary" is in the sentence itself.
-        if withdrawn:
-            return (
-                f"A preference declared for this warehouse set aside {_count(withdrawn, 'reading', 'readings')}"
-                f"{self._because(attachment)}. {_count(tied, 'other', 'others')} remained equally possible; {ARBITRARY}"
-            )
-        return f"{_count(tied, 'other reading was', 'other readings were')} equally possible; {ARBITRARY}"
 
     # ---- not taken --------------------------------------------------------
 
