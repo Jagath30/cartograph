@@ -373,12 +373,26 @@ class _Teller:
         said = []
         for position, attachment in enumerate(self.told):
             said.append(self._linked(attachment, first=position == 0))
-        if self.untold:
-            not_used = self.tables(a.anchor for a in self.untold)
-            said.append(f"The plan also brought in {not_used}; the query did not use {'it' if len(self.untold) == 1 else 'them'}.")
+        unused = self._unused_tables()
+        if unused:
+            said.append(f"The plan also brought in {self.tables(unused)}; the query did not use {'it' if len(unused) == 1 else 'them'}.")
         if any(self._declared(attachment) for attachment in self.told):
             said.append(DEFAULTS)
         return " ".join(said)
+
+    def _unused_tables(self) -> list[str]:
+        """The plan's tables the query did not read, in the plan's order:
+        the same tables the account of the query says were not needed.
+        Tables, not joins: an unused join's anchor may be a table the query
+        read through another join, and the plan's first table has no join
+        of its own (states named web sales unused and not web site, until
+        the owner's ruling at stop 4 of step 9). Where nothing was run,
+        what the told routes reach is taken as read."""
+        if self.execution is not None:
+            read = set(self.execution.tables)
+        else:
+            read = {name for attachment in self.told for name in attachment.selected.tables}
+        return [name for name in self.paths.tables if name not in read]
 
     @staticmethod
     def _declared(attachment) -> bool:

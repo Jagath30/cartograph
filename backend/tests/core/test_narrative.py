@@ -507,7 +507,29 @@ def test_the_unused_part_of_the_plan_is_one_sentence_each_way() -> None:
     assert other.not_taken.endswith(
         "Other choices were made in the part of the plan the query did not use; they did not affect this answer."
     )
-    assert other.route.endswith("The plan also brought in web sales and web page; the query did not use them.")
+    # Web sales is used, through its web site; the plan's first table,
+    # customer demographics, has no join of its own and is not.
+    assert other.route.endswith("The plan also brought in customer demographics and web page; the query did not use them.")
+
+
+@pytest.mark.parametrize(
+    "script, anchors",
+    [
+        ([reply(D4_SQL)], D4),
+        ([reply("SELECT COUNT(*) FROM web_sales ws JOIN web_site s ON ws.ws_web_site_sk = s.web_site_sk")], D4),
+        ([reply(D7_SQL)], D7),
+        ([reply("SELECT COUNT(*) FROM store_sales ss JOIN store s ON ss.ss_store_sk = s.s_store_sk")], ("store_sales", "store", "item")),
+        ([reply(BRIDGE_SQL)], ("item", "date_dim")),
+    ],
+)
+def test_the_tables_named_unused_are_the_tables_the_query_did_not_need(script, anchors) -> None:
+    """The route and the account of the query name the same unused tables:
+    tables, not the anchors of unused joins (the owner's ruling at stop 4
+    of step 9: the states route named web sales unused)."""
+    narrative = told(script, *anchors)
+    route = re.search(r"The plan also brought in (.+?); the query did not use", narrative.route)
+    sql = re.search(r"; (.+?) (?:was|were) not needed\.", narrative.sql)
+    assert (route.group(1) if route else None) == (sql.group(1) if sql else None)
 
 
 def test_one_unused_table_is_singular() -> None:
