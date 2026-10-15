@@ -35,7 +35,13 @@ export function ResultTable({ result }: { result: QueryOut }) {
 
   return (
     <div>
-      <div className="max-h-[28rem] overflow-auto rounded-md border border-gray-200 bg-white">
+      {/* It takes focus, so that a large result can be scrolled by keyboard (polish D). */}
+      <div
+        className="max-h-[28rem] overflow-auto rounded-md border border-gray-200 bg-white"
+        role="region"
+        aria-label="The results"
+        tabIndex={0}
+      >
         <table className="w-full border-collapse text-sm">
           <thead className="sticky top-0 bg-slate-100 text-left">
             <tr>

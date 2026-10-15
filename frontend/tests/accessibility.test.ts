@@ -23,6 +23,22 @@ test("React Flow's attribution stays, in a grey that can be read", () => {
   expect(read("app/globals.css")).toMatch(/\.react-flow \.react-flow__attribution a \{\s*color: #4b5563;/);
 });
 
-test("a line of the graph is not a tab stop", () => {
-  expect(read("components/graph/GraphView.tsx")).toContain("edgesFocusable={false}");
+test("a line of the graph is not a tab stop, nor is a table; its show-all button is, named for it", () => {
+  const view = read("components/graph/GraphView.tsx");
+  expect(view).toContain("edgesFocusable={false}");
+  expect(view).toContain("nodesFocusable={false}");
+  const node = read("components/graph/TableNode.tsx");
+  expect(node).toContain("`Show all ${total} columns of ${node.readable}`");
+  expect(node).toContain("`Show fewer columns of ${node.readable}`");
+});
+
+test("a large result can be scrolled by keyboard", () => {
+  expect(read("components/ask/ResultTable.tsx")).toMatch(/role="region"\s+aria-label="The results"\s+tabIndex=\{0\}/);
+});
+
+test("React Flow's window-wide key bindings we do not use are off: Space reaches the page", () => {
+  const view = read("components/graph/GraphView.tsx");
+  for (const binding of ["panActivationKeyCode", "selectionKeyCode", "multiSelectionKeyCode", "deleteKeyCode"]) {
+    expect(view).toContain(`${binding}={null}`);
+  }
 });

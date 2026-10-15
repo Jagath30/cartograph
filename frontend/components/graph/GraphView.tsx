@@ -326,6 +326,17 @@ function Graph({ model }: { model: GraphModel }) {
           // and was named by identifiers. Pointing reads a line; the joins
           // in words are under "The joins drawn, in words".
           edgesFocusable={false}
+          // Nor is a table: its "show all" button is, named for it.
+          nodesFocusable={false}
+          // React Flow's key bindings listen on the whole window, and Space,
+          // its pan key, was kept from every disclosure on the page (polish
+          // D). The graph is panned by dragging and nothing in it is
+          // selected or deleted, so these are off. Ctrl stays: it is the
+          // zoom with the wheel.
+          panActivationKeyCode={null}
+          selectionKeyCode={null}
+          multiSelectionKeyCode={null}
+          deleteKeyCode={null}
           // The wheel belongs to the page. Zoom is Ctrl and the wheel, a
           // pinch (which a browser reports as the same), or the buttons.
           zoomOnScroll={false}

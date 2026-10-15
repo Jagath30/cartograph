@@ -86,6 +86,10 @@ export function TableNode({ data }: NodeProps<TableNodeType>) {
         style={{ height: FOOTER_HEIGHT }}
         onClick={() => onToggle(node.id)}
         disabled={!expanded && hidden === 0}
+        // Named for its table: the table itself is not a tab stop (polish D).
+        aria-label={
+          expanded ? `Show fewer columns of ${node.readable}` : hidden > 0 ? `Show all ${total} columns of ${node.readable}` : undefined
+        }
       >
         <span>
           showing {columns.length} of {total} columns
