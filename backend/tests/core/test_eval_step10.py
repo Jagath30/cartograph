@@ -306,11 +306,31 @@ def test_any_other_question_declined_is_wrong_on_both(original, schema, keys) ->
         assert (got.tables, got.path, got.why) == (WRONG, WRONG, "declined")
 
 
-@pytest.mark.parametrize("outcome", ["validation_failed", "model_failed", "execution_failed"])
-def test_a_failure_is_wrong_on_both_whatever_sql_it_held(original, schema, keys, outcome) -> None:
-    got = judge(original["1"], Q1_RIGHT if outcome == "execution_failed" else None, schema, keys, outcome=outcome)
+@pytest.mark.parametrize("outcome", ["validation_failed", "model_failed"])
+def test_a_failure_that_leaves_no_accepted_sql_is_wrong_on_both(original, schema, keys, outcome) -> None:
+    got = judge(original["1"], None, schema, keys, outcome=outcome)
     assert (got.tables, got.path, got.why) == (WRONG, WRONG, outcome)
     assert got.choices == ()
+
+
+def test_an_execution_failure_is_scored_on_its_sql_like_any_answer(original, schema, keys) -> None:
+    """The owner's ruling 1 at stop 2's review: a timeout depends on the
+    machine and the scale factor, not on the method. DD-20 measures the
+    SQL."""
+    got = judge(original["1"], Q1_RIGHT, schema, keys, outcome="execution_failed")
+    assert (got.tables, got.path, got.why) == (CORRECT, CORRECT, "read")
+    crossed = """SELECT s.s_store_name, SUM(ss.ss_net_paid) FROM store_sales ss CROSS JOIN store s
+                 JOIN date_dim d ON ss.ss_sold_date_sk = d.d_date_sk GROUP BY s.s_store_name"""
+    got = judge(original["1"], crossed, schema, keys, outcome="execution_failed")
+    assert (got.tables, got.path) == (CORRECT, WRONG)
+    assert [choice.conformance.outcome for choice in got.choices] == ["diverged"]
+
+
+def test_an_execution_failure_on_a_question_expected_to_be_declined_is_not_a_decline(
+    original, schema, keys
+) -> None:
+    got = judge(original["15"], "SELECT c.c_customer_id FROM customer c", schema, keys, outcome="execution_failed")
+    assert (got.tables, got.path, got.why) == (WRONG, WRONG, "not declined")
 
 
 def test_an_outcome_that_is_not_one_raises(original, schema, keys) -> None:
@@ -318,6 +338,8 @@ def test_an_outcome_that_is_not_one_raises(original, schema, keys) -> None:
         judge(original["1"], Q1_RIGHT, schema, keys, outcome="ceiling")
     with pytest.raises(ValueError):
         judge(original["1"], None, schema, keys, outcome="answered")
+    with pytest.raises(ValueError):
+        judge(original["1"], None, schema, keys, outcome="execution_failed")
 
 
 # --------------------------------------------------------------------------

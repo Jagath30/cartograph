@@ -16,8 +16,15 @@ For the evaluation, in this order (the owner's rulings at stop 1):
   each question's stability over the runs, both modes side by side;
   what left a denominator and why; declines and failures by cause;
   retrieval recall and precision, retrieval mode only, a diagnostic;
-  the attribute joins (item 66), counted beside and never in;
+  the attribute joins, counted beside and never in (item 66 was closed:
+    it does not occur as recorded);
+  execution outcomes by failure word, beside the score: an answer whose
+    SQL failed at execution is scored on its SQL like any other;
   relative dates and empty results (item 60), outside the score;
+  identical rows: where both modes executed whole, whether they returned
+    the same rows, which compares values, not correctness;
+  input and output tokens per set and mode: dollars depend on the
+    provider's cache and so on run order, and appear only as spend;
   void runs, with their causes; spend.
 
 The structural claim -- that Cartograph says when a choice had no basis --
@@ -163,10 +170,56 @@ def apart(runs: list[dict], set_name: str, mode: str) -> list[str]:
     today = [f"{r['id']} (run {r['run']})" for r in records if r["uses_current_date"]]
     empty = [f"{r['id']} (run {r['run']})" for r in records if r["empty_result"]]
     return [
-        f"    attribute joins (item 66), beside the score: {len(attribute)}" + (f": {', '.join(attribute)}" if attribute else ""),
+        f"    attribute joins, beside the score: {len(attribute)}" + (f": {', '.join(attribute)}" if attribute else ""),
         f"    SQL taking today's date (item 60): {len(today)}" + (f": {', '.join(today)}" if today else ""),
         f"    empty results (item 60, outside the score): {len(empty)}" + (f": {', '.join(empty)}" if empty else ""),
     ]  # fmt: skip
+
+
+def tokens(runs: list[dict], set_name: str, mode: str) -> list[str]:
+    """Every answer of the set in this mode, question 14 included: what the
+    mode cost in tokens, which do not depend on the provider's cache."""
+    records = [r for run in runs for r in run["records"] if r["set"] == set_name and r["mode"] == mode]
+    n = len(records)
+    tin = sum(a["tokens_in"] for r in records for a in r["attempts"])
+    tout = sum(a["tokens_out"] for r in records for a in r["attempts"])
+    if not n:
+        return ["    tokens: no answers"]
+    return [f"    tokens, every answer of question 14 included: {tin} in, {tout} out, over {n} answers; "
+            f"mean per answer {tin / n:.1f} in, {tout / n:.1f} out"]  # fmt: skip
+
+
+def executions(runs: list[dict], set_name: str, mode: str) -> list[str]:
+    """How each scored answer's SQL fared when run, by failure word."""
+    words = [
+        "not executed" if r["execution"] is None else ("ok" if r["execution"]["ok"] else r["execution"]["failure"])
+        for run in runs
+        for r in _scored(run["records"], set_name, mode)
+    ]
+    return [f"    execution outcomes, beside the score: {_count(words)}"]
+
+
+def identical_rows(runs: list[dict], set_name: str) -> list[str]:
+    """Where both modes executed ok and neither result was truncated,
+    whether the two rows hashes are equal. Question 14 left out."""
+    lines = ["  identical rows, outside the score: whether the two modes returned the same rows. This compares "
+             "values returned, not their correctness; a different column order counts as different."]  # fmt: skip
+    compared: dict[str, list[bool]] = {}
+    for run in runs:
+        pair: dict[str, dict[str, dict]] = {}
+        for r in run["records"]:
+            if r["set"] == set_name and not r["excluded"]:
+                pair.setdefault(r["id"], {})[r["mode"]] = r
+        for qid, modes in pair.items():
+            executed = [modes.get(mode, {}).get("execution") for mode in MODES]
+            if all(e and e["ok"] and not e["truncated"] for e in executed):
+                compared.setdefault(qid, []).append(executed[0]["rows_sha256"] == executed[1]["rows_sha256"])
+    equal = sum(sum(found) for found in compared.values())
+    total = sum(len(found) for found in compared.values())
+    lines.append(f"    where both modes executed ok and neither result was truncated: equal in {equal} of {total} "
+                 f"question-runs")  # fmt: skip
+    lines += [f"    {set_name} {qid}: equal in {sum(found)} of {len(found)} runs" for qid, found in compared.items()]
+    return lines
 
 
 def excluded_lines(runs: list[dict]) -> list[str]:
@@ -214,9 +267,12 @@ def runs_report(runs: list[dict], void: list[dict]) -> str:
             lines.append(f"  {mode}")
             lines += measures(runs, set_name, mode)
             lines += causes(runs, set_name, mode)
+            lines += executions(runs, set_name, mode)
             lines += apart(runs, set_name, mode)
+            lines += tokens(runs, set_name, mode)
         lines.append("  the two modes, question by question (runs correct)")
         lines += comparison(runs, set_name)
+        lines += identical_rows(runs, set_name)
         lines.append("  retrieval recall and precision, a diagnostic outside the headline")
         lines += recall_lines(runs, set_name)
         lines.append("  each question over the runs (correct/measured)")
@@ -251,7 +307,7 @@ def pilot_report(runs: list[dict], void: list[dict]) -> str:
                              f"sha256 {prompt['sha256'][:12]}; join section {prompt['has_join_section']}")  # fmt: skip
             for a in r["attempts"]:
                 lines.append(f"    attempt {a['number']}    {a['outcome']}; {a['tokens_in']} in ({a['tokens_cached']} "
-                             f"cached), {a['tokens_out']} out, ${a['cost_usd']:.6f}, {a['duration_ms']} ms; "
+                             f"cached), {a['tokens_out']} out, {a['duration_ms']} ms; "
                              f"returned model {a['returned_model']}")  # fmt: skip
             if r["transport_retries"]:
                 lines.append(f"    retried      {len(r['transport_retries'])} transport or provider failures")
@@ -269,17 +325,19 @@ def pilot_report(runs: list[dict], void: list[dict]) -> str:
                 lines.append(f"    executed     {'ok' if e['ok'] else e['failure']}; {e['row_count']} rows"
                              f"{' (truncated)' if e['truncated'] else ''}, {e['duration_ms']} ms; rows sha256 "
                              f"{(e['rows_sha256'] or '')[:12]}; today's date used {r['uses_current_date']}")  # fmt: skip
+    lines += [""] + identical_rows(runs, "dev")
     lines += ["", "SPEND"] + _spend(runs, void)
-    by_mode = {}
+    lines.append("  tokens per mode (dollars depend on the provider's cache, and appear only above)")
+    by_mode: dict[str, list[int]] = {}
     for d in runs + void:
         for r in d["records"]:
-            m = by_mode.setdefault(r["mode"], [0, 0, 0, 0.0])
+            m = by_mode.setdefault(r["mode"], [0, 0, 0])
             m[0] += 1
             m[1] += sum(a["tokens_in"] for a in r["attempts"])
             m[2] += sum(a["tokens_out"] for a in r["attempts"])
-            m[3] += r["cost_usd"]
-    for mode, (n, tin, tout, cost) in sorted(by_mode.items()):
-        lines.append(f"    {mode}: {n} answers, {tin} tokens in, {tout} out, ${cost:.6f}")
+    for mode, (n, tin, tout) in sorted(by_mode.items()):
+        lines.append(f"    {mode}: {n} answers; {tin} tokens in, {tout} out; "
+                     f"mean per answer {tin / n:.1f} in, {tout / n:.1f} out")  # fmt: skip
     return "\n".join(lines) + "\n"
 
 

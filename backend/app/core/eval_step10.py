@@ -32,15 +32,20 @@ THE TWO MEASURES, IN BOTH MODES, AS THE OWNER RULED AT STOP 1.
           `diverged`. `diverged` wins over `not_checked` inside `compare`,
           so a known wrong join is counted, never dropped.
 
-  Both are judged only on an answer that produced validated SQL. The
-  rest is decided before any SQL is read:
+  Both are judged on every answer that produced validated SQL: an
+  answer, and an answer whose SQL then failed at execution (a timeout or
+  any database error). A timeout depends on the machine and the scale
+  factor, not on the method, and DD-20 measures the SQL (the owner's
+  ruling 1 at the review of stop 2); execution outcomes are reported
+  beside the score. The rest is decided before any SQL is read:
 
     a question expected to be declined (Q15, H9)
         correct on both when the answer is a decline, wrong on both
         otherwise
     any other question declined                       wrong on both
-    validation failed, model failed (malformed after
-      retries, cut off), execution failed              wrong on both
+    validation failed after retries, model failed
+      (malformed after retries, cut off)              wrong on both:
+                                                      no SQL was accepted
 
   A transport or provider failure is not the method's behaviour and never
   reaches this module: the runner retries the call and voids the run.
@@ -93,7 +98,9 @@ EXCLUDED: dict[tuple[str, str], str] = {
 # module judges what the orchestrator produced.
 ANSWERED = "answered"
 NOT_ANSWERABLE = "not_answerable"
-FAILURES = ("validation_failed", "model_failed", "execution_failed")
+EXECUTION_FAILED = "execution_failed"
+# The failures that leave no accepted SQL to read.
+NO_SQL = ("validation_failed", "model_failed")
 
 @dataclass(frozen=True)
 class Expectation:
@@ -133,7 +140,7 @@ class Answer:
 
     # The orchestrator's outcome.
     outcome: str
-    # The validated SQL, where there is one: answered, or execution failed.
+    # The validated SQL, where there is one: answered, or failed at execution.
     sql: str | None = None
 
 
@@ -226,12 +233,12 @@ def score(expectation: Expectation, answer: Answer, schema: Schema, keys: frozen
     if expectation.decline:
         if declined:
             return Score(CORRECT, CORRECT, "declined as expected")
-        return Score(WRONG, WRONG, "not declined" if answer.outcome == ANSWERED else answer.outcome)
+        return Score(WRONG, WRONG, "not declined" if answer.outcome in (ANSWERED, EXECUTION_FAILED) else answer.outcome)
     if declined:
         return Score(WRONG, WRONG, "declined")
-    if answer.outcome in FAILURES:
+    if answer.outcome in NO_SQL:
         return Score(WRONG, WRONG, answer.outcome)
-    if answer.outcome != ANSWERED or answer.sql is None:
+    if answer.outcome not in (ANSWERED, EXECUTION_FAILED) or answer.sql is None:
         raise ValueError(f"question {expectation.id}: an outcome of {answer.outcome!r} with sql {answer.sql!r}")
 
     extraction: Extraction = extract_joins(answer.sql, schema)

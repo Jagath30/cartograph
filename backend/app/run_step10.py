@@ -2,7 +2,7 @@
 
     docker compose exec backend python -m app.run_step10 --pilot
     docker compose exec backend python -m app.run_step10 --write-manifest
-    docker compose exec backend python -m app.run_step10 --runs 5
+    docker compose exec backend python -m app.run_step10 --runs 5 --head SHA
 
 `--pilot` puts the eight development questions through both modes once,
 to find faults in this harness on questions that decide nothing. They
@@ -12,8 +12,11 @@ carry no expectations and nothing is scored. Kept in eval/step10/pilot/.
 answers and measures (app.shell.step10.FROZEN), in
 eval/step10/frozen_code.json. It is written in the protocol's commit.
 
-`--runs N` is the evaluation. It refuses to start unless the manifest
-exists and every file still matches it, and it is the only place that
+`--runs N --head SHA` is the evaluation. SHA is the commit it runs on, read
+by the session with its own `git rev-parse HEAD` beforehand (the container
+has no repository) and recorded in every run file with the manifest
+check's result. It refuses to start unless the manifest exists and every
+file still matches it, and it is the only place that
 reads eval/heldout.yaml, through its loader, which checks the sha256.
 For each run, in order: the held-out set, then the original set; for each
 question both modes, retrieval first in odd runs and full schema first in
@@ -36,6 +39,7 @@ purpose.
 import argparse
 import json
 import logging
+import re
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -280,6 +284,17 @@ def run_once(
     return result
 
 
+def provenance(head: str | None, differences: list[str] | None) -> dict:
+    """What a run file says it ran on: the commit, and the manifest check."""
+    if differences is None:
+        manifest = "no manifest"
+    elif differences:
+        manifest = "differs: " + "; ".join(differences)
+    else:
+        manifest = "matches"
+    return {"head": head, "manifest": manifest}
+
+
 def keep_run(path: Path, document: dict) -> None:
     """One run's file, created once; an existing one is never overwritten."""
     create_exclusively(path, json.dumps(document, indent=1, default=str) + "\n")
@@ -332,6 +347,7 @@ def main(argv: list[str]) -> int:
     which.add_argument("--pilot", action="store_true", help="the development questions, both modes, once")
     which.add_argument("--runs", type=int, help="the evaluation: this many complete runs")
     which.add_argument("--write-manifest", action="store_true", help="record the frozen code's hashes")
+    parser.add_argument("--head", help="the commit the evaluation runs on: 40 hex characters (git rev-parse HEAD)")
     parser.add_argument("--cap", type=float, default=STEP_CAP_USD, help="the step cap, in dollars")
     parser.add_argument("--out", type=Path, help="where to keep the run (default: eval/step10/pilot or runs)")
     arguments = parser.parse_args(argv)
@@ -339,6 +355,8 @@ def main(argv: list[str]) -> int:
 
     if arguments.write_manifest:
         return _write_manifest()
+    if arguments.runs is not None and not re.fullmatch(r"[0-9a-f]{40}", arguments.head or ""):
+        sys.exit("run_step10: the evaluation needs --head, the full sha of the commit it runs on (git rev-parse HEAD)")
 
     differences = _manifest_differences()
     if arguments.pilot:
@@ -393,7 +411,7 @@ def main(argv: list[str]) -> int:
         document = {
             "label": label, "run": number, "attempt": attempt, "void": result.void, "began": began,
             "ended": datetime.now(UTC).isoformat(timespec="seconds"),
-            "code_manifest": None if differences is None else "matches",
+            **provenance(arguments.head, differences),
             "settings": {"model": settings.sql_model, "reasoning_effort": settings.sql_model_reasoning_effort,
                          "temperature": settings.sql_model_temperature,
                          "max_output_tokens": settings.sql_model_max_output_tokens, "price": vars(price),

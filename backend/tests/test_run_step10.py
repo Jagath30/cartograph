@@ -19,7 +19,7 @@ from app.core.full_schema import KEYS_RULES, build_full_prompt, full_schema_loca
 from app.core.prompt_builder import JOIN_RULES
 from app.core.sql_reading import schema_of
 from app.orchestrator import Orchestrator
-from app.run_step10 import Asked, keep_run, main, mode_order, run_once
+from app.run_step10 import Asked, keep_run, main, mode_order, provenance, run_once
 from app.shell.embedder import EmbeddingFailed
 from app.shell.model_client import FakeModel, LedgeredModel, ModelReply, SpendLedger
 from app.shell.step10 import RetryingModel, create_exclusively, keep_identical
@@ -329,3 +329,105 @@ def test_a_run_file_is_never_overwritten(tmp_path) -> None:
     with pytest.raises(FileExistsError):
         keep_run(path, {"run": 2})
     assert '"run": 1' in path.read_text()
+
+
+# --------------------------------------------------------------------------
+# The owner's rulings at the review of stop 2: tokens per mode, execution
+# outcomes beside the score, identical rows, and each run's provenance
+# --------------------------------------------------------------------------
+
+
+def _one_run(tmp_path, retrieval_script, full_script, **setup):
+    result, _, _ = _run(tmp_path, [[Q1, Q14, Q15]], retrieval_script, full_script, **setup)
+    return _document(result.records, 1)
+
+
+def _counted(text: str, tokens_in: int, tokens_out: int) -> ModelReply:
+    return ModelReply("m", "m", None, text, tokens_in, 0, tokens_out, 0.0001, 1)
+
+
+def test_the_report_gives_tokens_per_set_and_mode_and_no_dollars_there(tmp_path) -> None:
+    run = _one_run(
+        tmp_path,
+        [_counted(reply(Q1_SQL), 1000, 50), _counted(reply(Q14_SQL), 1300, 70), _counted(reply(status="not_answerable"), 900, 9)],
+        [_counted(reply(Q1_SQL), 8000, 60), _counted(reply(Q14_SQL), 8100, 80), _counted(reply(status="not_answerable"), 7900, 9)],
+    )  # fmt: skip
+    text = runs_report([run], [])
+    original = text.split("THE ORIGINAL SET", 1)[1].split("QUESTION 14", 1)[0]
+    for mode in ("retrieval", "full_schema"):
+        records = [r for r in run["records"] if r["mode"] == mode]
+        tin = sum(a["tokens_in"] for r in records for a in r["attempts"])
+        tout = sum(a["tokens_out"] for r in records for a in r["attempts"])
+        assert tin > 0 and tout > 0
+        line = (f"    tokens, every answer of question 14 included: {tin} in, {tout} out, over 3 answers; "
+                f"mean per answer {tin / 3:.1f} in, {tout / 3:.1f} out")  # fmt: skip
+        blocks = original.split("  retrieval\n", 1)[1].split("  full_schema\n", 1)
+        assert line in blocks[0 if mode == "retrieval" else 1]
+    head, spend = text.split("SPEND", 1)
+    assert "$" not in head
+
+
+def test_the_report_counts_execution_outcomes_beside_the_score_by_word(tmp_path) -> None:
+    run = _one_run(tmp_path, [reply(Q1_SQL), reply(Q14_SQL), reply(status="not_answerable")],
+                   [reply(Q1_SQL), reply(Q14_SQL), reply(status="not_answerable")],
+                   executor=Runs(failure="timeout"))  # fmt: skip
+    text = runs_report([run], [])
+    assert text.count("    execution outcomes, beside the score: not executed 1, timeout 1") == 2
+
+
+def _rows(record, digest, truncated=False):
+    record["execution"] = {**record["execution"], "rows_sha256": digest, "truncated": truncated}
+
+
+def test_identical_rows_compare_the_two_modes_where_both_ran_whole(tmp_path) -> None:
+    cases = (("same", False, True), ("same", False, True), ("other", False, True), ("same", True, True),
+             ("same", False, False))  # fmt: skip
+    runs = []
+    for number, (full_digest, truncated, ok) in enumerate(cases, start=1):
+        result, _, _ = _run(tmp_path, [[Q1]], [reply(Q1_SQL)], [reply(Q1_SQL)], number=number)
+        retrieval, full = sorted(result.records, key=lambda r: r["mode"] != "retrieval")
+        _rows(retrieval, "same")
+        _rows(full, full_digest, truncated)
+        if not ok:
+            full["execution"].update(ok=False, failure="timeout", rows_sha256=None)
+        runs.append(_document(result.records, number))
+    text = runs_report(runs, [])
+    assert ("  identical rows, outside the score: whether the two modes returned the same rows. This compares "
+            "values returned, not their correctness; a different column order counts as different.") in text
+    assert "    where both modes executed ok and neither result was truncated: equal in 2 of 3 question-runs" in text
+    assert "    original 1: equal in 2 of 3 runs" in text
+
+
+def test_identical_rows_say_so_when_nothing_could_be_compared(tmp_path) -> None:
+    run = _one_run(tmp_path, [reply(status="not_answerable")] * 3, [reply(status="not_answerable")] * 3)
+    text = runs_report([run], [])
+    assert "    where both modes executed ok and neither result was truncated: equal in 0 of 0 question-runs" in text
+
+
+def test_the_pilot_report_gives_tokens_per_mode_and_no_dollars_per_mode(tmp_path) -> None:
+    sql = "SELECT c.c_birth_country, COUNT(*) FROM customer c GROUP BY c.c_birth_country"
+    result, _, _ = _run(tmp_path, [[DEV]], [reply(sql)], [reply(sql)], where=located("customer"))
+    text = pilot_report([_document(result.records, 1)], [])
+    tail = text.split("SPEND", 1)[1].split("\n")[3:]
+    assert any(line.startswith("    full_schema: 1 answers; ") and "tokens in" in line for line in tail)
+    assert not any("$" in line for line in tail)
+    assert not any("$" in line for line in text.split("\n") if line.startswith("    attempt"))
+    assert "identical rows" in text
+
+
+@pytest.mark.parametrize("head", [None, "abc", "G" * 40])
+def test_the_evaluation_needs_the_head_commit_before_anything_is_opened(tmp_path, monkeypatch, head) -> None:
+    from app.shell import pipeline_session
+
+    monkeypatch.setattr(pipeline_session, "open_pipeline", lambda *a, **k: pytest.fail("a pipeline was opened"))
+    argv = ["--runs", "5", "--out", str(tmp_path)] + ([] if head is None else ["--head", head])
+    with pytest.raises(SystemExit) as stopped:
+        main(argv)
+    assert "--head" in str(stopped.value) or stopped.value.code == 2
+
+
+def test_each_run_file_records_its_head_and_the_manifest_check() -> None:
+    sha = "ab30b4a" + "0" * 33
+    assert provenance(sha, []) == {"head": sha, "manifest": "matches"}
+    assert provenance(None, None) == {"head": None, "manifest": "no manifest"}
+    assert provenance(sha, ["app/x.py changed"]) == {"head": sha, "manifest": "differs: app/x.py changed"}
