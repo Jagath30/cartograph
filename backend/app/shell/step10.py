@@ -18,6 +18,9 @@
                      checked before every run of the frozen sets.
     load_heldout     the only reader of eval/heldout.yaml: it refuses the
                      file unless its sha256 is the one frozen.
+    create_exclusively, keep_identical
+                     nothing the runner writes is ever overwritten (the
+                     owner's ruling 3 at stop 2).
 """
 
 import hashlib
@@ -161,6 +164,27 @@ def check_manifest(root: Path, patterns: tuple[str, ...], manifest: dict[str, st
         elif now[path] != manifest[path]:
             differences.append(f"{path} changed")
     return differences
+
+
+# --------------------------------------------------------------------------
+# Nothing is overwritten
+# --------------------------------------------------------------------------
+
+
+def create_exclusively(path: Path, text: str) -> None:
+    """Creates the file, or raises FileExistsError and leaves it as it was."""
+    with path.open("x") as created:
+        created.write(text)
+
+
+def keep_identical(path: Path, text: str) -> None:
+    """A prompt is kept by its hash, so the same name holds the same text:
+    an identical file is left alone, a different one raises."""
+    try:
+        create_exclusively(path, text)
+    except FileExistsError:
+        if path.read_text() != text:
+            raise FileExistsError(f"{path.name} exists and holds another text; nothing is overwritten") from None
 
 
 # --------------------------------------------------------------------------

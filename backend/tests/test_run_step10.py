@@ -19,10 +19,10 @@ from app.core.full_schema import KEYS_RULES, build_full_prompt, full_schema_loca
 from app.core.prompt_builder import JOIN_RULES
 from app.core.sql_reading import schema_of
 from app.orchestrator import Orchestrator
-from app.run_step10 import Asked, mode_order, run_once
+from app.run_step10 import Asked, keep_run, main, mode_order, run_once
 from app.shell.embedder import EmbeddingFailed
 from app.shell.model_client import FakeModel, LedgeredModel, ModelReply, SpendLedger
-from app.shell.step10 import RetryingModel
+from app.shell.step10 import RetryingModel, create_exclusively, keep_identical
 from app.step10_report import pilot_report, runs_report
 
 ORIGINAL = {
@@ -260,3 +260,72 @@ def test_the_pilot_report_shows_a_cross_join(tmp_path) -> None:
     result, _, _ = _run(tmp_path, [[DEV]], [reply(crossed)], [reply(crossed)], where=located("store_sales", "store"))
     text = pilot_report([_document(result.records, 1)], [])
     assert "cross join   store_sales | store" in text
+
+
+# --------------------------------------------------------------------------
+# Nothing is ever overwritten (the owner's ruling 3 at stop 2)
+# --------------------------------------------------------------------------
+
+
+def test_a_file_is_created_once_and_never_overwritten(tmp_path) -> None:
+    path = tmp_path / "run-01.json"
+    create_exclusively(path, "one")
+    with pytest.raises(FileExistsError):
+        create_exclusively(path, "two")
+    assert path.read_text() == "one"
+
+
+def test_a_prompt_already_kept_is_left_alone_and_one_that_differs_stops(tmp_path) -> None:
+    path = tmp_path / "abc.txt"
+    keep_identical(path, "the prompt")
+    keep_identical(path, "the prompt")
+    with pytest.raises(FileExistsError):
+        keep_identical(path, "another prompt")
+    assert path.read_text() == "the prompt"
+
+
+@pytest.mark.parametrize("name", ["pilot-01.json", "pilot-03-void.json", "report.txt"])
+def test_the_runner_stops_before_any_paid_call_when_a_file_it_writes_exists(tmp_path, monkeypatch, name) -> None:
+    from app.shell import pipeline_session
+
+    out = tmp_path / "pilot"
+    out.mkdir()
+    (out / name).write_text("earlier")
+
+    def never(*arguments, **keywords):
+        raise AssertionError("a pipeline was opened")
+
+    monkeypatch.setattr(pipeline_session, "open_pipeline", never)
+    with pytest.raises(SystemExit) as stopped:
+        main(["--pilot", "--out", str(out)])
+    assert "nothing is overwritten" in str(stopped.value) and name in str(stopped.value)
+    assert (out / name).read_text() == "earlier"
+
+
+def test_the_manifest_is_never_overwritten(tmp_path, monkeypatch) -> None:
+    import app.run_step10 as runner
+
+    monkeypatch.setattr(runner, "STEP10", tmp_path)
+    monkeypatch.setattr(runner, "MANIFEST", tmp_path / "frozen_code.json")
+    (tmp_path / "frozen_code.json").write_text("earlier")
+    with pytest.raises(SystemExit) as stopped:
+        main(["--write-manifest"])
+    assert "nothing is overwritten" in str(stopped.value)
+    assert (tmp_path / "frozen_code.json").read_text() == "earlier"
+
+
+def test_the_report_is_never_overwritten(tmp_path) -> None:
+    from app.step10_report import write_report
+
+    (tmp_path / "report.txt").write_text("earlier")
+    with pytest.raises(FileExistsError):
+        write_report(tmp_path, "pilot")
+    assert (tmp_path / "report.txt").read_text() == "earlier"
+
+
+def test_a_run_file_is_never_overwritten(tmp_path) -> None:
+    path = tmp_path / "run-01.json"
+    keep_run(path, {"run": 1})
+    with pytest.raises(FileExistsError):
+        keep_run(path, {"run": 2})
+    assert '"run": 1' in path.read_text()

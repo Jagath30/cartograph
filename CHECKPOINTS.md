@@ -33,6 +33,8 @@ pass, 2 skip; frontend 211.
   are committed before the run they judge; nothing is tuned to one
   question; no threshold is chosen by looking at results.
 - A commit may claim a check passed only if that check's own exit status was read.
+- Every paid command is its own shell command, never chained with `;` or
+  `&&` to anything else (step 10, stop 2).
 
 **Frozen, never edited.** `backend/eval/questions.yaml`, `heldout.yaml`,
 `calibration.json`, `baseline_step5.txt`; `app/core/eval_set.py`,
@@ -8778,6 +8780,26 @@ execution failure, the cap printed to two places. No system fault.
 **Spend on step10 purposes:** two pilots, 32 model calls, $0.00935889;
 no embedding.
 
+### The owner's rulings at stop 2 — 16 October 2026
+
+1. Item 66 closes as "does not occur as recorded"; attribute joins
+   replace it under their own name.
+2. The two faults of steps 3 and 4 are accepted as recorded. The 52
+   mutations cover the tests-first breach; the lost first-pilot JSON
+   decides nothing; no re-run.
+3. **The harness makes that loss impossible.** The runner creates every
+   file it writes exclusively. Before anything is opened or paid for it
+   stops if its output folder already holds a run file or a report; a
+   prompt already kept is left alone if identical and stops the runner if
+   not; the manifest and the report are never overwritten. Tests first,
+   eight mutations, all caught (one survived at first, the run file's own
+   write, and got a test). And every paid command is its own shell
+   command, never chained (Current state).
+4. Cost per mode is reported in input and output tokens, not dollars:
+   provider caching makes dollars depend on run order. Dollars stay in the
+   spend lines. Added to the protocol draft.
+5. The protocol stays uncommitted; `heldout.yaml` stays unopened.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
@@ -9159,6 +9181,10 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     tables (`store.s_state = customer_address.ca_state`) does diverge. What
     step 10 marks, beside the verdict and never in it, is any join between
     two columns neither of which is a key.
+    **Closed at step 10's stop 2, by the owner's ruling: does not occur as
+    recorded.** Its replacement is approved under its own name, ATTRIBUTE
+    JOINS: any join condition between two columns neither of which is a
+    key, counted beside the verdict in both modes, never in a score.
 67. **An expected table present only as a bridge is lost when a tie
     spans two places** (the retrieval pass, A-3). With a returns table
     back in contention it becomes the seed or fills the cap; the routes

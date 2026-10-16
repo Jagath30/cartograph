@@ -69,6 +69,8 @@ from app.shell.step10 import (
     RetryingModel,
     check_manifest,
     code_manifest,
+    create_exclusively,
+    keep_identical,
     load_heldout,
     rows_sha256,
     uses_current_date,
@@ -278,6 +280,11 @@ def run_once(
     return result
 
 
+def keep_run(path: Path, document: dict) -> None:
+    """One run's file, created once; an existing one is never overwritten."""
+    create_exclusively(path, json.dumps(document, indent=1, default=str) + "\n")
+
+
 # --------------------------------------------------------------------------
 # The sets
 # --------------------------------------------------------------------------
@@ -302,8 +309,10 @@ def evaluation_sets() -> list[list[Asked]]:
 
 def _write_manifest() -> int:
     STEP10.mkdir(parents=True, exist_ok=True)
+    if MANIFEST.exists():
+        sys.exit(f"run_step10: {MANIFEST.name} exists; nothing is overwritten")
     manifest = code_manifest(BACKEND, FROZEN)
-    MANIFEST.write_text(json.dumps({"patterns": list(FROZEN), "files": manifest}, indent=1) + "\n")
+    create_exclusively(MANIFEST, json.dumps({"patterns": list(FROZEN), "files": manifest}, indent=1) + "\n")
     print(f"run_step10: {len(manifest)} files recorded in {MANIFEST.relative_to(BACKEND)}")
     return 0
 
@@ -343,15 +352,20 @@ def main(argv: list[str]) -> int:
         label, total, sets = "run", arguments.runs, evaluation_sets()
         out = arguments.out or STEP10 / "runs"
 
+    # Before anything is opened or paid for: a run never overwrites a run.
+    taken = sorted(path.name for path in out.glob(f"{label}-*.json")) + (
+        ["report.txt"] if (out / "report.txt").exists() else []
+    )
+    if taken:
+        sys.exit(f"run_step10: {out} already holds {', '.join(taken)}; nothing is overwritten and nothing was run")
+
     settings = get_settings()
     price = MODEL_PRICES[settings.sql_model]
     out.mkdir(parents=True, exist_ok=True)
     (out / "prompts").mkdir(exist_ok=True)
 
     def keep_prompt(digest: str, text: str) -> None:
-        path = out / "prompts" / f"{digest}.txt"
-        if not path.exists():
-            path.write_text(text)
+        keep_identical(out / "prompts" / f"{digest}.txt", text)
 
     complete, attempt, void_in_a_row, files = 0, 0, 0, []
     while complete < total:
@@ -392,7 +406,7 @@ def main(argv: list[str]) -> int:
             "records": result.records,
         }  # fmt: skip
         name = f"{label}-{attempt:02d}{'-void' if result.void else ''}.json"
-        (out / name).write_text(json.dumps(document, indent=1, default=str) + "\n")
+        keep_run(out / name, document)
         files.append(name)
         print(f"run_step10: {name}: {len(result.records)} answers" + (f"; VOID: {result.void}" if result.void else ""))
         if result.void:

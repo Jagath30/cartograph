@@ -28,6 +28,7 @@ import json
 from pathlib import Path
 
 from app.core.eval_step10 import CORRECT, NOT_MEASURED, Tally, combine, stability, tally
+from app.shell.step10 import create_exclusively
 
 MODES = ("retrieval", "full_schema")
 SETS = (
@@ -286,5 +287,5 @@ def write_report(out: Path, label: str) -> Path:
     runs, void = load(out, label)
     text = pilot_report(runs, void) if label == "pilot" else runs_report(runs, void)
     path = out / "report.txt"
-    path.write_text(text)
+    create_exclusively(path, text)
     return path
