@@ -40,11 +40,12 @@ pass, 2 skip; frontend 211.
 `heldout.yaml` is not opened, run or embedded, and `app/core/heldout.py`
 is not imported, before step 10.
 
-**Next.** Before step 10: items 60 and 63, Q14 (item 67), 89 and 90.
-Step 10: 47, 48, 53, 54, 61, 66; heldout's first run. Step 11: 76, 88.
+**Next.** Step 10, in progress: its working record is the newest entry.
+Ruled at its stop 1: items 54 (Q14), 60, 63; 89 done. Step 10: 47, 48,
+61, 66; heldout's first run. Step 11: 76, 88.
 Step 12: 1, 8, 9, 10, 14, 18, 41, 73, 77, 80, 85; owed to the Design:
-DD-01, 06, 07, 12 to 16, 19, 21, FR-13, IR-05, section 04. Step 13: 86, 90's
-README line. Step 14: 75. Future work: 55, 56. Known limits: 62, 68, 69,
+DD-01, 06, 07, 12 to 16, 19, 21, FR-13, IR-05, section 04. Step 13: 86,
+90. Step 14: 75. Future work: 53, 55, 56. Known limits: 62, 68, 69,
 78, 87. Left behind: 79. **Resume:** read this, the newest entry and the
 items named; `git status`; `./scripts/smoke.sh` (two paid calls).
 
@@ -8612,7 +8613,13 @@ embeddings, at most $0.000024; there is no ledger for them (item 89).
 The project's model calls to date: 146, $0.01679913.
 
 **Next single deliverable.** Step 10: the evaluation, held-out set first
-run. Before it: items 60 and 63, Q14 (item 67), 89 and 90.
+run. Before it: items 60 and 63, Q14 (item 54), 89 and 90. *(Corrected 16
+October 2026, at step 10's stop 1, by the owner's ruling: this said "Q14
+(item 67)". Item 67 is the bridge lost when a tie spans two places, from
+the retrieval pass's A-3; the drafting flaw of question 14 is item 54. And
+item 90 is a README line, owed at step 13 with the README, not before step
+10: it concerns which amount column a model sums, and step 10 measures
+joins and tables.)*
 
 **The close, 15 October 2026.** Clean start (`docker compose up -d
 --build --force-recreate`): every service healthy; smoke 39, 0, 0; the
@@ -8622,6 +8629,77 @@ no `.env`, no `tpcds_ri.sql`, no benchmark query text, no key-shaped
 string, no frozen file changed, `npm audit --omit=dev` 0 found,
 `step2-backup` not on the remote. Tagged `checkpoint-09-frontend`.
 Nothing is pushed.
+
+## Step 10 in progress: the evaluation — opened 16 October 2026
+
+The working record of step 10, kept as written. HEAD at the start
+`f4eefc5`, clean. `heldout.yaml` is not opened, run, embedded or sent to a
+model until the protocol is committed, after the owner's review; then only
+its loader reads it, checking its sha256.
+
+### The owner's rulings at stop 1 — 16 October 2026
+
+Given on the plan, before any code. The plan is approved with these.
+
+1. **Item 89 first**, as proposed: `LedgeredEmbedder`, kind "embedding",
+   old lines read as model calls, tests first with mutations. Done in
+   `dd84038`.
+2. **Q14 is deleted from scoring in both modes** (item 54, DR-16, T-04):
+   it names no sales channel and its expectation assumes the store
+   channel, so no answer is determined by the question. It is still run
+   and its raw results are reported apart; the exclusion set is pinned by
+   a test; the reason is stated in the protocol. Current state and step
+   9's "Next" said "Q14 (item 67)"; item 67 is the A-3 bridge finding, and
+   both now say item 54. Item 90 moves to step 13.
+3. **Item 60**: no prompt change. Each answer's row count is recorded,
+   and any use of `current_date`, `now()` or `current_timestamp`; empty
+   results are a known limit, outside the score.
+4. **Five runs**, fixed in advance. A step cap of $0.30 on ledger
+   purposes beginning `step10`, with a check before each question that
+   the cap still covers that question's worst case.
+5. **Scoring as planned, with these readings.**
+   - `not_checked` leaves the path denominator. It leaves the table
+     denominator too only where the reader could not resolve every table
+     reference. Both counts are reported. The protocol states this as its
+     reading of the Design's sentence; owed to the Design as a
+     clarification.
+   - The SQL is executed in both modes the same way. The rows hash: yes,
+     over the rows sorted into a canonical order, with the truncated flag
+     beside it (a capped result's hash covers only the rows returned). No
+     values are kept.
+   - Model failures (malformed after retries, cut off) score wrong.
+     Transport and provider errors are not the method's behaviour: the
+     harness retries that question's call up to twice, with backoff; if
+     it still fails, the run is void. A void run is recorded with its
+     cause and replaced by a complete fresh run. No run is ever voided,
+     kept or replaced because of its results.
+6. **The committed files are the record.** No migration: the Design's
+   eval tables are owed to it as an amendment ("the evaluation record is
+   committed, hashed files"). Item 48.
+7. **Item 66**: a separate line, never folded into the headline.
+8. **The held-out set is the headline, for both modes.** The original 15
+   are reported beside it, labelled plainly as the set the system was
+   tuned and developed against (steps 6 and 7b).
+9. **Item 53 moves to future work**: building it now would be tuning.
+10. **Criterion 6**: the headline is "the mean of five runs, with its
+    range". A Charter wording amendment is owed.
+11. **THE BASELINE MUST BE FAIR.** Full-schema mode gets the whole
+    schema: every table rendered exactly as retrieval mode renders it,
+    and every relationship the graph holds (all 107, catalog and overlay
+    alike), given as the keys between tables, not as a plan. No selected
+    tree, no tie-breaks, no declared preferences: those are Cartograph's
+    contribution, and what is measured. If the relationships can reach
+    the prompt only through the frozen join section, and its wording
+    tells the model these are the joins to use, nothing is built around
+    it and nothing frozen is reworded: stop and show the owner the exact
+    wording first.
+
+**Owed to the Design and the Charter from this stop.** Section 12: the
+reading of "not_checked drops out of the denominator" (ruling 5); five
+runs and the mean with its range in place of one run at temperature 0.
+Figure 4 and DR-13: the evaluation record is committed, hashed files, not
+the `eval_runs` table. Charter criterion 6: "the mean of five runs, with
+its range", over the held-out set and the original 15.
 
 ### Carried forward
 
@@ -8825,6 +8903,9 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     into them is step 8 or step 10 work, and the file's hash, not the
     table, stays the thing that is frozen.
     **Deferred to step 10 at step 8.**
+    **Ruled at step 10's stop 1:** no migration. The committed, hashed
+    files are the evaluation's record; the Design's `eval_questions` and
+    `eval_runs` tables are owed to it as an amendment.
 49. The set's expectations were derived against the 107-key graph at the
     default limit of three joins. A change to the overlay's relationships
     or to `DEFAULT_MAX_JOINS` changes what the baseline means without
@@ -8852,12 +8933,18 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     not, written by the owner, used for nothing else, and frozen before
     use. Until then FR-42 at retrieval rests on disconnection alone, and
     its main mechanism is step 7's question-not-answerable code.
+    **Moved to future work at step 10's stop 1, by the owner's ruling:**
+    building a floor now would be tuning in the step that measures.
 54. Question 14 of the evaluation set names no sales channel, yet its
     expected tables assume the store channel (third review stop, step 6).
     A flaw in how the question was drafted, not in the system. The set
     stays frozen. Under T-04 and DR-16 the only remedy is to delete a
     badly posed question and state the deletion; that decision is the
     owner's and is deferred to step 10.
+    **Ruled at step 10's stop 1: deleted from scoring in both modes.** It
+    is still run and its raw results are reported apart; the exclusion is
+    pinned by a test and its reason stated in the protocol. The original
+    set is scored on 15.
 55. **A structural definition of "alternatives"** (fourth review stop,
     step 6). Ruling c wanted a warning when a word of the question could
     as well have meant another table. Two definitions were tried: any two
@@ -8917,6 +9004,11 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     2100, so the query is valid, joins correctly and returns no rows.
     Evaluation question 1 is of this kind. For a decision before step
     10.
+    **Ruled at step 10's stop 1:** no change to the prompt. Step 10
+    measures joins and tables, which a relative date does not move. Each
+    answer's row count is recorded, and whether its SQL uses
+    `current_date`, `now()` or `current_timestamp`; empty results are
+    reported as a known limit, outside the score.
 61. **Semi-joins are not extracted** (step 7). `x IN (SELECT key FROM
     t)`, EXISTS with a correlation, and a comparison with a subquery that
     passes a column through are joins spelled as filters. The
@@ -8949,6 +9041,8 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     Recommended for step 10, and decided there: at least five runs,
     reporting the mean, the range and per-question stability, with the
     number of runs and how they are combined fixed before the first.
+    **Ruled at step 10's stop 1: five runs**, fixed in advance, and a cap
+    of $0.30 on ledger purposes beginning `step10`.
 64. **A warning can be marked as having touched the answer or not**
     (step 7, for steps 8 and 9). The warnings are raised about the tree
     retrieval built; the SQL may use a fraction of it. d1 of the
@@ -9216,6 +9310,9 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     at most $0.000024). Write each embedding call to the same `.spend`
     ledger as model calls, before step 10's runs, so that the close's
     figure is exact.
+    **Done at step 10** (`dd84038`): `LedgeredEmbedder`, one ledger line
+    per call with `kind: "embedding"`; lines written before kinds existed
+    are read as model calls.
 90. **Which amount column a model sums is not flagged** (the close of
     step 9). For "How much did each gender spend on the web in the year
     2002?", by the billed customer's demographics, summing
@@ -9223,3 +9320,5 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     `ws_net_paid` (the page's answer of 15 October) 164.7M against
     160.3M. Cartograph explains joins, not measures. The README says so
     plainly at step 13.
+    **Moved to step 13 at step 10's stop 1**, by the owner's ruling: it
+    does not touch joins or tables.
