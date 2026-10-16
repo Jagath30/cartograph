@@ -8701,6 +8701,83 @@ Figure 4 and DR-13: the evaluation record is committed, hashed files, not
 the `eval_runs` table. Charter criterion 6: "the mean of five runs, with
 its range", over the held-out set and the original 15.
 
+### The owner's ruling on ruling 11, and steps 1 to 4 — 16 October 2026
+
+**Stopped early, as ruling 11 asked.** The frozen builder can put joins in
+a prompt only through its join section, and `JOIN_RULES` says "These are
+the joins selected for this question ... join them by exactly these
+conditions". Measured on the live snapshot: 24 table pairs are joined by
+more than one key, covering 49 of the 107. All 107 under that wording
+would be untrue and contradictory.
+
+**The owner's ruling (option A).** The two modes' prompts differ only in
+what Cartograph contributes. New step 10 code composes the full-schema
+user message from the frozen `GENERAL_RULES` and `render_tables`, editing
+nothing frozen: all 24 tables in alphabetical order; where retrieval has
+its join section, the owner's wording, word for word ("Keys between
+tables. These are the keys by which the tables above can be joined. A line
+with two conditions joined by AND is one key and needs both. Two tables
+may be joined by more than one key. Use only the tables the question
+needs: a table listed above need not appear in the query."); then the
+107 lines, sorted, in the frozen join lines' form, unmarked. A
+clarification of DD-20, owed to the Design: the Design never specified a
+mode without relationships; it calls full-schema prompting "not
+handicapped", and every key keeps that true. The README will say the
+baseline was given every key.
+
+**The system message, read sentence by sentence for full-schema mode.**
+Every sentence is true there: it speaks of "the tables you may use" and
+"the tables given", never of retrieved tables or given joins. Nothing was
+shown to the owner because nothing was untrue.
+
+**Done.**
+
+    dd84038  item 89: embedding spend on the ledger
+    54995fc  stop 1's rulings; Q14 is item 54; item 90 to step 13
+    61b9f8a  the scorer, the full-schema mode and the runner
+    6949170  the pilot, and the harness faults it found
+
+- The orchestrator takes its prompt builder as a parameter, the frozen
+  `build_prompt` by default; `open_pipeline` opens either mode with the
+  same model, ledger, retries, validator, checker and executor.
+- The keys lines are the frozen `render_joins` output with its
+  `JOIN_RULES` heading taken off: the builder renders lines inside
+  `render_joins` and has no function for one.
+- Fairness is pinned by tests, on hand-built trees and on d4 as retrieval
+  really selects it: the system messages byte-identical; the user
+  messages byte-identical with the tables and the join or keys section
+  cut out; the tables part exactly `render_tables` for the 24; 107 key
+  lines against the snapshot's own keys, none missing, repeated or
+  invented, both sources present and unmarked; each of d4's tree edges the
+  same line in both prompts.
+- 52 mutations on step 3's code, all caught; two more by construction for
+  the pilot's fixes.
+
+**Two things the plan said of the frozen instrument were wrong**, found
+by tests before any evaluation run. `Extraction.tables` does list tables
+read in WHERE subqueries, so the frozen list is the table measure. Item
+66 does not happen as recorded (the item says how).
+
+**The pilot.** Both modes ran on d1 to d8; a full-schema prompt is about
+30,930 characters and 7,865 tokens, d4's retrieval prompt 1,544 tokens.
+Retrieval declined d2, d3 and d6 as before (item 62); full schema
+answered all three. In full-schema mode d5 was written as a CROSS JOIN of
+`web_sales` and `web_returns` and timed out at 30 seconds: the method's
+behaviour, an execution failure. Harness faults found and fixed: cross
+joins missing from the report, the database's message kept on an
+execution failure, the cap printed to two places. No system fault.
+
+**Faults of mine.**
+- `full_schema.py` and `eval_step10.py` were written before their tests.
+  Their tests were written before any mutation run.
+- I started the second pilot in the same shell line as the move that
+  should have kept the first. The move failed and the second pilot
+  overwrote the first's JSON and report. The report is restored verbatim
+  from the session's output and says so; the JSON is lost.
+
+**Spend on step10 purposes:** two pilots, 32 model calls, $0.00935889;
+no embedding.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
@@ -8889,6 +8966,11 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     `wsl --shutdown` and restarting Docker Desktop recovers it. For about
     40 seconds afterwards `docker` is "command not found": the symlink in
     `/usr/bin` is restored only once the integration has attached.
+    **16 October 2026, step 10:** `docker` answered "Input/output error"
+    while no container ran. The owner identified the cause: Docker
+    Desktop's Resource Saver mode, which it enters when no container is
+    running. A later call answered normally and `docker compose up -d`
+    brought every service up healthy.
 46. `scripts/warehouse.sh` now takes the number of constraints to expect
     from `tpcds_ri.sql` and not from the overlay, which also holds the
     hand-declared relationships. Run for real on 8 October: "102 of 102
@@ -9070,6 +9152,13 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     selected. It is symmetric across modes. Question 6 of the original
     set is exposed to it; the held-out set deliberately has no
     two-channel comparison. Report it at step 10.
+    **Found at step 10, by test, before any evaluation run: it does not
+    happen as recorded.** Two channel summaries joined on `i_category`
+    CONFORM: the equality `item.i_category = item.i_category` sets a column
+    equal to itself, which any path implies. An attribute join across two
+    tables (`store.s_state = customer_address.ca_state`) does diverge. What
+    step 10 marks, beside the verdict and never in it, is any join between
+    two columns neither of which is a key.
 67. **An expected table present only as a bridge is lost when a tie
     spans two places** (the retrieval pass, A-3). With a returns table
     back in contention it becomes the seed or fills the cap; the routes
@@ -9313,6 +9402,9 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     **Done at step 10** (`dd84038`): `LedgeredEmbedder`, one ledger line
     per call with `kind: "embedding"`; lines written before kinds existed
     are read as model calls.
+    **Known limit, accepted by the owner:** the wiring in `ingest_schema`
+    and `calibrate` has no test, because both commands call the provider.
+    The wiring in retrieval is tested against the live databases.
 90. **Which amount column a model sums is not flagged** (the close of
     step 9). For "How much did each gender spend on the web in the year
     2002?", by the billed customer's demographics, summing
