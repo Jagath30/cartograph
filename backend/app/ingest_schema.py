@@ -22,6 +22,8 @@ import sys
 
 from app.config import get_settings
 from app.shell.embedder import EmbeddingKeyMissing, make_embedder
+from app.shell.embedding_ledger import LedgeredEmbedder
+from app.shell.model_client import LEDGER, SpendLedger
 from app.shell.schema_ingestor import SchemaIngestor
 from app.shell.semantic_index import SemanticIndex
 from app.shell.snapshot_store import SnapshotStore
@@ -44,7 +46,7 @@ def main() -> int:
     print(f"{'stored':<10}snapshot {stored.id}, {'new' if stored.created else 'already held'}; sha256 {stored.hash}")
 
     try:
-        embedder = make_embedder(settings)
+        embedder = LedgeredEmbedder(make_embedder(settings), SpendLedger(LEDGER), "ingest_schema")
     except EmbeddingKeyMissing as missing:
         print(f"{'embedded':<10}NOT EMBEDDED. {missing}", file=sys.stderr)
         return 1

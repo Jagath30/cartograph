@@ -259,27 +259,47 @@ def _timed(reply: ModelReply, began: float) -> ModelReply:
     return ModelReply(**fields)
 
 
+# The one ledger every paid call is written to, model and embedding alike.
+LEDGER = Path(__file__).resolve().parents[2] / "eval" / ".spend" / "model_calls.jsonl"
+
+LedgerKind = Literal["model", "embedding"]
+
+
 class SpendLedger:
-    """Every model call a run made, one JSON line each, in a file git
-    ignores. It is how a running total survives between commands."""
+    """Every paid call a run made, model and embedding alike, one JSON line
+    each, in a file git ignores. It is how a running total survives between
+    commands. A line says its `kind`; one written before kinds existed
+    (item 89) has none and was a model call."""
 
     def __init__(self, path: Path) -> None:
         self.path = path
 
-    def total(self) -> float:
+    def _lines(self) -> list[dict]:
         if not self.path.exists():
-            return 0.0
-        return sum(json.loads(line)["cost_usd"] for line in self.path.read_text().splitlines() if line.strip())
+            return []
+        return [json.loads(line) for line in self.path.read_text().splitlines() if line.strip()]
 
-    def calls(self) -> int:
-        if not self.path.exists():
-            return 0
-        return sum(1 for line in self.path.read_text().splitlines() if line.strip())
+    def total(self) -> float:
+        return sum(line["cost_usd"] for line in self._lines())
+
+    def calls(self, kind: LedgerKind = "model") -> int:
+        return sum(1 for line in self._lines() if line.get("kind", "model") == kind)
+
+    def _write(self, line: dict) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a") as ledger:
+            ledger.write(json.dumps(line) + "\n")
+
+    def record_embedding(self, purpose: str, model: str, inputs: int, tokens: int, cost_usd: float, outcome: str) -> None:
+        self._write(
+            {"at": datetime.now(UTC).isoformat(timespec="seconds"), "kind": "embedding", "purpose": purpose,
+             "model": model, "inputs": inputs, "tokens": tokens, "cost_usd": cost_usd, "outcome": outcome}
+        )  # fmt: skip
 
     def record(self, purpose: str, reply: ModelReply) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
         line = {
             "at": datetime.now(UTC).isoformat(timespec="seconds"),
+            "kind": "model",
             "purpose": purpose,
             "model": reply.requested_model,
             "returned_model": reply.returned_model,
@@ -289,8 +309,7 @@ class SpendLedger:
             "cost_usd": reply.cost_usd,
             "outcome": reply.failure or "ok",
         }
-        with self.path.open("a") as ledger:
-            ledger.write(json.dumps(line) + "\n")
+        self._write(line)
 
 
 class LedgeredModel:

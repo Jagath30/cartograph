@@ -42,6 +42,8 @@ from app.core.calibration import (
     sibling_pairs,
 )
 from app.shell.embedder import EmbeddingKeyMissing, make_embedder
+from app.shell.embedding_ledger import LedgeredEmbedder
+from app.shell.model_client import LEDGER, SpendLedger
 from app.shell.semantic_index import SemanticIndex
 from app.shell.snapshot_store import SnapshotStore
 from app.shell.vector_cache import CachedEmbedder
@@ -62,7 +64,7 @@ def main() -> int:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     settings = get_settings()
     try:
-        embedder = CachedEmbedder(make_embedder(settings), CACHE)
+        embedder = CachedEmbedder(LedgeredEmbedder(make_embedder(settings), SpendLedger(LEDGER), "calibrate"), CACHE)
     except EmbeddingKeyMissing as missing:
         print(f"NOT CALIBRATED. {missing}", file=sys.stderr)
         return 1

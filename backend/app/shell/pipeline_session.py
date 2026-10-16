@@ -12,8 +12,6 @@ bounds and the model. Without one it is exactly as it was at step 7.
 """
 
 from dataclasses import dataclass
-from pathlib import Path
-
 from app.config import get_settings
 from app.core.graph_builder import build_graph
 from app.core.join_tree import DEFAULT_SUBGRAPH_BOUND
@@ -21,12 +19,11 @@ from app.core.locate import locate
 from app.core.path_finder import DEFAULT_MAX_JOINS
 from app.core.trace_document import Context, preferences_hash
 from app.orchestrator import Keep, Orchestrator
-from app.shell.model_client import LedgeredModel, SpendLedger, make_model
+from app.shell.model_client import LEDGER, LedgeredModel, SpendLedger, make_model
 from app.shell.query_executor import QueryExecutor
 from app.shell.retrieval_session import Opened, open_retrieval
 from app.shell.schema_ingestor import SchemaIngestor
 
-LEDGER = Path(__file__).resolve().parents[2] / "eval" / ".spend" / "model_calls.jsonl"
 # Step 7's development work stops itself here, well inside its $1.
 CEILING_USD = 0.50
 
@@ -48,7 +45,7 @@ def open_pipeline(
     settings = get_settings()
     snapshot = SchemaIngestor(settings.warehouse_database_url, settings.warehouse_overlay_path).ingest()
     graph = build_graph(snapshot)
-    opened = open_retrieval(snapshot, alpha, cut, cap, name)
+    opened = open_retrieval(snapshot, alpha, cut, cap, name, purpose)
     ledger = SpendLedger(LEDGER)
     model = LedgeredModel(make_model(settings), ledger, purpose, CEILING_USD)
 

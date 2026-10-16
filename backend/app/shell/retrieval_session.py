@@ -21,6 +21,8 @@ from app.config import get_settings
 from app.core.retriever import Settings
 from app.core.snapshot import SchemaSnapshot
 from app.shell.embedder import Embedded, EmbeddingKeyMissing, MeteredEmbedder, make_embedder
+from app.shell.embedding_ledger import LedgeredEmbedder
+from app.shell.model_client import LEDGER, SpendLedger
 from app.shell.semantic_index import SemanticIndex
 from app.shell.snapshot_store import SnapshotStore, StoredSnapshot, snapshot_hash
 from app.shell.vector_cache import CachedEmbedder
@@ -54,9 +56,13 @@ class Opened:
     index: SemanticIndex
 
 
-def open_retrieval(snapshot: SchemaSnapshot, alpha: float, cut: float, cap: int, name: str) -> Opened:
+def open_retrieval(
+    snapshot: SchemaSnapshot, alpha: float, cut: float, cap: int, name: str, purpose: str | None = None
+) -> Opened:
     """`snapshot` is the live warehouse as just ingested. `name` begins
-    every message, so the reader knows which command stopped."""
+    every message, so the reader knows which command stopped. `purpose`
+    is written beside each embedding call in the spend ledger; `name`
+    when not given."""
     settings = get_settings()
     if not CALIBRATION.exists():
         sys.exit(f"{name}: eval/calibration.json is missing. Run: python -m app.calibrate")
@@ -79,7 +85,7 @@ def open_retrieval(snapshot: SchemaSnapshot, alpha: float, cut: float, cap: int,
     margin = calibration["margin"][str(alpha)]["value"]
 
     try:
-        paid = MeteredEmbedder(make_embedder(settings))
+        paid = MeteredEmbedder(LedgeredEmbedder(make_embedder(settings), SpendLedger(LEDGER), purpose or name))
     except EmbeddingKeyMissing as missing:
         paid = MeteredEmbedder(_NoKey(calibration["embedding_model"], missing))
     index = SemanticIndex(settings.app_database_url, CachedEmbedder(paid, CACHE))
