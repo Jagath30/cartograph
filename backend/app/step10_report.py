@@ -257,6 +257,8 @@ def pilot_report(runs: list[dict], void: list[dict]) -> str:
             if r["extraction"]:
                 lines.append(f"    SQL tables   {', '.join(r['extraction']['tables']) or 'none'}")
                 lines.append(f"    SQL joins    {'; '.join(r['extraction']['equalities']) or 'none'}")
+                for group in r["extraction"]["cross_joins"]:
+                    lines.append(f"    cross join   {' | '.join(group)}")
                 if r["extraction"]["unchecked"]:
                     lines.append(f"    unchecked    {'; '.join(r['extraction']['unchecked'])}")
             if r["conformance_to_selected"]:

@@ -152,7 +152,10 @@ def record_of(trace: Trace, asked: Asked, mode: str, schema, keys, extra: dict) 
         **extra,
         "outcome": trace.outcome,
         "code": trace.code,
-        "message": trace.message,
+        # The database's own words on an execution failure can quote a value
+        # from the data (item 78, DR-15): kept are its failure word and
+        # SQLSTATE, under "execution". Every other message is the system's.
+        "message": None if trace.outcome == "execution_failed" else trace.message,
         "located": _located(trace, mode),
         "prompt": None if trace.prompt is None else {
             "sha256": sha256(trace.prompt.text), "chars": len(trace.prompt.text),
@@ -254,7 +257,7 @@ def run_once(
                 if spent + worst_usd > cap_usd:
                     result.void = (
                         f"the step cap: ${spent:.6f} spent on {STEP_PREFIX} purposes and up to ${worst_usd:.6f} "
-                        f"for the next question would pass ${cap_usd:.2f}; nothing more was run"
+                        f"for the next question would pass ${cap_usd}; nothing more was run"
                     )
                     return result
                 began = datetime.now(UTC).isoformat(timespec="seconds")

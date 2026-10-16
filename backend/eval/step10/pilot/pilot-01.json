@@ -1,0 +1,1752 @@
+{
+ "label": "pilot",
+ "run": 1,
+ "attempt": 1,
+ "void": null,
+ "began": "2026-10-16T11:41:56+00:00",
+ "ended": "2026-10-16T11:43:15+00:00",
+ "code_manifest": null,
+ "settings": {
+  "model": "gpt-6-luna",
+  "reasoning_effort": "none",
+  "temperature": 0.0,
+  "max_output_tokens": 800,
+  "price": {
+   "input": 0.1,
+   "cached_input": 0.01,
+   "output": 0.5,
+   "as_of": "2026-10-09"
+  },
+  "alpha": 0.5,
+  "anchor_cut": 0.5,
+  "anchor_cap": 5,
+  "margin": 0.10705139708498754,
+  "schema_sha256": "4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4302547",
+  "preferences_hash": "59022985a4452cb3ff99b618dd7a2cf90663df78be9e6c5bb78198a9474d1c26",
+  "cap_usd": 0.3,
+  "worst_case_per_question_usd": 0.0048172
+ },
+ "spend": {
+  "step10_usd_after": 0.00935889,
+  "this_purpose_usd": 0.00935889
+ },
+ "records": [
+  {
+   "set": "dev",
+   "id": "d1",
+   "question": "How many customers were born in each country?",
+   "mode": "retrieval",
+   "run": 1,
+   "position": 1,
+   "began": "2026-10-16T11:41:56+00:00",
+   "cap_check": {
+    "spent_usd": 0.00806721,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.3
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": {
+    "anchors": [
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "web_returns",
+     "catalog_returns"
+    ],
+    "tree_tables": [
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "web_returns",
+     "catalog_returns"
+    ],
+    "tree_joins": [
+     "catalog_returns.cr_refunded_customer_sk = customer.c_customer_sk",
+     "customer.c_current_addr_sk = customer_address.ca_address_sk",
+     "customer.c_current_cdemo_sk = customer_demographics.cd_demo_sk",
+     "web_returns.wr_refunded_customer_sk = customer.c_customer_sk"
+    ],
+    "subgraph": [
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "web_returns",
+     "catalog_returns"
+    ],
+    "warnings": [
+     "arbitrary_choice",
+     "many_to_many",
+     "multi_anchor"
+    ],
+    "declined": false,
+    "decline_reason": null
+   },
+   "prompt": {
+    "sha256": "7c9fb5f692df80ac10e3fa6741c00964089afcbb8de7f037d5800ef8f96a4549",
+    "chars": 6930,
+    "tables": [
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "web_returns",
+     "catalog_returns"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 1706,
+     "tokens_cached": 1703,
+     "tokens_out": 36,
+     "cost_usd": 3.5329999999999995e-05,
+     "duration_ms": 3363,
+     "failure": null,
+     "sql": "SELECT customer.c_birth_country, COUNT(*) AS customer_count\nFROM customer\nGROUP BY customer.c_birth_country",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT customer.c_birth_country, COUNT(*) AS customer_count\nFROM customer\nGROUP BY customer.c_birth_country",
+   "validated_sha256": "0f12ac1067b29dd41fd9de8178f8fad1bbfd6b5069030292b171764d6fdf0c55",
+   "executed_sha256": "0f12ac1067b29dd41fd9de8178f8fad1bbfd6b5069030292b171764d6fdf0c55",
+   "extraction": {
+    "equalities": [],
+    "tables": [
+     "customer"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": "incomplete",
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 212,
+    "truncated": false,
+    "rows_sha256": "f36985a47b2c2949fc728df9f6ecbb674941e1a74944e76201e2fed7696020b5",
+    "duration_ms": 143,
+    "columns": 2
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 368,
+    "prompt": 0,
+    "generate": 3366,
+    "validate": 14,
+    "conform": 3,
+    "execute": 144
+   },
+   "tokens_in": 1706,
+   "tokens_out": 36,
+   "cost_usd": 3.5329999999999995e-05,
+   "score": null,
+   "recall": null,
+   "excluded": null
+  },
+  {
+   "set": "dev",
+   "id": "d1",
+   "question": "How many customers were born in each country?",
+   "mode": "full_schema",
+   "run": 1,
+   "position": 2,
+   "began": "2026-10-16T11:41:59+00:00",
+   "cap_check": {
+    "spent_usd": 0.00810254,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.3
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": null,
+   "prompt": {
+    "sha256": "572b27ce8571942bf3b893ffa8069b6d4c06d987dc6f58aae71c6bada92a419b",
+    "chars": 30917,
+    "tables": [
+     "call_center",
+     "catalog_page",
+     "catalog_returns",
+     "catalog_sales",
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "date_dim",
+     "household_demographics",
+     "income_band",
+     "inventory",
+     "item",
+     "promotion",
+     "reason",
+     "ship_mode",
+     "store",
+     "store_returns",
+     "store_sales",
+     "time_dim",
+     "warehouse",
+     "web_page",
+     "web_returns",
+     "web_sales",
+     "web_site"
+    ],
+    "has_join_section": false
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 7862,
+     "tokens_cached": 7859,
+     "tokens_out": 36,
+     "cost_usd": 9.689e-05,
+     "duration_ms": 3291,
+     "failure": null,
+     "sql": "SELECT customer.c_birth_country, COUNT(*) AS customer_count\nFROM customer\nGROUP BY customer.c_birth_country",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT customer.c_birth_country, COUNT(*) AS customer_count\nFROM customer\nGROUP BY customer.c_birth_country",
+   "validated_sha256": "0f12ac1067b29dd41fd9de8178f8fad1bbfd6b5069030292b171764d6fdf0c55",
+   "executed_sha256": "0f12ac1067b29dd41fd9de8178f8fad1bbfd6b5069030292b171764d6fdf0c55",
+   "extraction": {
+    "equalities": [],
+    "tables": [
+     "customer"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": null,
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 212,
+    "truncated": false,
+    "rows_sha256": "f36985a47b2c2949fc728df9f6ecbb674941e1a74944e76201e2fed7696020b5",
+    "duration_ms": 118,
+    "columns": 2
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 0,
+    "prompt": 8,
+    "generate": 3294,
+    "validate": 2,
+    "conform": 1,
+    "execute": 118
+   },
+   "tokens_in": 7862,
+   "tokens_out": 36,
+   "cost_usd": 9.689e-05,
+   "score": null,
+   "recall": null,
+   "excluded": null
+  },
+  {
+   "set": "dev",
+   "id": "d2",
+   "question": "In which year did the most customers make their first purchase?",
+   "mode": "retrieval",
+   "run": 1,
+   "position": 3,
+   "began": "2026-10-16T11:42:03+00:00",
+   "cap_check": {
+    "spent_usd": 0.00819943,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.3
+   },
+   "transport_retries": [],
+   "outcome": "not_answerable",
+   "code": "question_not_answerable",
+   "message": "This cannot be answered from the tables retrieved: the model, shown those tables, said they do not hold the answer.",
+   "located": {
+    "anchors": [
+     "customer",
+     "customer_demographics",
+     "web_sales",
+     "store_sales"
+    ],
+    "tree_tables": [
+     "customer",
+     "customer_demographics",
+     "web_sales",
+     "store_sales"
+    ],
+    "tree_joins": [
+     "customer.c_current_cdemo_sk = customer_demographics.cd_demo_sk",
+     "store_sales.ss_customer_sk = customer.c_customer_sk",
+     "web_sales.ws_bill_customer_sk = customer.c_customer_sk"
+    ],
+    "subgraph": [
+     "customer",
+     "customer_demographics",
+     "web_sales",
+     "store_sales"
+    ],
+    "warnings": [
+     "arbitrary_choice",
+     "many_to_many",
+     "multi_anchor"
+    ],
+    "declined": false,
+    "decline_reason": null
+   },
+   "prompt": {
+    "sha256": "5593306814b282914c678244525586083ab0f215bf82a754747951e97143cba6",
+    "chars": 6241,
+    "tables": [
+     "customer",
+     "customer_demographics",
+     "web_sales",
+     "store_sales"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "not_answerable",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 1609,
+     "tokens_cached": 1606,
+     "tokens_out": 18,
+     "cost_usd": 2.5359999999999998e-05,
+     "duration_ms": 1400,
+     "failure": null,
+     "sql": null,
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": null,
+   "validated_sha256": null,
+   "executed_sha256": null,
+   "extraction": null,
+   "conformance_to_selected": null,
+   "execution": null,
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 358,
+    "prompt": 0,
+    "generate": 1402
+   },
+   "tokens_in": 1609,
+   "tokens_out": 18,
+   "cost_usd": 2.5359999999999998e-05,
+   "score": null,
+   "recall": null,
+   "excluded": null
+  },
+  {
+   "set": "dev",
+   "id": "d2",
+   "question": "In which year did the most customers make their first purchase?",
+   "mode": "full_schema",
+   "run": 1,
+   "position": 4,
+   "began": "2026-10-16T11:42:05+00:00",
+   "cap_check": {
+    "spent_usd": 0.00822479,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.3
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": null,
+   "prompt": {
+    "sha256": "0fdd5627c6e7d4acdaba56ce820a8f79384f661ebc92a964dcb66f82b3d1f69a",
+    "chars": 30935,
+    "tables": [
+     "call_center",
+     "catalog_page",
+     "catalog_returns",
+     "catalog_sales",
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "date_dim",
+     "household_demographics",
+     "income_band",
+     "inventory",
+     "item",
+     "promotion",
+     "reason",
+     "ship_mode",
+     "store",
+     "store_returns",
+     "store_sales",
+     "time_dim",
+     "warehouse",
+     "web_page",
+     "web_returns",
+     "web_sales",
+     "web_site"
+    ],
+    "has_join_section": false
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 7865,
+     "tokens_cached": 7862,
+     "tokens_out": 64,
+     "cost_usd": 0.00011092,
+     "duration_ms": 1764,
+     "failure": null,
+     "sql": "SELECT date_dim.d_year\nFROM customer\nJOIN date_dim ON customer.c_first_sales_date_sk = date_dim.d_date_sk\nGROUP BY date_dim.d_year\nORDER BY COUNT(DISTINCT customer.c_customer_sk) DESC\nLIMIT 1",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT date_dim.d_year\nFROM customer\nJOIN date_dim ON customer.c_first_sales_date_sk = date_dim.d_date_sk\nGROUP BY date_dim.d_year\nORDER BY COUNT(DISTINCT customer.c_customer_sk) DESC\nLIMIT 1",
+   "validated_sha256": "8313a726374ad0c7ad5745b7702d7861addd302902a80e86703771b09afcb616",
+   "executed_sha256": "8313a726374ad0c7ad5745b7702d7861addd302902a80e86703771b09afcb616",
+   "extraction": {
+    "equalities": [
+     "customer.c_first_sales_date_sk = date_dim.d_date_sk"
+    ],
+    "tables": [
+     "customer",
+     "date_dim"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": null,
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 1,
+    "truncated": false,
+    "rows_sha256": "9413991f84a32816a93fb6723a8fa804b2af7ae2d2719004a6977a5bde6cf1a4",
+    "duration_ms": 326,
+    "columns": 1
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 0,
+    "prompt": 4,
+    "generate": 1767,
+    "validate": 4,
+    "conform": 2,
+    "execute": 326
+   },
+   "tokens_in": 7865,
+   "tokens_out": 64,
+   "cost_usd": 0.00011092,
+   "score": null,
+   "recall": null,
+   "excluded": null
+  },
+  {
+   "set": "dev",
+   "id": "d3",
+   "question": "Which catalog pages brought in the most orders?",
+   "mode": "retrieval",
+   "run": 1,
+   "position": 5,
+   "began": "2026-10-16T11:42:07+00:00",
+   "cap_check": {
+    "spent_usd": 0.00833571,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.3
+   },
+   "transport_retries": [],
+   "outcome": "not_answerable",
+   "code": "question_not_answerable",
+   "message": "This cannot be answered from the tables retrieved: the model, shown those tables, said they do not hold the answer.",
+   "located": {
+    "anchors": [
+     "catalog_page",
+     "web_sales",
+     "web_returns",
+     "promotion"
+    ],
+    "tree_tables": [
+     "catalog_page",
+     "web_sales",
+     "date_dim",
+     "web_returns",
+     "promotion"
+    ],
+    "tree_joins": [
+     "catalog_page.cp_end_date_sk = date_dim.d_date_sk",
+     "web_returns.wr_item_sk = web_sales.ws_item_sk AND web_returns.wr_order_number = web_sales.ws_order_number",
+     "web_sales.ws_promo_sk = promotion.p_promo_sk",
+     "web_sales.ws_ship_date_sk = date_dim.d_date_sk"
+    ],
+    "subgraph": [
+     "catalog_page",
+     "web_sales",
+     "date_dim",
+     "web_returns",
+     "promotion"
+    ],
+    "warnings": [
+     "arbitrary_choice",
+     "many_to_many"
+    ],
+    "declined": false,
+    "decline_reason": null
+   },
+   "prompt": {
+    "sha256": "623638a94e4028d0011b6adb560255c9ae8a460edb60e53528c1a357a856b78f",
+    "chars": 7826,
+    "tables": [
+     "catalog_page",
+     "web_sales",
+     "date_dim",
+     "web_returns",
+     "promotion"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "not_answerable",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 2018,
+     "tokens_cached": 2015,
+     "tokens_out": 18,
+     "cost_usd": 2.9450000000000004e-05,
+     "duration_ms": 1496,
+     "failure": null,
+     "sql": null,
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": null,
+   "validated_sha256": null,
+   "executed_sha256": null,
+   "extraction": null,
+   "conformance_to_selected": null,
+   "execution": null,
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 266,
+    "prompt": 0,
+    "generate": 1500
+   },
+   "tokens_in": 2018,
+   "tokens_out": 18,
+   "cost_usd": 2.9450000000000004e-05,
+   "score": null,
+   "recall": null,
+   "excluded": null
+  },
+  {
+   "set": "dev",
+   "id": "d3",
+   "question": "Which catalog pages brought in the most orders?",
+   "mode": "full_schema",
+   "run": 1,
+   "position": 6,
+   "began": "2026-10-16T11:42:09+00:00",
+   "cap_check": {
+    "spent_usd": 0.00836516,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.3
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": null,
+   "prompt": {
+    "sha256": "2baddc5e60cc57314f8ae824aae145b37aa139d0b8919918b3c28a8c55d4eb08",
+    "chars": 30919,
+    "tables": [
+     "call_center",
+     "catalog_page",
+     "catalog_returns",
+     "catalog_sales",
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "date_dim",
+     "household_demographics",
+     "income_band",
+     "inventory",
+     "item",
+     "promotion",
+     "reason",
+     "ship_mode",
+     "store",
+     "store_returns",
+     "store_sales",
+     "time_dim",
+     "warehouse",
+     "web_page",
+     "web_returns",
+     "web_sales",
+     "web_site"
+    ],
+    "has_join_section": false
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 7862,
+     "tokens_cached": 7859,
+     "tokens_out": 96,
+     "cost_usd": 0.00012689,
+     "duration_ms": 2092,
+     "failure": null,
+     "sql": "SELECT cp.cp_catalog_page_sk, cp.cp_catalog_page_id, cp.cp_description, COUNT(DISTINCT cs.cs_order_number) AS order_count\nFROM catalog_sales AS cs\nJOIN catalog_page AS cp ON cs.cs_catalog_page_sk = cp.cp_catalog_page_sk\nGROUP BY cp.cp_catalog_page_sk, cp.cp_catalog_page_id, cp.cp_description\nORDER BY order_count DESC\nLIMIT 1",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT cp.cp_catalog_page_sk, cp.cp_catalog_page_id, cp.cp_description, COUNT(DISTINCT cs.cs_order_number) AS order_count\nFROM catalog_sales AS cs\nJOIN catalog_page AS cp ON cs.cs_catalog_page_sk = cp.cp_catalog_page_sk\nGROUP BY cp.cp_catalog_page_sk, cp.cp_catalog_page_id, cp.cp_description\nORDER BY order_count DESC\nLIMIT 1",
+   "validated_sha256": "5b05dfede2da37587a7bbb6c2f8ffcc0347b53f2f374a9a52a97341ec13bfb0d",
+   "executed_sha256": "5b05dfede2da37587a7bbb6c2f8ffcc0347b53f2f374a9a52a97341ec13bfb0d",
+   "extraction": {
+    "equalities": [
+     "catalog_page.cp_catalog_page_sk = catalog_sales.cs_catalog_page_sk"
+    ],
+    "tables": [
+     "catalog_page",
+     "catalog_sales"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": null,
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 1,
+    "truncated": false,
+    "rows_sha256": "6ebe5fc0b61abecaa15a5546acdb1f6554c97eeee1d518ca4ec706a5c651f6d6",
+    "duration_ms": 1695,
+    "columns": 4
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 0,
+    "prompt": 14,
+    "generate": 2104,
+    "validate": 7,
+    "conform": 2,
+    "execute": 1695
+   },
+   "tokens_in": 7862,
+   "tokens_out": 96,
+   "cost_usd": 0.00012689,
+   "score": null,
+   "recall": null,
+   "excluded": null
+  },
+  {
+   "set": "dev",
+   "id": "d4",
+   "question": "How do purchases on the web split by the buyer's level of education?",
+   "mode": "retrieval",
+   "run": 1,
+   "position": 7,
+   "began": "2026-10-16T11:42:12+00:00",
+   "cap_check": {
+    "spent_usd": 0.00849205,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.3
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": {
+    "anchors": [
+     "customer_demographics",
+     "web_sales",
+     "web_site",
+     "web_page"
+    ],
+    "tree_tables": [
+     "customer_demographics",
+     "web_sales",
+     "web_site",
+     "web_page"
+    ],
+    "tree_joins": [
+     "web_sales.ws_bill_cdemo_sk = customer_demographics.cd_demo_sk",
+     "web_sales.ws_web_page_sk = web_page.wp_web_page_sk",
+     "web_sales.ws_web_site_sk = web_site.web_site_sk"
+    ],
+    "subgraph": [
+     "customer_demographics",
+     "web_sales",
+     "web_site",
+     "web_page"
+    ],
+    "warnings": [
+     "arbitrary_choice"
+    ],
+    "declined": false,
+    "decline_reason": null
+   },
+   "prompt": {
+    "sha256": "285ac8c838c650ac554ce68d29cb18f522e98a8af3749d5a1803258af1dd3426",
+    "chars": 6028,
+    "tables": [
+     "customer_demographics",
+     "web_sales",
+     "web_site",
+     "web_page"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 1544,
+     "tokens_cached": 1541,
+     "tokens_out": 76,
+     "cost_usd": 5.371e-05,
+     "duration_ms": 2172,
+     "failure": null,
+     "sql": "SELECT customer_demographics.cd_education_status, SUM(web_sales.ws_quantity) AS total_quantity, SUM(web_sales.ws_ext_sales_price) AS total_sales FROM web_sales JOIN customer_demographics ON web_sales.ws_bill_cdemo_sk = customer_demographics.cd_demo_sk GROUP BY customer_demographics.cd_education_status",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT customer_demographics.cd_education_status, SUM(web_sales.ws_quantity) AS total_quantity, SUM(web_sales.ws_ext_sales_price) AS total_sales FROM web_sales JOIN customer_demographics ON web_sales.ws_bill_cdemo_sk = customer_demographics.cd_demo_sk GROUP BY customer_demographics.cd_education_status",
+   "validated_sha256": "fa1d61533457ae8ff6ac06fb0606319165d5aedbae1459a59a6d17d23735beae",
+   "executed_sha256": "fa1d61533457ae8ff6ac06fb0606319165d5aedbae1459a59a6d17d23735beae",
+   "extraction": {
+    "equalities": [
+     "customer_demographics.cd_demo_sk = web_sales.ws_bill_cdemo_sk"
+    ],
+    "tables": [
+     "customer_demographics",
+     "web_sales"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": "incomplete",
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 7,
+    "truncated": false,
+    "rows_sha256": "ef85122a3d82459486079ca7f99687593e81d5c30905cd6e02f6b5f5c4ca70dd",
+    "duration_ms": 1046,
+    "columns": 3
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 275,
+    "prompt": 0,
+    "generate": 2174,
+    "validate": 4,
+    "conform": 2,
+    "execute": 1046
+   },
+   "tokens_in": 1544,
+   "tokens_out": 76,
+   "cost_usd": 5.371e-05,
+   "score": null,
+   "recall": null,
+   "excluded": null
+  },
+  {
+   "set": "dev",
+   "id": "d4",
+   "question": "How do purchases on the web split by the buyer's level of education?",
+   "mode": "full_schema",
+   "run": 1,
+   "position": 8,
+   "began": "2026-10-16T11:42:16+00:00",
+   "cap_check": {
+    "spent_usd": 0.00854576,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.3
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": null,
+   "prompt": {
+    "sha256": "60e9c5b1267a7ab39a614c81552122ba7d0dac1b179981115a446780e591e51b",
+    "chars": 30940,
+    "tables": [
+     "call_center",
+     "catalog_page",
+     "catalog_returns",
+     "catalog_sales",
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "date_dim",
+     "household_demographics",
+     "income_band",
+     "inventory",
+     "item",
+     "promotion",
+     "reason",
+     "ship_mode",
+     "store",
+     "store_returns",
+     "store_sales",
+     "time_dim",
+     "warehouse",
+     "web_page",
+     "web_returns",
+     "web_sales",
+     "web_site"
+    ],
+    "has_join_section": false
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 7868,
+     "tokens_cached": 7865,
+     "tokens_out": 74,
+     "cost_usd": 0.00011595,
+     "duration_ms": 2796,
+     "failure": null,
+     "sql": "SELECT cd.cd_education_status, SUM(ws.ws_quantity) AS total_quantity, SUM(ws.ws_net_paid) AS total_net_paid\nFROM web_sales AS ws\nJOIN customer_demographics AS cd ON ws.ws_bill_cdemo_sk = cd.cd_demo_sk\nGROUP BY cd.cd_education_status",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT cd.cd_education_status, SUM(ws.ws_quantity) AS total_quantity, SUM(ws.ws_net_paid) AS total_net_paid\nFROM web_sales AS ws\nJOIN customer_demographics AS cd ON ws.ws_bill_cdemo_sk = cd.cd_demo_sk\nGROUP BY cd.cd_education_status",
+   "validated_sha256": "aa68e1c1ae93f11a9943f96fe13637b7b80576addc89c5b51c5ee94898c00817",
+   "executed_sha256": "aa68e1c1ae93f11a9943f96fe13637b7b80576addc89c5b51c5ee94898c00817",
+   "extraction": {
+    "equalities": [
+     "customer_demographics.cd_demo_sk = web_sales.ws_bill_cdemo_sk"
+    ],
+    "tables": [
+     "customer_demographics",
+     "web_sales"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": null,
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 7,
+    "truncated": false,
+    "rows_sha256": "c10ac09174901d46b5d9717d7e89a906b73903e70716ded24347717e4729df00",
+    "duration_ms": 1463,
+    "columns": 3
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 0,
+    "prompt": 5,
+    "generate": 2804,
+    "validate": 24,
+    "conform": 2,
+    "execute": 1463
+   },
+   "tokens_in": 7868,
+   "tokens_out": 74,
+   "cost_usd": 0.00011595,
+   "score": null,
+   "recall": null,
+   "excluded": null
+  },
+  {
+   "set": "dev",
+   "id": "d5",
+   "question": "What share of the money taken on the web was later refunded?",
+   "mode": "retrieval",
+   "run": 1,
+   "position": 9,
+   "began": "2026-10-16T11:42:20+00:00",
+   "cap_check": {
+    "spent_usd": 0.00866171,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.3
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": {
+    "anchors": [
+     "web_returns",
+     "web_sales",
+     "store_returns",
+     "web_page"
+    ],
+    "tree_tables": [
+     "web_returns",
+     "web_sales",
+     "web_page",
+     "store_returns",
+     "customer"
+    ],
+    "tree_joins": [
+     "store_returns.sr_customer_sk = customer.c_customer_sk",
+     "web_returns.wr_item_sk = web_sales.ws_item_sk AND web_returns.wr_order_number = web_sales.ws_order_number",
+     "web_sales.ws_bill_customer_sk = customer.c_customer_sk",
+     "web_sales.ws_web_page_sk = web_page.wp_web_page_sk"
+    ],
+    "subgraph": [
+     "web_returns",
+     "web_sales",
+     "web_page",
+     "store_returns",
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "date_dim",
+     "household_demographics",
+     "item"
+    ],
+    "warnings": [
+     "arbitrary_choice",
+     "many_to_many"
+    ],
+    "declined": false,
+    "decline_reason": null
+   },
+   "prompt": {
+    "sha256": "2711f7b458811dfed2dbb365ddc94aee6cb7c807a5469cd42c0066c94b7333a0",
+    "chars": 11838,
+    "tables": [
+     "web_returns",
+     "web_sales",
+     "web_page",
+     "store_returns",
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "date_dim",
+     "household_demographics",
+     "item"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 3028,
+     "tokens_cached": 3025,
+     "tokens_out": 73,
+     "cost_usd": 6.705e-05,
+     "duration_ms": 2669,
+     "failure": null,
+     "sql": "SELECT SUM(web_returns.wr_return_amt) / NULLIF(SUM(web_sales.ws_net_paid), 0) AS refunded_share FROM web_sales JOIN web_returns ON web_returns.wr_item_sk = web_sales.ws_item_sk AND web_returns.wr_order_number = web_sales.ws_order_number",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT SUM(web_returns.wr_return_amt) / NULLIF(SUM(web_sales.ws_net_paid), 0) AS refunded_share FROM web_sales JOIN web_returns ON web_returns.wr_item_sk = web_sales.ws_item_sk AND web_returns.wr_order_number = web_sales.ws_order_number",
+   "validated_sha256": "a8abeb87f247feca68bae389247df38df2ded023ac3d1fa9dd16368c04f10f29",
+   "executed_sha256": "a8abeb87f247feca68bae389247df38df2ded023ac3d1fa9dd16368c04f10f29",
+   "extraction": {
+    "equalities": [
+     "web_returns.wr_item_sk = web_sales.ws_item_sk",
+     "web_returns.wr_order_number = web_sales.ws_order_number"
+    ],
+    "tables": [
+     "web_returns",
+     "web_sales"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": "incomplete",
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 1,
+    "truncated": false,
+    "rows_sha256": "db39ba9fd11517ed3194502bd7ca5fd3204489159d0ea800ef0c098368500383",
+    "duration_ms": 317,
+    "columns": 1
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 212,
+    "prompt": 0,
+    "generate": 2671,
+    "validate": 4,
+    "conform": 1,
+    "execute": 317
+   },
+   "tokens_in": 3028,
+   "tokens_out": 73,
+   "cost_usd": 6.705e-05,
+   "score": null,
+   "recall": null,
+   "excluded": null
+  },
+  {
+   "set": "dev",
+   "id": "d5",
+   "question": "What share of the money taken on the web was later refunded?",
+   "mode": "full_schema",
+   "run": 1,
+   "position": 10,
+   "began": "2026-10-16T11:42:23+00:00",
+   "cap_check": {
+    "spent_usd": 0.00872876,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.3
+   },
+   "transport_retries": [],
+   "outcome": "execution_failed",
+   "code": "execution_failure",
+   "message": null,
+   "located": null,
+   "prompt": {
+    "sha256": "8e358c7ba684b1f28012c9f219b8a819a6911302910ec5d3f29145700e7a075f",
+    "chars": 30932,
+    "tables": [
+     "call_center",
+     "catalog_page",
+     "catalog_returns",
+     "catalog_sales",
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "date_dim",
+     "household_demographics",
+     "income_band",
+     "inventory",
+     "item",
+     "promotion",
+     "reason",
+     "ship_mode",
+     "store",
+     "store_returns",
+     "store_sales",
+     "time_dim",
+     "warehouse",
+     "web_page",
+     "web_returns",
+     "web_sales",
+     "web_site"
+    ],
+    "has_join_section": false
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 7866,
+     "tokens_cached": 7863,
+     "tokens_out": 49,
+     "cost_usd": 0.00010342999999999999,
+     "duration_ms": 6258,
+     "failure": null,
+     "sql": "SELECT SUM(web_returns.wr_return_amt) / NULLIF(SUM(web_sales.ws_net_paid), 0) AS share_refunded FROM web_sales CROSS JOIN web_returns",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT SUM(web_returns.wr_return_amt) / NULLIF(SUM(web_sales.ws_net_paid), 0) AS share_refunded FROM web_sales CROSS JOIN web_returns",
+   "validated_sha256": "9aafd9da1cb41552f917a3036ea65666ae9ccf906c018df025f63ea4db5fc804",
+   "executed_sha256": "9aafd9da1cb41552f917a3036ea65666ae9ccf906c018df025f63ea4db5fc804",
+   "extraction": {
+    "equalities": [],
+    "tables": [
+     "web_returns",
+     "web_sales"
+    ],
+    "unchecked": [],
+    "cross_joins": [
+     [
+      "web_sales",
+      "web_returns"
+     ]
+    ]
+   },
+   "conformance_to_selected": null,
+   "execution": {
+    "ok": false,
+    "failure": "timeout",
+    "sqlstate": "57014",
+    "row_count": 0,
+    "truncated": false,
+    "rows_sha256": null,
+    "duration_ms": 30034,
+    "columns": 0
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 0,
+    "prompt": 4,
+    "generate": 6260,
+    "validate": 4,
+    "conform": 2,
+    "execute": 30035
+   },
+   "tokens_in": 7866,
+   "tokens_out": 49,
+   "cost_usd": 0.00010342999999999999,
+   "score": null,
+   "recall": null,
+   "excluded": null
+  },
+  {
+   "set": "dev",
+   "id": "d6",
+   "question": "Which store managers take the most money in the evening?",
+   "mode": "retrieval",
+   "run": 1,
+   "position": 11,
+   "began": "2026-10-16T11:43:00+00:00",
+   "cap_check": {
+    "spent_usd": 0.00883219,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.3
+   },
+   "transport_retries": [],
+   "outcome": "not_answerable",
+   "code": "question_not_answerable",
+   "message": "This cannot be answered from the tables retrieved: the model, shown those tables, said they do not hold the answer.",
+   "located": {
+    "anchors": [
+     "store",
+     "store_sales",
+     "store_returns",
+     "call_center"
+    ],
+    "tree_tables": [
+     "store",
+     "store_sales",
+     "store_returns",
+     "call_center",
+     "date_dim"
+    ],
+    "tree_joins": [
+     "call_center.cc_closed_date_sk = date_dim.d_date_sk",
+     "store.s_closed_date_sk = date_dim.d_date_sk",
+     "store_returns.sr_store_sk = store.s_store_sk",
+     "store_sales.ss_store_sk = store.s_store_sk"
+    ],
+    "subgraph": [
+     "store",
+     "store_sales",
+     "store_returns",
+     "call_center",
+     "date_dim"
+    ],
+    "warnings": [
+     "arbitrary_choice",
+     "many_to_many",
+     "multi_anchor"
+    ],
+    "declined": false,
+    "decline_reason": null
+   },
+   "prompt": {
+    "sha256": "522157dc813484a7425fdc4739513eabcb5836753bd76c64691a338798be549b",
+    "chars": 8030,
+    "tables": [
+     "store",
+     "store_sales",
+     "store_returns",
+     "call_center",
+     "date_dim"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "not_answerable",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 2113,
+     "tokens_cached": 2110,
+     "tokens_out": 18,
+     "cost_usd": 3.0400000000000004e-05,
+     "duration_ms": 2284,
+     "failure": null,
+     "sql": null,
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": null,
+   "validated_sha256": null,
+   "executed_sha256": null,
+   "extraction": null,
+   "conformance_to_selected": null,
+   "execution": null,
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 283,
+    "prompt": 0,
+    "generate": 2287
+   },
+   "tokens_in": 2113,
+   "tokens_out": 18,
+   "cost_usd": 3.0400000000000004e-05,
+   "score": null,
+   "recall": null,
+   "excluded": null
+  },
+  {
+   "set": "dev",
+   "id": "d6",
+   "question": "Which store managers take the most money in the evening?",
+   "mode": "full_schema",
+   "run": 1,
+   "position": 12,
+   "began": "2026-10-16T11:43:02+00:00",
+   "cap_check": {
+    "spent_usd": 0.00886259,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.3
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": null,
+   "prompt": {
+    "sha256": "0f585ccb85e71da690513b636a43a41e8917168dfd2119f77d9152d8a279d075",
+    "chars": 30928,
+    "tables": [
+     "call_center",
+     "catalog_page",
+     "catalog_returns",
+     "catalog_sales",
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "date_dim",
+     "household_demographics",
+     "income_band",
+     "inventory",
+     "item",
+     "promotion",
+     "reason",
+     "ship_mode",
+     "store",
+     "store_returns",
+     "store_sales",
+     "time_dim",
+     "warehouse",
+     "web_page",
+     "web_returns",
+     "web_sales",
+     "web_site"
+    ],
+    "has_join_section": false
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 7864,
+     "tokens_cached": 7861,
+     "tokens_out": 96,
+     "cost_usd": 0.00012691,
+     "duration_ms": 3475,
+     "failure": null,
+     "sql": "SELECT s.s_manager, SUM(ss.ss_net_paid) AS total_money_taken\nFROM store_sales AS ss\nJOIN store AS s ON ss.ss_store_sk = s.s_store_sk\nJOIN time_dim AS t ON ss.ss_sold_time_sk = t.t_time_sk\nWHERE t.t_shift = 'evening'\nGROUP BY s.s_manager\nORDER BY total_money_taken DESC\nLIMIT 1",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT s.s_manager, SUM(ss.ss_net_paid) AS total_money_taken\nFROM store_sales AS ss\nJOIN store AS s ON ss.ss_store_sk = s.s_store_sk\nJOIN time_dim AS t ON ss.ss_sold_time_sk = t.t_time_sk\nWHERE t.t_shift = 'evening'\nGROUP BY s.s_manager\nORDER BY total_money_taken DESC\nLIMIT 1",
+   "validated_sha256": "7508fca3f11b59c64f9c4b4ca8b33d8841964102fdae81c74562e4bc6e4390a9",
+   "executed_sha256": "7508fca3f11b59c64f9c4b4ca8b33d8841964102fdae81c74562e4bc6e4390a9",
+   "extraction": {
+    "equalities": [
+     "store.s_store_sk = store_sales.ss_store_sk",
+     "store_sales.ss_sold_time_sk = time_dim.t_time_sk"
+    ],
+    "tables": [
+     "store",
+     "store_sales",
+     "time_dim"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": null,
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 0,
+    "truncated": false,
+    "rows_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "duration_ms": 52,
+    "columns": 0
+   },
+   "uses_current_date": false,
+   "empty_result": true,
+   "timings": {
+    "locate": 0,
+    "prompt": 7,
+    "generate": 3480,
+    "validate": 5,
+    "conform": 2,
+    "execute": 52
+   },
+   "tokens_in": 7864,
+   "tokens_out": 96,
+   "cost_usd": 0.00012691,
+   "score": null,
+   "recall": null,
+   "excluded": null
+  },
+  {
+   "set": "dev",
+   "id": "d7",
+   "question": "On which days of the week do married customers order most from the catalog?",
+   "mode": "retrieval",
+   "run": 1,
+   "position": 13,
+   "began": "2026-10-16T11:43:06+00:00",
+   "cap_check": {
+    "spent_usd": 0.0089895,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.3
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": {
+    "anchors": [
+     "catalog_sales",
+     "catalog_returns",
+     "customer_demographics",
+     "customer",
+     "date_dim"
+    ],
+    "tree_tables": [
+     "catalog_sales",
+     "catalog_returns",
+     "customer_demographics",
+     "customer",
+     "date_dim"
+    ],
+    "tree_joins": [
+     "catalog_returns.cr_item_sk = catalog_sales.cs_item_sk AND catalog_returns.cr_order_number = catalog_sales.cs_order_number",
+     "catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk",
+     "catalog_sales.cs_bill_customer_sk = customer.c_customer_sk",
+     "catalog_sales.cs_sold_date_sk = date_dim.d_date_sk"
+    ],
+    "subgraph": [
+     "catalog_sales",
+     "catalog_returns",
+     "customer_demographics",
+     "customer",
+     "date_dim"
+    ],
+    "warnings": [
+     "arbitrary_choice",
+     "multi_anchor"
+    ],
+    "declined": false,
+    "decline_reason": null
+   },
+   "prompt": {
+    "sha256": "74f8d7c1ff380f8fca1fa0abd65a87edab9df7a6188c9801e378d49c2c6c3b06",
+    "chars": 8129,
+    "tables": [
+     "catalog_sales",
+     "catalog_returns",
+     "customer_demographics",
+     "customer",
+     "date_dim"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 2068,
+     "tokens_cached": 2065,
+     "tokens_out": 95,
+     "cost_usd": 6.845e-05,
+     "duration_ms": 2207,
+     "failure": null,
+     "sql": "SELECT date_dim.d_day_name, SUM(catalog_sales.cs_quantity) AS total_quantity FROM catalog_sales JOIN customer_demographics ON catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk JOIN date_dim ON catalog_sales.cs_sold_date_sk = date_dim.d_date_sk WHERE customer_demographics.cd_marital_status = 'M' GROUP BY date_dim.d_day_name ORDER BY total_quantity DESC",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT date_dim.d_day_name, SUM(catalog_sales.cs_quantity) AS total_quantity FROM catalog_sales JOIN customer_demographics ON catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk JOIN date_dim ON catalog_sales.cs_sold_date_sk = date_dim.d_date_sk WHERE customer_demographics.cd_marital_status = 'M' GROUP BY date_dim.d_day_name ORDER BY total_quantity DESC",
+   "validated_sha256": "5254e5a216b57f031cc6cd4182c4e4cd9a5d36fcfde501fba7ec4d27b9b854c7",
+   "executed_sha256": "5254e5a216b57f031cc6cd4182c4e4cd9a5d36fcfde501fba7ec4d27b9b854c7",
+   "extraction": {
+    "equalities": [
+     "catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk",
+     "catalog_sales.cs_sold_date_sk = date_dim.d_date_sk"
+    ],
+    "tables": [
+     "catalog_sales",
+     "customer_demographics",
+     "date_dim"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": "incomplete",
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 7,
+    "truncated": false,
+    "rows_sha256": "d3db72ac08082a684ab26dd0eea9d6c29909dc527574b6a0384a126a9cd771bc",
+    "duration_ms": 809,
+    "columns": 2
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 347,
+    "prompt": 0,
+    "generate": 2209,
+    "validate": 8,
+    "conform": 2,
+    "execute": 809
+   },
+   "tokens_in": 2068,
+   "tokens_out": 95,
+   "cost_usd": 6.845e-05,
+   "score": null,
+   "recall": null,
+   "excluded": null
+  },
+  {
+   "set": "dev",
+   "id": "d7",
+   "question": "On which days of the week do married customers order most from the catalog?",
+   "mode": "full_schema",
+   "run": 1,
+   "position": 14,
+   "began": "2026-10-16T11:43:09+00:00",
+   "cap_check": {
+    "spent_usd": 0.00905795,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.3
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": null,
+   "prompt": {
+    "sha256": "c6e21f0930bc755a870e09ba3865f050d5c22e44567da2f5cfacc82802c8807a",
+    "chars": 30947,
+    "tables": [
+     "call_center",
+     "catalog_page",
+     "catalog_returns",
+     "catalog_sales",
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "date_dim",
+     "household_demographics",
+     "income_band",
+     "inventory",
+     "item",
+     "promotion",
+     "reason",
+     "ship_mode",
+     "store",
+     "store_returns",
+     "store_sales",
+     "time_dim",
+     "warehouse",
+     "web_page",
+     "web_returns",
+     "web_sales",
+     "web_site"
+    ],
+    "has_join_section": false
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 7868,
+     "tokens_cached": 7865,
+     "tokens_out": 95,
+     "cost_usd": 0.00012645,
+     "duration_ms": 1913,
+     "failure": null,
+     "sql": "SELECT date_dim.d_day_name, SUM(catalog_sales.cs_quantity) AS total_quantity FROM catalog_sales JOIN customer_demographics ON catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk JOIN date_dim ON catalog_sales.cs_sold_date_sk = date_dim.d_date_sk WHERE customer_demographics.cd_marital_status = 'M' GROUP BY date_dim.d_day_name ORDER BY total_quantity DESC",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT date_dim.d_day_name, SUM(catalog_sales.cs_quantity) AS total_quantity FROM catalog_sales JOIN customer_demographics ON catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk JOIN date_dim ON catalog_sales.cs_sold_date_sk = date_dim.d_date_sk WHERE customer_demographics.cd_marital_status = 'M' GROUP BY date_dim.d_day_name ORDER BY total_quantity DESC",
+   "validated_sha256": "5254e5a216b57f031cc6cd4182c4e4cd9a5d36fcfde501fba7ec4d27b9b854c7",
+   "executed_sha256": "5254e5a216b57f031cc6cd4182c4e4cd9a5d36fcfde501fba7ec4d27b9b854c7",
+   "extraction": {
+    "equalities": [
+     "catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk",
+     "catalog_sales.cs_sold_date_sk = date_dim.d_date_sk"
+    ],
+    "tables": [
+     "catalog_sales",
+     "customer_demographics",
+     "date_dim"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": null,
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 7,
+    "truncated": false,
+    "rows_sha256": "d3db72ac08082a684ab26dd0eea9d6c29909dc527574b6a0384a126a9cd771bc",
+    "duration_ms": 656,
+    "columns": 2
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 0,
+    "prompt": 3,
+    "generate": 1915,
+    "validate": 5,
+    "conform": 2,
+    "execute": 657
+   },
+   "tokens_in": 7868,
+   "tokens_out": 95,
+   "cost_usd": 0.00012645,
+   "score": null,
+   "recall": null,
+   "excluded": null
+  },
+  {
+   "set": "dev",
+   "id": "d8",
+   "question": "Which of our suppliers deliver late most often?",
+   "mode": "retrieval",
+   "run": 1,
+   "position": 15,
+   "began": "2026-10-16T11:43:12+00:00",
+   "cap_check": {
+    "spent_usd": 0.0091844,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.3
+   },
+   "transport_retries": [],
+   "outcome": "not_answerable",
+   "code": "question_not_answerable",
+   "message": "This cannot be answered from the tables retrieved: the model, shown those tables, said they do not hold the answer.",
+   "located": {
+    "anchors": [
+     "web_sales"
+    ],
+    "tree_tables": [
+     "web_sales"
+    ],
+    "tree_joins": [],
+    "subgraph": [
+     "web_sales"
+    ],
+    "warnings": [],
+    "declined": false,
+    "decline_reason": null
+   },
+   "prompt": {
+    "sha256": "05076c24b0b074ca051292c864e9d032b43f04684a081f172fe35ea33d0f5cf3",
+    "chars": 2853,
+    "tables": [
+     "web_sales"
+    ],
+    "has_join_section": false
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "not_answerable",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 776,
+     "tokens_cached": 0,
+     "tokens_out": 18,
+     "cost_usd": 8.66e-05,
+     "duration_ms": 1239,
+     "failure": null,
+     "sql": null,
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": null,
+   "validated_sha256": null,
+   "executed_sha256": null,
+   "extraction": null,
+   "conformance_to_selected": null,
+   "execution": null,
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 198,
+    "prompt": 0,
+    "generate": 1242
+   },
+   "tokens_in": 776,
+   "tokens_out": 18,
+   "cost_usd": 8.66e-05,
+   "score": null,
+   "recall": null,
+   "excluded": null
+  },
+  {
+   "set": "dev",
+   "id": "d8",
+   "question": "Which of our suppliers deliver late most often?",
+   "mode": "full_schema",
+   "run": 1,
+   "position": 16,
+   "began": "2026-10-16T11:43:13+00:00",
+   "cap_check": {
+    "spent_usd": 0.009271,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.3
+   },
+   "transport_retries": [],
+   "outcome": "not_answerable",
+   "code": "question_not_answerable",
+   "message": "This cannot be answered from the tables retrieved: the model, shown those tables, said they do not hold the answer.",
+   "located": null,
+   "prompt": {
+    "sha256": "502734186fbf985aaead917f75e6bb72b7e32c88d16e8f4e82b952e601672fd3",
+    "chars": 30919,
+    "tables": [
+     "call_center",
+     "catalog_page",
+     "catalog_returns",
+     "catalog_sales",
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "date_dim",
+     "household_demographics",
+     "income_band",
+     "inventory",
+     "item",
+     "promotion",
+     "reason",
+     "ship_mode",
+     "store",
+     "store_returns",
+     "store_sales",
+     "time_dim",
+     "warehouse",
+     "web_page",
+     "web_returns",
+     "web_sales",
+     "web_site"
+    ],
+    "has_join_section": false
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "not_answerable",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 7862,
+     "tokens_cached": 7859,
+     "tokens_out": 18,
+     "cost_usd": 8.789e-05,
+     "duration_ms": 1431,
+     "failure": null,
+     "sql": null,
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": null,
+   "validated_sha256": null,
+   "executed_sha256": null,
+   "extraction": null,
+   "conformance_to_selected": null,
+   "execution": null,
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 0,
+    "prompt": 4,
+    "generate": 1433
+   },
+   "tokens_in": 7862,
+   "tokens_out": 18,
+   "cost_usd": 8.789e-05,
+   "score": null,
+   "recall": null,
+   "excluded": null
+  }
+ ]
+}

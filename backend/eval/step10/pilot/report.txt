@@ -1,0 +1,137 @@
+STEP 10: THE PILOT
+
+The eight development questions, both modes, once. They carry no expectations: nothing is scored.
+complete runs 1; void runs 0
+cap checked before each of 16 answers; the largest spent before one $0.009271, worst case per question $0.004817, cap $0.30
+
+d1 retrieval (position 1): answered
+    question     How many customers were born in each country?
+    tree         customer, customer_address, customer_demographics, web_returns, catalog_returns; warnings arbitrary_choice, many_to_many, multi_anchor
+    prompt       5 tables, 6930 characters, sha256 7c9fb5f692df; join section True
+    attempt 1    accepted; 1706 in (1703 cached), 36 out, $0.000035, 3363 ms; returned model gpt-6-luna
+    SQL tables   customer
+    SQL joins    none
+    against the joins selected: incomplete
+    executed     ok; 212 rows, 143 ms; rows sha256 f36985a47b2c; today's date used False
+
+d1 full_schema (position 2): answered
+    question     How many customers were born in each country?
+    prompt       24 tables, 30917 characters, sha256 572b27ce8571; join section False
+    attempt 1    accepted; 7862 in (7859 cached), 36 out, $0.000097, 3291 ms; returned model gpt-6-luna
+    SQL tables   customer
+    SQL joins    none
+    executed     ok; 212 rows, 118 ms; rows sha256 f36985a47b2c; today's date used False
+
+d2 retrieval (position 3): not_answerable
+    question     In which year did the most customers make their first purchase?
+    tree         customer, customer_demographics, web_sales, store_sales; warnings arbitrary_choice, many_to_many, multi_anchor
+    prompt       4 tables, 6241 characters, sha256 5593306814b2; join section True
+    attempt 1    not_answerable; 1609 in (1606 cached), 18 out, $0.000025, 1400 ms; returned model gpt-6-luna
+
+d2 full_schema (position 4): answered
+    question     In which year did the most customers make their first purchase?
+    prompt       24 tables, 30935 characters, sha256 0fdd5627c6e7; join section False
+    attempt 1    accepted; 7865 in (7862 cached), 64 out, $0.000111, 1764 ms; returned model gpt-6-luna
+    SQL tables   customer, date_dim
+    SQL joins    customer.c_first_sales_date_sk = date_dim.d_date_sk
+    executed     ok; 1 rows, 326 ms; rows sha256 9413991f84a3; today's date used False
+
+d3 retrieval (position 5): not_answerable
+    question     Which catalog pages brought in the most orders?
+    tree         catalog_page, web_sales, date_dim, web_returns, promotion; warnings arbitrary_choice, many_to_many
+    prompt       5 tables, 7826 characters, sha256 623638a94e40; join section True
+    attempt 1    not_answerable; 2018 in (2015 cached), 18 out, $0.000029, 1496 ms; returned model gpt-6-luna
+
+d3 full_schema (position 6): answered
+    question     Which catalog pages brought in the most orders?
+    prompt       24 tables, 30919 characters, sha256 2baddc5e60cc; join section False
+    attempt 1    accepted; 7862 in (7859 cached), 96 out, $0.000127, 2092 ms; returned model gpt-6-luna
+    SQL tables   catalog_page, catalog_sales
+    SQL joins    catalog_page.cp_catalog_page_sk = catalog_sales.cs_catalog_page_sk
+    executed     ok; 1 rows, 1695 ms; rows sha256 6ebe5fc0b61a; today's date used False
+
+d4 retrieval (position 7): answered
+    question     How do purchases on the web split by the buyer's level of education?
+    tree         customer_demographics, web_sales, web_site, web_page; warnings arbitrary_choice
+    prompt       4 tables, 6028 characters, sha256 285ac8c838c6; join section True
+    attempt 1    accepted; 1544 in (1541 cached), 76 out, $0.000054, 2172 ms; returned model gpt-6-luna
+    SQL tables   customer_demographics, web_sales
+    SQL joins    customer_demographics.cd_demo_sk = web_sales.ws_bill_cdemo_sk
+    against the joins selected: incomplete
+    executed     ok; 7 rows, 1046 ms; rows sha256 ef85122a3d82; today's date used False
+
+d4 full_schema (position 8): answered
+    question     How do purchases on the web split by the buyer's level of education?
+    prompt       24 tables, 30940 characters, sha256 60e9c5b1267a; join section False
+    attempt 1    accepted; 7868 in (7865 cached), 74 out, $0.000116, 2796 ms; returned model gpt-6-luna
+    SQL tables   customer_demographics, web_sales
+    SQL joins    customer_demographics.cd_demo_sk = web_sales.ws_bill_cdemo_sk
+    executed     ok; 7 rows, 1463 ms; rows sha256 c10ac0917490; today's date used False
+
+d5 retrieval (position 9): answered
+    question     What share of the money taken on the web was later refunded?
+    tree         web_returns, web_sales, web_page, store_returns, customer; warnings arbitrary_choice, many_to_many
+    prompt       10 tables, 11838 characters, sha256 2711f7b45881; join section True
+    attempt 1    accepted; 3028 in (3025 cached), 73 out, $0.000067, 2669 ms; returned model gpt-6-luna
+    SQL tables   web_returns, web_sales
+    SQL joins    web_returns.wr_item_sk = web_sales.ws_item_sk; web_returns.wr_order_number = web_sales.ws_order_number
+    against the joins selected: incomplete
+    executed     ok; 1 rows, 317 ms; rows sha256 db39ba9fd115; today's date used False
+
+d5 full_schema (position 10): execution_failed
+    question     What share of the money taken on the web was later refunded?
+    prompt       24 tables, 30932 characters, sha256 8e358c7ba684; join section False
+    attempt 1    accepted; 7866 in (7863 cached), 49 out, $0.000103, 6258 ms; returned model gpt-6-luna
+    SQL tables   web_returns, web_sales
+    SQL joins    none
+    cross join   web_sales | web_returns
+    executed     timeout; 0 rows, 30034 ms; rows sha256 ; today's date used False
+
+d6 retrieval (position 11): not_answerable
+    question     Which store managers take the most money in the evening?
+    tree         store, store_sales, store_returns, call_center, date_dim; warnings arbitrary_choice, many_to_many, multi_anchor
+    prompt       5 tables, 8030 characters, sha256 522157dc8134; join section True
+    attempt 1    not_answerable; 2113 in (2110 cached), 18 out, $0.000030, 2284 ms; returned model gpt-6-luna
+
+d6 full_schema (position 12): answered
+    question     Which store managers take the most money in the evening?
+    prompt       24 tables, 30928 characters, sha256 0f585ccb85e7; join section False
+    attempt 1    accepted; 7864 in (7861 cached), 96 out, $0.000127, 3475 ms; returned model gpt-6-luna
+    SQL tables   store, store_sales, time_dim
+    SQL joins    store.s_store_sk = store_sales.ss_store_sk; store_sales.ss_sold_time_sk = time_dim.t_time_sk
+    executed     ok; 0 rows, 52 ms; rows sha256 e3b0c44298fc; today's date used False
+
+d7 retrieval (position 13): answered
+    question     On which days of the week do married customers order most from the catalog?
+    tree         catalog_sales, catalog_returns, customer_demographics, customer, date_dim; warnings arbitrary_choice, multi_anchor
+    prompt       5 tables, 8129 characters, sha256 74f8d7c1ff38; join section True
+    attempt 1    accepted; 2068 in (2065 cached), 95 out, $0.000068, 2207 ms; returned model gpt-6-luna
+    SQL tables   catalog_sales, customer_demographics, date_dim
+    SQL joins    catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk
+    against the joins selected: incomplete
+    executed     ok; 7 rows, 809 ms; rows sha256 d3db72ac0808; today's date used False
+
+d7 full_schema (position 14): answered
+    question     On which days of the week do married customers order most from the catalog?
+    prompt       24 tables, 30947 characters, sha256 c6e21f0930bc; join section False
+    attempt 1    accepted; 7868 in (7865 cached), 95 out, $0.000126, 1913 ms; returned model gpt-6-luna
+    SQL tables   catalog_sales, customer_demographics, date_dim
+    SQL joins    catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk
+    executed     ok; 7 rows, 656 ms; rows sha256 d3db72ac0808; today's date used False
+
+d8 retrieval (position 15): not_answerable
+    question     Which of our suppliers deliver late most often?
+    tree         web_sales; warnings none
+    prompt       1 tables, 2853 characters, sha256 05076c24b0b0; join section False
+    attempt 1    not_answerable; 776 in (0 cached), 18 out, $0.000087, 1239 ms; returned model gpt-6-luna
+
+d8 full_schema (position 16): not_answerable
+    question     Which of our suppliers deliver late most often?
+    prompt       24 tables, 30919 characters, sha256 502734186fbf; join section False
+    attempt 1    not_answerable; 7862 in (7859 cached), 18 out, $0.000088, 1431 ms; returned model gpt-6-luna
+
+SPEND
+    model calls 16: 77779 tokens in (76958 cached), 880 out, $0.001292
+    the ledger on step10 purposes after the last run: $0.009359 of a cap of $0.30
+    full_schema: 8 answers, 62917 tokens in, 528 out, $0.000895
+    retrieval: 8 answers, 14862 tokens in, 352 out, $0.000396

@@ -139,6 +139,7 @@ def test_the_cap_is_checked_before_every_answer_and_stops_the_run_before_a_call(
     ledger.record("step10 earlier", ModelReply("m", "m", None, "{}", 1, 0, 1, 0.299, 1))
     result = run_once(1, [[Q1]], pipelines, models, ledger, 0.30, 0.005, SCHEMA, KEYS, lambda d, t: None)
     assert result.records == [] and result.void.startswith("the step cap")
+    assert "would pass $0.3;" in result.void
 
 
 def test_the_cap_counts_only_step10_purposes(tmp_path) -> None:
@@ -241,3 +242,21 @@ def test_the_pilot_report_says_nothing_is_scored_and_shows_the_cap_checks(tmp_pa
 @pytest.mark.parametrize("number", [1, 2])
 def test_a_report_of_no_runs_still_reads(number) -> None:
     assert "complete runs 0" in runs_report([], [])
+
+
+def test_an_execution_failure_keeps_its_word_and_state_and_not_the_databases_message(tmp_path) -> None:
+    """The database's own text can quote a value from the data (item 78,
+    DR-15): it is not kept. A fixed sentence of the system's is."""
+    result, _, _ = _run(tmp_path, [[Q1]], [reply(Q1_SQL)], [reply(Q1_SQL)], executor=Runs(failure="timeout"))
+    record = result.records[0]
+    assert record["outcome"] == "execution_failed" and record["message"] is None
+    assert (record["execution"]["failure"], record["execution"]["sqlstate"]) == ("timeout", "22012")
+    declined, _, _ = _run(tmp_path, [[Q1]], [reply(status="not_answerable")], [reply(Q1_SQL)])
+    assert declined.records[0]["message"].startswith("This cannot be answered from the tables retrieved")
+
+
+def test_the_pilot_report_shows_a_cross_join(tmp_path) -> None:
+    crossed = "SELECT COUNT(*) FROM store_sales ss CROSS JOIN store s"
+    result, _, _ = _run(tmp_path, [[DEV]], [reply(crossed)], [reply(crossed)], where=located("store_sales", "store"))
+    text = pilot_report([_document(result.records, 1)], [])
+    assert "cross join   store_sales | store" in text
