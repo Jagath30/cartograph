@@ -203,7 +203,11 @@ class Orchestrator:
         executor: Executor,
         max_retries: int = MAX_RETRIES,
         keep: Keep | None = None,
+        build: Callable[[str, SchemaSnapshot, tuple, tuple | None], Prompt] = build_prompt,
     ) -> None:
+        """`build` makes the prompt from the question, the snapshot, and the
+        located tree's subgraph and joins. It is the frozen PromptBuilder's,
+        except in step 10's full-schema mode (app.core.full_schema)."""
         if not 0 <= max_retries <= MAX_RETRIES:
             raise ValueError(f"retries are capped at {MAX_RETRIES} per question (NFR-15)")
         self._snapshot = snapshot
@@ -214,6 +218,7 @@ class Orchestrator:
         self._executor = executor
         self._max_retries = max_retries
         self._keep = keep
+        self._build = build
 
     def answer_and_keep(self, question: str) -> Kept:
         """`answer`, then the one write. Raises TraceNotPersisted when the
@@ -304,7 +309,7 @@ class Orchestrator:
 
         # ---- prompt ------------------------------------------------------
         began = time.monotonic()
-        prompt = build_prompt(question, self._snapshot, tree.subgraph, tree.joins)
+        prompt = self._build(question, self._snapshot, tree.subgraph, tree.joins)
         state["prompt"], state["selected"] = prompt, edges_of(tree.joins)
         stage("prompt", began, "built")
 

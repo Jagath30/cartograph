@@ -279,8 +279,14 @@ class SpendLedger:
             return []
         return [json.loads(line) for line in self.path.read_text().splitlines() if line.strip()]
 
-    def total(self) -> float:
-        return sum(line["cost_usd"] for line in self._lines())
+    def total(self, purpose_prefix: str | None = None) -> float:
+        """Every line's cost, or only those whose purpose begins with
+        `purpose_prefix` (step 10's cap counts purposes beginning step10)."""
+        return sum(
+            line["cost_usd"]
+            for line in self._lines()
+            if purpose_prefix is None or line["purpose"].startswith(purpose_prefix)
+        )
 
     def calls(self, kind: LedgerKind = "model") -> int:
         return sum(1 for line in self._lines() if line.get("kind", "model") == kind)

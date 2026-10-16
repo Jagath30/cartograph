@@ -153,3 +153,14 @@ def test_retrieval_writes_its_embeddings_to_the_ledger_under_its_purpose(tmp_pat
     [line] = _lines(SpendLedger(ledger_path))
     assert line["kind"] == "embedding" and line["purpose"] == "step10 wiring" and line["inputs"] == 1
     assert opened.paid.texts == 1
+
+
+def test_the_total_can_be_taken_over_purposes_that_begin_alike(tmp_path) -> None:
+    ledger = SpendLedger(tmp_path / "l.jsonl")
+    LedgeredEmbedder(_Priced(cost_per_text=0.25), ledger, "step10 run 1").embed(["a"])
+    LedgeredEmbedder(_Priced(cost_per_text=0.125), ledger, "step10 pilot").embed(["a"])
+    LedgeredEmbedder(_Priced(cost_per_text=0.5), ledger, "api").embed(["a"])
+    assert ledger.total("step10") == pytest.approx(0.375)
+    assert ledger.total("step10 run") == pytest.approx(0.25)
+    assert ledger.total() == pytest.approx(0.875)
+    assert ledger.total("nothing") == 0.0
