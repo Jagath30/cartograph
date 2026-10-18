@@ -51,7 +51,13 @@ protocol, manifest, run files and report (`backend/eval/step10_protocol.md`,
 been run, so any future change to retrieval needs a fresh held-out set,
 written and frozen before the change (items 98 to 100).
 
-**Next.** Step 11: 76, 88.
+**Next.** Step 10b, before step 11: first, a fresh held-out set of 12
+questions, drafted blind from the schema alone, reviewed by the owner
+and frozen before any new code; then the next version (items 98 to 100),
+designed in the planning chat and measured against full-schema prompting
+on that set, by a protocol committed first. The 12 questions run at step
+10 are now development questions.
+Step 11: 76, 88.
 Step 12: 1, 8, 9, 10, 14, 18, 41, 73, 77, 80, 85; owed to the Design:
 DD-01, 06, 07, 12 to 16, 19, 21, FR-13, IR-05, section 04. Step 13: 86,
 90. Step 14: 75. Future work: 53, 55, 56, 98, 99, 100. Known limits:
@@ -8718,8 +8724,12 @@ answered in every run, H12 declined once, 9 x 5 + 1 = 46).
 - H1 whole: the anchors, the tables shown, the decline, and the
   full-schema SQL beside it
 
-**Next single deliverable.** Step 11: history, the local user and its
-rows (item 76), and whether a stored answer keeps its rows (item 88).
+**Next single deliverable.** Step 10b, before step 11: first, a fresh
+held-out set of 12 questions, drafted blind from the schema alone,
+reviewed by the owner and frozen before any new code; then the next
+version (items 98 to 100), designed in the planning chat and measured
+against full-schema prompting on that set, by a protocol committed
+first. The 12 questions run at step 10 are now development questions.
 
 **The close, 18 October 2026.** Recorded in the commit that tags it.
 
