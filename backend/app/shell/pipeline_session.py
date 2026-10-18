@@ -12,6 +12,13 @@ holds every table and every key (app.core.full_schema). The model, the
 ledger, the retries, the validator, the checker and the executor are the
 same objects of the same kinds in both.
 
+Step 10b adds `linked`: a linking call, shown every table and key, names
+the tables; they are the anchors of the frozen tree (app.core.linking),
+retrieval still scoring the question for the tree's order and evidence;
+and from there it is `retrieval`. The linking call is the same model at
+its own output cap, on the same ledger. `wrap_model` wraps each model the
+pipeline makes, generation's first.
+
 Given a store (step 8), the orchestrator is also told how to keep a
 trace: where, whose, and the facts its own trace does not hold -- the
 graph for readable names, the hash of the preferences in force, the
@@ -25,6 +32,7 @@ from typing import Literal
 import networkx as nx
 from app.config import get_settings
 from app.core.full_schema import build_full_prompt, full_schema_located
+from app.core.linking import LINK_MAX_OUTPUT_TOKENS, LINK_REPLY_NAME, build_link_prompt, link_reply_schema, locate_linked
 from app.core.graph_builder import build_graph
 from app.core.join_tree import DEFAULT_SUBGRAPH_BOUND
 from app.core.locate import locate
@@ -32,8 +40,8 @@ from app.core.path_finder import DEFAULT_MAX_JOINS
 from app.core.prompt_builder import build_prompt
 from app.core.snapshot import SchemaSnapshot
 from app.core.trace_document import Context, preferences_hash
-from app.orchestrator import Keep, Orchestrator
-from app.shell.model_client import LEDGER, LedgeredModel, ModelClient, SpendLedger, make_model
+from app.orchestrator import Keep, Linker, Orchestrator
+from app.shell.model_client import LEDGER, LedgeredModel, ModelClient, ReplyShape, SpendLedger, make_model
 from app.shell.query_executor import QueryExecutor
 from app.shell.retrieval_session import Opened, open_retrieval
 from app.shell.schema_ingestor import SchemaIngestor
@@ -42,7 +50,7 @@ from app.shell.schema_ingestor import SchemaIngestor
 CEILING_USD = 0.50
 
 
-Mode = Literal["retrieval", "full_schema"]
+Mode = Literal["retrieval", "full_schema", "linked"]
 
 
 @dataclass(frozen=True)
@@ -92,9 +100,29 @@ def open_pipeline(
     def build_whole(question, snapshot, tables, joins):
         return build_full_prompt(question, snapshot, graph)
 
-    if mode not in ("retrieval", "full_schema"):
+    if mode not in ("retrieval", "full_schema", "linked"):
         raise ValueError(f"no such mode: {mode!r}")
-    find, build = (retrieve, build_prompt) if mode == "retrieval" else (whole_schema, build_whole)
+    find, build = (whole_schema, build_whole) if mode == "full_schema" else (retrieve, build_prompt)
+
+    linker = None
+    if mode == "linked":
+        link_model: ModelClient = LedgeredModel(
+            make_model(settings, max_output_tokens=LINK_MAX_OUTPUT_TOKENS), ledger, purpose, CEILING_USD
+        )
+        if wrap_model is not None:
+            link_model = wrap_model(link_model)
+
+        def locate_named(question: str, tables: tuple[str, ...]):
+            scored = opened.index.score_question(question)
+            return locate_linked(question, tables, scored.scores, scored.terms, graph, opened.settings)
+
+        linker = Linker(
+            prompt=lambda question: build_link_prompt(question, snapshot, graph),
+            shape=ReplyShape(LINK_REPLY_NAME, link_reply_schema(snapshot)),
+            known=frozenset(table.name for table in snapshot.tables),
+            model=link_model,
+            locate=locate_named,
+        )
 
     keep = None
     if store is not None:
@@ -105,6 +133,6 @@ def open_pipeline(
         keep = Keep(store, context, store.local_user_id())
     orchestrator = Orchestrator(
         snapshot, (opened.stored.id, opened.stored.hash), find, model, QueryExecutor(settings.warehouse_database_url),
-        keep=keep, build=build,
+        keep=keep, build=build, linker=linker,
     )  # fmt: skip
     return Pipeline(orchestrator, opened, ledger, settings.sql_model, snapshot, graph, mode)

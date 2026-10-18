@@ -70,6 +70,13 @@ LINK_REPLY_NAME = "link_reply"
 LINK_MAX_OUTPUT_TOKENS = 400
 
 
+def link_retry_message(feedback: str) -> str:
+    """What follows a linking reply that was not of the form asked for. The
+    frozen retry message asks for "a corrected query", which a list of
+    tables is not."""
+    return f"{feedback}\n\nReply again in the same JSON form."
+
+
 def build_link_prompt(question: str, snapshot: SchemaSnapshot, graph: nx.DiGraph) -> Prompt:
     full = build_full_prompt(question, snapshot, graph)
     return Prompt(LINK_RULES, full.user, full.tables, False)

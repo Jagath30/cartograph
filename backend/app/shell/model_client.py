@@ -341,8 +341,10 @@ _NO_KEY = (
 )
 
 
-def make_model(settings: Settings) -> OpenAIModel:
-    """The real model, or a clear refusal when no key is configured."""
+def make_model(settings: Settings, max_output_tokens: int | None = None) -> OpenAIModel:
+    """The real model, or a clear refusal when no key is configured.
+    `max_output_tokens` is the call's own cap (step 10b's linking call);
+    the settings' cap otherwise."""
     key = settings.openai_api_key.get_secret_value() if settings.openai_api_key else ""
     if not key.strip():
         raise ModelKeyMissing(_NO_KEY)
@@ -351,5 +353,5 @@ def make_model(settings: Settings) -> OpenAIModel:
         settings.sql_model,
         settings.sql_model_reasoning_effort,
         settings.sql_model_temperature,
-        settings.sql_model_max_output_tokens,
+        settings.sql_model_max_output_tokens if max_output_tokens is None else max_output_tokens,
     )

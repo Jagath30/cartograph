@@ -260,6 +260,13 @@ def test_with_a_key_the_real_model_is_made_from_the_settings_and_is_not_called()
     assert isinstance(model, OpenAIModel) and model.model == "gpt-6-luna"
 
 
+def test_a_model_may_be_made_with_its_own_output_cap() -> None:
+    """Step 10b: the linking call's cap is its own; generation keeps the
+    settings' cap."""
+    assert make_model(_settings(openai_api_key=KEY))._max_output == 800
+    assert make_model(_settings(openai_api_key=KEY), max_output_tokens=400)._max_output == 400
+
+
 # --------------------------------------------------------------------------
 # The fake, and the ledger
 # --------------------------------------------------------------------------

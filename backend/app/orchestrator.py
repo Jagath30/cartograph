@@ -7,6 +7,8 @@ happens next is decided here and nowhere else. Every way out of `answer`
 goes through one place that assembles the trace, so there is no path that
 produces none.
 
+    link        shell + core   question -> the tables it needs  (step 10b;
+                               only when a linker is given)
     locate      shell + core   question -> anchors, the tree, warnings
     prompt      core           the tree's subgraph and joins -> text
     generate    shell          text -> the model's reply      (up to 3 times)
@@ -36,6 +38,16 @@ query id made here, and handed to the store, which writes the query row
 and the trace row in one transaction. Whatever the outcome: a decline or
 a failure is written as surely as an answer.
 
+LINKING (step 10b, the owner's rulings at stops A and B). Given a linker,
+`answer` first asks a model, shown every table and key, to name the
+tables the question needs; an empty list is the decline at linking, with
+no generation call. The named tables are located by the linker (the
+anchors of the frozen tree), and everything after is as without one. The
+two calls share one budget of two retries a question (NFR-15): what
+linking spends, generation does not get. A cut-off reply is not retried.
+Linking's tokens and cost are the question's. A linked answer is not kept:
+the stored document does not change until the owner rules to adopt v2.
+
 IF THAT WRITE FAILS (the owner's ruling 5). The answer is not returned:
 `TraceNotPersisted` is raised, and the API answers 500. An answer whose
 trace was lost is what NFR-13 forbids. There is no retry. One log entry
@@ -56,6 +68,7 @@ from typing import Literal, Protocol
 from uuid import UUID, uuid4
 
 from app.core.conformance import Conformance, Edge, Equality, compare, edges_of, extract_joins
+from app.core.linking import link_retry_message, parse_link_reply
 from app.core.prompt_builder import REPLY_NAME, REPLY_SCHEMA, Prompt, build_prompt, parse_reply, retry_message
 from app.core.snapshot import SchemaSnapshot
 from app.core.sql_reading import schema_of
@@ -85,6 +98,7 @@ NOT_ANSWERABLE = {
     "no_anchors": "This cannot be answered from the tables retrieved: no table matched the question well enough to start from.",
     "anchors_not_connected": "This cannot be answered from the tables retrieved: the tables the question matched could not be joined to one another.",
     "model": "This cannot be answered from the tables retrieved: the model, shown those tables, said they do not hold the answer.",
+    "linking": "This cannot be answered from this schema: shown every table, the model named none that holds the answer.",
 }  # fmt: skip
 
 AttemptOutcome = Literal[
@@ -105,6 +119,44 @@ class Attempt:
     findings: tuple[str, ...] = ()
     # Tables the SQL names that the prompt did not show.
     tables_outside_prompt: tuple[str, ...] = ()
+
+
+LinkOutcome = Literal["accepted", "none", "malformed", "cut_off", "model_failed"]
+
+
+@dataclass(frozen=True)
+class LinkAttempt:
+    number: int
+    # Every message sent on this attempt, the earlier attempts' included.
+    messages: tuple[Message, ...]
+    reply: ModelReply
+    outcome: LinkOutcome
+    # The tables the reply named, when it was of the form asked for.
+    tables: tuple[str, ...] = ()
+    fault: str | None = None
+
+
+@dataclass(frozen=True)
+class Linking:
+    """How the tables were found, when a linker found them."""
+
+    prompt: Prompt
+    attempts: tuple[LinkAttempt, ...]
+    # The tables named, () for the decline at linking, None when no reply
+    # of the form asked for came back.
+    tables: tuple[str, ...] | None
+
+
+@dataclass(frozen=True)
+class Linker:
+    """What the link stage needs. `locate` turns the named tables into a
+    located question (app.core.linking.locate_linked, in the pipeline)."""
+
+    prompt: Callable[[str], Prompt]
+    shape: ReplyShape
+    known: frozenset[str]
+    model: ModelClient
+    locate: Callable[[str, tuple[str, ...]], object]
 
 
 @dataclass(frozen=True)
@@ -144,6 +196,8 @@ class Trace:
     cost_usd: float
     # Every table the validated SQL reads, joined or not.
     sql_tables: tuple[str, ...] = ()
+    # Step 10b: how the tables were found, when a linker found them.
+    linking: Linking | None = None
 
     @property
     def sql(self) -> str | None:
@@ -204,6 +258,7 @@ class Orchestrator:
         max_retries: int = MAX_RETRIES,
         keep: Keep | None = None,
         build: Callable[[str, SchemaSnapshot, tuple, tuple | None], Prompt] = build_prompt,
+        linker: Linker | None = None,
     ) -> None:
         """`build` makes the prompt from the question, the snapshot, and the
         located tree's subgraph and joins. It is the frozen PromptBuilder's,
@@ -219,6 +274,7 @@ class Orchestrator:
         self._max_retries = max_retries
         self._keep = keep
         self._build = build
+        self._linker = linker
 
     def answer_and_keep(self, question: str) -> Kept:
         """`answer`, then the one write. Raises TraceNotPersisted when the
@@ -226,6 +282,8 @@ class Orchestrator:
         keep = self._keep
         if keep is None:
             raise RuntimeError("this orchestrator was given no store to keep a trace in")
+        if self._linker is not None:
+            raise RuntimeError("a linked answer is not kept: the stored document changes only if v2 is adopted")
         trace = self.answer(question)
         document = assemble(trace, keep.context, keep.new_id(), keep.user_id, keep.now())
         began = time.monotonic()
@@ -254,7 +312,9 @@ class Orchestrator:
         timings: dict[str, int] = {}
         attempts: list[Attempt] = []
         state: dict = {"located": None, "prompt": None, "validation": None, "conformance": None,
-                       "execution": None, "selected": (), "validated": None, "extraction": None}  # fmt: skip
+                       "execution": None, "selected": (), "validated": None, "extraction": None,
+                       "linking": None}  # fmt: skip
+        link_attempts: list[LinkAttempt] = []
         question_id = sha256(question)[:12]
 
         def stage(name: str, began: float, outcome: str) -> None:
@@ -290,15 +350,57 @@ class Orchestrator:
                 validated_sha256=sha256(validated.text) if validated else None,
                 executed_sha256=sha256(execution.executed) if execution else None,
                 timings=dict(timings),
-                tokens_in=sum(attempt.reply.tokens_in for attempt in attempts),
-                tokens_out=sum(attempt.reply.tokens_out for attempt in attempts),
-                cost_usd=sum(attempt.reply.cost_usd for attempt in attempts),
+                tokens_in=sum(a.reply.tokens_in for a in attempts) + sum(a.reply.tokens_in for a in link_attempts),
+                tokens_out=sum(a.reply.tokens_out for a in attempts) + sum(a.reply.tokens_out for a in link_attempts),
+                cost_usd=sum(a.reply.cost_usd for a in attempts) + sum(a.reply.cost_usd for a in link_attempts),
                 sql_tables=state["extraction"].tables if state["extraction"] else (),
+                linking=state["linking"],
             )
+
+        def linking_so_far(tables: tuple[str, ...] | None) -> None:
+            state["linking"] = Linking(link_prompt, tuple(link_attempts), tables)
+
+        retries_left = self._max_retries
+
+        # ---- link: only when a linker is given ---------------------------
+        if self._linker is not None:
+            linker = self._linker
+            link_prompt = linker.prompt(question)
+            link_messages: tuple[Message, ...] = (Message("system", link_prompt.system), Message("user", link_prompt.user))
+            linking_so_far(None)
+            named: tuple[str, ...] | None = None
+            for number in range(1, self._max_retries + 2):
+                began = time.monotonic()
+                link_reply = linker.model.complete(link_messages, linker.shape)
+                stage("link", began, link_reply.failure or "replied")
+                if not link_reply.ok:
+                    kind: LinkOutcome = "cut_off" if link_reply.failure == "cut_off" else "model_failed"
+                    link_attempts.append(LinkAttempt(number, link_messages, link_reply, kind, fault=link_reply.failure))
+                    linking_so_far(None)
+                    return finish("model_failed", link_reply.message)
+                read_link = parse_link_reply(link_reply.text, linker.known)
+                if read_link.kind == "malformed":
+                    link_attempts.append(LinkAttempt(number, link_messages, link_reply, "malformed", fault=read_link.fault))
+                    linking_so_far(None)
+                    if retries_left == 0:
+                        return finish("model_failed", f"the model's reply was not in the form asked for: {read_link.fault}")
+                    retries_left -= 1
+                    link_messages += (
+                        Message("assistant", link_reply.text),
+                        Message("user", link_retry_message(f"The reply was not accepted: {read_link.fault}.")),
+                    )
+                    continue
+                outcome: LinkOutcome = "none" if read_link.kind == "none" else "accepted"
+                link_attempts.append(LinkAttempt(number, link_messages, link_reply, outcome, read_link.tables))
+                named = read_link.tables
+                linking_so_far(named)
+                break
+            if not named:
+                return finish("not_answerable", NOT_ANSWERABLE["linking"])
 
         # ---- locate ------------------------------------------------------
         began = time.monotonic()
-        located = self._locate(question)
+        located = self._locate(question) if self._linker is None else self._linker.locate(question, named)
         state["located"] = located
         tree = located.tree
         if located.declined or not tree.tables:
@@ -317,8 +419,8 @@ class Orchestrator:
         shape = ReplyShape(REPLY_NAME, REPLY_SCHEMA)
         messages: tuple[Message, ...] = (Message("system", prompt.system), Message("user", prompt.user))
         validated = None
-        for number in range(1, self._max_retries + 2):
-            last = number == self._max_retries + 1
+        for number in range(1, retries_left + 2):
+            last = number == retries_left + 1
             began = time.monotonic()
             reply = self._model.complete(messages, shape)
             stage("generate", began, reply.failure or "replied")
