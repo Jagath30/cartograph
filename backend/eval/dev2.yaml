@@ -1,0 +1,105 @@
+provenance: >-
+  Drafted by Claude in a separate chat on 18 October 2026, from the schema
+  alone (cartograph-schema.txt, sha256
+  0f0f189bbba1187d2b06e066c293a5eb347a77bbd5b3d30d4d1ee062718147cc), without
+  sight of any evaluation result. Approved by Jagath Manjunath on 18 October 2026.
+questions:
+  - id: H1
+    question: What is the total floor space, in square feet, of the warehouses in each state?
+    tables: [warehouse]
+    joins: []
+  - id: H2
+    question: In 2001, how much revenue did stores located in Tennessee take from in-store sales made before noon?
+    tables: [store_sales, date_dim, time_dim, store]
+    joins:
+      - from: store_sales.ss_sold_date_sk
+        to:   date_dim.d_date_sk
+      - from: store_sales.ss_sold_time_sk
+        to:   time_dim.t_time_sk
+      - from: store_sales.ss_store_sk
+        to:   store.s_store_sk
+  - id: H3
+    question: How many catalog orders were shipped in March 2002 by each shipping carrier?
+    tables: [catalog_sales, date_dim, ship_mode]
+    joins:
+      - from: catalog_sales.cs_ship_date_sk
+        to:   date_dim.d_date_sk
+      - from: catalog_sales.cs_ship_mode_sk
+        to:   ship_mode.sm_ship_mode_sk
+  - id: H4
+    question: For web orders sold in 2000 and shipped to customers born before 1950, what was the total sales revenue of each web site, by site name?
+    tables: [web_sales, date_dim, customer, web_site]
+    joins:
+      - from: web_sales.ws_sold_date_sk
+        to:   date_dim.d_date_sk
+      - from: web_sales.ws_ship_customer_sk
+        to:   customer.c_customer_sk
+      - from: web_sales.ws_web_site_sk
+        to:   web_site.web_site_sk
+  - id: H5
+    question: Which return reason, by its description, accounted for the most units returned to stores during 2001?
+    tables: [store_returns, date_dim, reason]
+    joins:
+      - from: store_returns.sr_returned_date_sk
+        to:   date_dim.d_date_sk
+      - from: store_returns.sr_reason_sk
+        to:   reason.r_reason_sk
+  - id: H6
+    question: Of the catalog sales made in 2001, what was the total return amount on items later returned, broken down by the quarter of 2001 in which they were sold?
+    tables: [catalog_returns, catalog_sales, date_dim]
+    joins:
+      - from: [catalog_returns.cr_item_sk, catalog_returns.cr_order_number]
+        to:   [catalog_sales.cs_item_sk, catalog_sales.cs_order_number]
+      - from: catalog_sales.cs_sold_date_sk
+        to:   date_dim.d_date_sk
+  - id: H7
+    question: What was the total amount of web returns made in 2002, by the state of the returning customer's address as recorded on the return?
+    tables: [web_returns, date_dim, customer_address]
+    joins:
+      - from: web_returns.wr_returned_date_sk
+        to:   date_dim.d_date_sk
+      - from: web_returns.wr_returning_addr_sk
+        to:   customer_address.ca_address_sk
+  - id: H8
+    question: How many different customers whose current address is in California were billed for catalog purchases made in 2002?
+    tables: [catalog_sales, date_dim, customer, customer_address]
+    joins:
+      - from: catalog_sales.cs_sold_date_sk
+        to:   date_dim.d_date_sk
+      - from: catalog_sales.cs_bill_customer_sk
+        to:   customer.c_customer_sk
+      - from: customer.c_current_addr_sk
+        to:   customer_address.ca_address_sk
+  - id: H9
+    question: In January 2001, what was the average quantity on hand of items in the Books category at each warehouse, by warehouse name?
+    tables: [inventory, date_dim, item, warehouse]
+    joins:
+      - from: inventory.inv_date_sk
+        to:   date_dim.d_date_sk
+      - from: inventory.inv_item_sk
+        to:   item.i_item_sk
+      - from: inventory.inv_warehouse_sk
+        to:   warehouse.w_warehouse_sk
+  - id: H10
+    question: In 2000, how many units were sold on the web through sales made under a promotion that was advertised on television?
+    tables: [web_sales, date_dim, promotion]
+    joins:
+      - from: web_sales.ws_sold_date_sk
+        to:   date_dim.d_date_sk
+      - from: web_sales.ws_promo_sk
+        to:   promotion.p_promo_sk
+  - id: H11
+    question: What was the total revenue of in-store sales made in 1999 where the shopper's household, as recorded on the sale itself, was in an income band starting at 100,000 or more?
+    tables: [store_sales, date_dim, household_demographics, income_band]
+    joins:
+      - from: store_sales.ss_sold_date_sk
+        to:   date_dim.d_date_sk
+      - from: store_sales.ss_hdemo_sk
+        to:   household_demographics.hd_demo_sk
+      - from: household_demographics.hd_income_band_sk
+        to:   income_band.ib_income_band_sk
+  - id: H12
+    question: What was the average customer satisfaction score of each call center in 2001?
+    tables: []
+    joins: []
+    decline: true
