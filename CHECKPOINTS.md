@@ -9001,6 +9001,66 @@ the counts and "ok" or a check's name per id: 12 questions, 1 decline,
 the set and H1 to H12 all ok. `dev2.yaml`: 12 questions, 1 decline (H12),
 all ok.
 
+### Part 2: the plan for v2, and the owner's rulings at stop A — 18 October 2026
+
+The plan, read against the code. Two findings shaped it: `build_tree`
+takes each anchor's retrieval score (the seed and the order of
+attachment) and the column evidence and margin of DD-12's second rule,
+which a list of names does not supply; and a paid call hidden in the
+orchestrator's `find` would leave its tokens, cost, retries and failures
+out of the trace (DD-04), so the orchestrator gains a link stage, used
+only when a linker is given.
+
+1. **Retrieval's scoring is kept, for evidence and order only**: linking
+   chooses the anchors, nothing else. The trace records both.
+2. **Linking names bridging tables.** A query's tables are what the
+   evaluation's expectations list; what remains to Cartograph is the
+   choice of keys between them, where DD-12's rules and the warnings
+   apply.
+3. **LINK_RULES** as drafted, the last rule reading "If the question
+   cannot be answered from these tables, do not guess: name none."
+   Pinned word for word by a test, with no table name in it.
+4. **The reply's enum** of table names is built from the snapshot at run
+   time; the parser still checks every name. The linking call's output
+   cap holds all 24 names, and is stated in the protocol.
+5. **One shared retry budget of two per question**, as NFR-15 says.
+6. **The decline at linking**: "This cannot be answered from this schema:
+   shown every table, the model named none that holds the answer." Owed
+   to the Design: FR-42's detection before generation restored, and
+   DD-14's second kind of decline.
+7. **The app, the trace version, the narrative, the panel, the Intro, the
+   stage estimate, the README and the demonstration tests change only
+   after the evaluation, and only if the owner rules to adopt v2.**
+8. The sets (heldout2 the headline; the original 15, the first held-out
+   12 and dev2 as development), three modes (v1 retrieval, v2 linked,
+   full schema), N = 5, and a $0.75 cap on purposes beginning `step10b`;
+   the headroom check covers a linked answer's linking and generation.
+9. **The headline, in order**: on heldout2, linked against full schema,
+   then linked against retrieval, all three modes side by side.
+10. Linking uses the same model, gpt-6-luna, effort none, temperature 0.
+
+The order of work, stops A to F: linking.py; stop B (d4's linking prompt
+read before any call); the orchestrator's link stage and the linked
+pipeline mode; the step 10b runner and report; the pilot (stop C); the
+protocol with predictions (stop D); five runs and the report (stop E);
+adoption, only on the owner's ruling (stop F).
+
+### Step 2: linking.py — 18 October 2026
+
+`app/core/linking.py`, pure: `LINK_RULES`; `build_link_prompt`, whose user
+message is the full-schema prompt's byte for byte; `link_reply_schema`,
+its enum from the snapshot; `parse_link_reply`, strict, an empty list the
+decline; `locate_linked`, the linked tables as anchors with retrieval's
+scores and evidence and no rival set aside, then the frozen `build_tree`
+and `explain_tree`. Tests first, 22 mutations, all caught on a passing
+baseline.
+
+**For stop B.** "No table name in it" cannot hold to the letter: the
+approved wording opens "You name the tables of a data warehouse", and
+`warehouse` is one of the 24 tables. The frozen GENERAL_RULES has the
+same phrase. The test checks whole words and allows that phrase alone;
+the wording was not changed.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
