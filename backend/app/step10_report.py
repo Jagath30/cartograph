@@ -237,7 +237,7 @@ def _spend(runs: list[dict], void: list[dict]) -> list[str]:
     every = runs + void
     if not every:
         return []
-    last = max(every, key=lambda d: d["attempt"])
+    last = max(every, key=lambda d: d["ended"])
     calls = sum(len(r["attempts"]) for d in every for r in d["records"])
     tokens_in = sum(a["tokens_in"] for d in every for r in d["records"] for a in r["attempts"])
     cached = sum(a["tokens_cached"] for d in every for r in d["records"] for a in r["attempts"])
@@ -253,7 +253,7 @@ def _spend(runs: list[dict], void: list[dict]) -> list[str]:
 def runs_report(runs: list[dict], void: list[dict]) -> str:
     lines = ["STEP 10: THE EVALUATION", ""]
     lines.append(f"complete runs {len(runs)}; void runs {len(void)}")
-    lines += [f"    void, attempt {d['attempt']} (run {d['run']}): {d['void']}" for d in void]
+    lines += [f"    void, {d['file']} (run {d['run']}): {d['void']}" for d in void]
     if runs:
         s = runs[0]["settings"]
         lines.append(f"model {s['model']}, effort {s['reasoning_effort']}, temperature {s['temperature']}; "
@@ -287,7 +287,7 @@ def pilot_report(runs: list[dict], void: list[dict]) -> str:
     lines = ["STEP 10: THE PILOT", "",
              "The eight development questions, both modes, once. They carry no expectations: nothing is scored.",
              f"complete runs {len(runs)}; void runs {len(void)}"]  # fmt: skip
-    lines += [f"    void, attempt {d['attempt']}: {d['void']}" for d in void]
+    lines += [f"    void, {d['file']}: {d['void']}" for d in void]
     for document in runs + void:
         checks = [r["cap_check"] for r in document["records"]]
         if checks:

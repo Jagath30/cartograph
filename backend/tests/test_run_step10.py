@@ -19,7 +19,7 @@ from app.core.full_schema import KEYS_RULES, build_full_prompt, full_schema_loca
 from app.core.prompt_builder import JOIN_RULES
 from app.core.sql_reading import schema_of
 from app.orchestrator import Orchestrator
-from app.run_step10 import Asked, keep_run, main, mode_order, provenance, run_once
+from app.run_step10 import Asked, keep_run, main, mode_order, provenance, refusal, run_once, void_name
 from app.shell.embedder import EmbeddingFailed
 from app.shell.model_client import FakeModel, LedgeredModel, ModelReply, SpendLedger
 from app.shell.step10 import RetryingModel, create_exclusively, keep_identical
@@ -200,8 +200,11 @@ def test_a_cut_off_reply_is_the_methods_and_is_scored_wrong_not_voided(tmp_path)
 # --------------------------------------------------------------------------
 
 
-def _document(records, number, attempt=None, void=None):
-    return {"run": number, "attempt": attempt or number, "void": void, "records": records,
+def _document(records, number, void=None, file=None, ended="2026-10-18T10:00:00+00:00"):
+    """As `_execute` writes a run file: no field it does not write."""
+    name = file or (f"run-{number:02d}-void-1.json" if void else f"run-{number:02d}.json")
+    return {"label": "run", "run": number, "file": name, "void": void, "began": ended, "ended": ended,
+            "head": "e4c7a215b71d5786e804a09118d197b02165352a", "manifest": "matches", "records": records,
             "settings": {"model": "m", "reasoning_effort": "none", "temperature": 0.0, "alpha": 0.5, "anchor_cut": 0.5,
                          "anchor_cap": 5, "margin": 0.1, "schema_sha256": "a" * 64, "preferences_hash": "p",
                          "cap_usd": 0.30},
@@ -214,9 +217,9 @@ def test_the_report_counts_each_run_and_combines_them(tmp_path) -> None:
         result, _, _ = _run(tmp_path, [[Q1, Q14]], [reply(Q1_SQL), reply(Q14_SQL)], [reply(full_sql), reply(Q14_SQL)],
                             number=number)  # fmt: skip
         runs.append(_document(result.records, number))
-    text = runs_report(runs, [_document([], 2, attempt=3, void="transport failure after retries")])
+    text = runs_report(runs, [_document([], 2, void="transport failure after retries", file="run-02-void-1.json")])
     assert "complete runs 2; void runs 1" in text
-    assert "void, attempt 3 (run 2): transport failure after retries" in text
+    assert "void, run-02-void-1.json (run 2): transport failure after retries" in text
     assert "THE HELD-OUT SET (12 questions): the headline" in text
     original = text.split("THE ORIGINAL SET", 1)[1]
     retrieval, full = original.split("  full_schema\n", 1)
@@ -420,7 +423,7 @@ def test_the_evaluation_needs_the_head_commit_before_anything_is_opened(tmp_path
     from app.shell import pipeline_session
 
     monkeypatch.setattr(pipeline_session, "open_pipeline", lambda *a, **k: pytest.fail("a pipeline was opened"))
-    argv = ["--runs", "5", "--out", str(tmp_path)] + ([] if head is None else ["--head", head])
+    argv = ["--run", "1", "--out", str(tmp_path)] + ([] if head is None else ["--head", head])
     with pytest.raises(SystemExit) as stopped:
         main(argv)
     assert "--head" in str(stopped.value) or stopped.value.code == 2
@@ -431,3 +434,204 @@ def test_each_run_file_records_its_head_and_the_manifest_check() -> None:
     assert provenance(sha, []) == {"head": sha, "manifest": "matches"}
     assert provenance(None, None) == {"head": None, "manifest": "no manifest"}
     assert provenance(sha, ["app/x.py changed"]) == {"head": sha, "manifest": "differs: app/x.py changed"}
+
+
+# --------------------------------------------------------------------------
+# One run per command (the owner's ruling 1 after stop 2's review)
+# --------------------------------------------------------------------------
+
+SHA = "e4c7a215b71d5786e804a09118d197b02165352a"
+
+
+def _keep(out: Path, name: str, void: str | None = None, run: int = 1) -> None:
+    out.mkdir(parents=True, exist_ok=True)
+    keep_run(out / name, {**_document([], run, void=void), "void": void})
+
+
+def test_run_1_may_start_in_an_empty_folder(tmp_path) -> None:
+    assert refusal(tmp_path / "runs", 1) is None
+
+
+@pytest.mark.parametrize("number", [0, 6, -1])
+def test_only_runs_1_to_5_exist(tmp_path, number) -> None:
+    assert "1 to 5" in refusal(tmp_path, number)
+
+
+def test_a_run_needs_every_run_before_it_complete(tmp_path) -> None:
+    assert "run 1 has no complete file" in refusal(tmp_path, 2)
+    _keep(tmp_path, "run-01-void-1.json", void="transport failure after retries")
+    assert "run 1 has no complete file" in refusal(tmp_path, 2)
+    _keep(tmp_path, "run-01.json")
+    assert refusal(tmp_path, 2) is None
+    assert "run 2 has no complete file" in refusal(tmp_path, 3)
+
+
+def test_a_run_that_is_complete_is_never_run_again(tmp_path) -> None:
+    _keep(tmp_path, "run-01.json")
+    assert "run 1 is complete" in refusal(tmp_path, 1)
+
+
+def test_no_run_starts_while_a_later_run_has_a_file(tmp_path) -> None:
+    _keep(tmp_path, "run-01.json")
+    _keep(tmp_path, "run-03-void-1.json", void="transport failure after retries", run=3)
+    assert "run 3 already has files" in refusal(tmp_path, 2)
+
+
+def test_a_void_run_is_replaced_by_its_own_number_until_three_in_a_row(tmp_path) -> None:
+    _keep(tmp_path, "run-01-void-1.json", void="transport failure after retries")
+    _keep(tmp_path, "run-01-void-2.json", void="transport failure after retries")
+    assert refusal(tmp_path, 1) is None
+    _keep(tmp_path, "run-01-void-3.json", void="embedding failed: x")
+    assert "three void runs in a row" in refusal(tmp_path, 1)
+
+
+def test_a_run_stopped_by_the_step_cap_stops_the_step(tmp_path) -> None:
+    _keep(tmp_path, "run-01.json")
+    _keep(tmp_path, "run-02-void-1.json", void="the step cap: $0.3 spent", run=2)
+    assert "the step cap" in refusal(tmp_path, 2)
+
+
+def test_no_run_starts_once_the_report_exists(tmp_path) -> None:
+    tmp_path.mkdir(exist_ok=True)
+    (tmp_path / "report.txt").write_text("done")
+    assert "report" in refusal(tmp_path, 1)
+
+
+def test_a_void_file_never_takes_a_name_already_used(tmp_path) -> None:
+    assert void_name(tmp_path, 3) == "run-03-void-1.json"
+    _keep(tmp_path, "run-03-void-1.json", void="x", run=3)
+    assert void_name(tmp_path, 3) == "run-03-void-2.json"
+    _keep(tmp_path, "run-03-void-2.json", void="x", run=3)
+    assert void_name(tmp_path, 3) == "run-03-void-3.json"
+
+
+def _no_pipeline(monkeypatch, differences=()):
+    import app.run_step10 as runner
+    from app.shell import pipeline_session
+
+    monkeypatch.setattr(pipeline_session, "open_pipeline", lambda *a, **k: pytest.fail("a pipeline was opened"))
+    monkeypatch.setattr(runner, "_manifest_differences", lambda: list(differences))
+
+
+def test_a_run_refused_by_its_folder_opens_nothing(tmp_path, monkeypatch) -> None:
+    _no_pipeline(monkeypatch)
+    with pytest.raises(SystemExit) as stopped:
+        main(["--run", "2", "--head", SHA, "--out", str(tmp_path)])
+    assert "run 1 has no complete file" in str(stopped.value)
+
+
+def test_a_run_refused_by_the_manifest_opens_nothing(tmp_path, monkeypatch) -> None:
+    _no_pipeline(monkeypatch, differences=["app/orchestrator.py changed"])
+    with pytest.raises(SystemExit) as stopped:
+        main(["--run", "1", "--head", SHA, "--out", str(tmp_path)])
+    assert "app/orchestrator.py changed" in str(stopped.value)
+
+
+def test_there_is_one_way_to_run_the_evaluation(tmp_path) -> None:
+    with pytest.raises(SystemExit) as stopped:
+        main(["--runs", "5", "--head", SHA, "--out", str(tmp_path)])
+    assert stopped.value.code == 2
+
+
+def test_the_report_needs_five_complete_runs_and_pays_for_nothing(tmp_path, monkeypatch) -> None:
+    _no_pipeline(monkeypatch)
+    for number in range(1, 5):
+        _keep(tmp_path, f"run-0{number}.json", run=number)
+    with pytest.raises(SystemExit) as stopped:
+        main(["--report", "--out", str(tmp_path)])
+    assert "run 5 has no complete file" in str(stopped.value)
+    assert not (tmp_path / "report.txt").exists()
+
+    _keep(tmp_path, "run-05.json", run=5)
+    assert main(["--report", "--out", str(tmp_path)]) == 0
+    assert "complete runs 5; void runs 0" in (tmp_path / "report.txt").read_text()
+
+    with pytest.raises(SystemExit) as stopped:
+        main(["--report", "--out", str(tmp_path)])
+    assert "report" in str(stopped.value)
+
+
+def test_the_spend_line_reads_the_run_that_ended_last(tmp_path) -> None:
+    first = {**_document([], 1, ended="2026-10-18T10:00:00+00:00"), "spend": {"step10_usd_after": 0.02}}
+    later = {**_document([], 2, ended="2026-10-18T11:00:00+00:00"), "spend": {"step10_usd_after": 0.05}}
+    void = {**_document([], 3, void="transport failure after retries", ended="2026-10-18T10:30:00+00:00"),
+            "spend": {"step10_usd_after": 0.04}}  # fmt: skip
+    text = runs_report([later, first], [void])
+    assert "the ledger on step10 purposes after the last run: $0.050000" in text
+
+
+def _fake_open_pipeline(tmp_path, scripts):
+    """open_pipeline as the runner calls it, over the scripted model and the
+    stand-in executor: the same orchestrators the tests above build."""
+    from types import SimpleNamespace
+
+    ledger = SpendLedger(tmp_path / "ledger.jsonl")
+    where = located("store_sales", "store", "date_dim")
+    everything = full_schema_located(SNAPSHOT)
+
+    def open_pipeline(name, purpose, mode, wrap_model):
+        model = wrap_model(LedgeredModel(FakeModel(list(scripts[mode])), ledger, purpose, 1.0))
+        if mode == "retrieval":
+            orchestrator = Orchestrator(SNAPSHOT, SCHEMA_REF, lambda q: where, model, Runs())
+        else:
+            orchestrator = Orchestrator(SNAPSHOT, SCHEMA_REF, lambda q: everything, model, Runs(),
+                                        build=lambda q, snap, tables, joins: build_full_prompt(q, snap, GRAPH))  # fmt: skip
+        retrieval = SimpleNamespace(settings=SimpleNamespace(alpha=0.5, anchor_cut=0.5, anchor_cap=5, margin=0.1),
+                                    stored=SimpleNamespace(hash="h" * 64))  # fmt: skip
+        return SimpleNamespace(orchestrator=orchestrator, snapshot=SNAPSHOT, graph=GRAPH, ledger=ledger,
+                               retrieval=retrieval)  # fmt: skip
+
+    return open_pipeline
+
+
+def _drive(tmp_path, monkeypatch, scripts, number=1):
+    import app.run_step10 as runner
+    from app.shell import pipeline_session
+
+    monkeypatch.setattr(pipeline_session, "open_pipeline", _fake_open_pipeline(tmp_path, scripts))
+    monkeypatch.setattr(runner, "_manifest_differences", lambda: [])
+    monkeypatch.setattr(runner, "evaluation_sets", lambda: [[Q1]])
+    monkeypatch.setattr(runner, "RetryingModel", lambda model: RetryingModel(model, sleep=lambda seconds: None))
+    return main(["--run", str(number), "--head", SHA, "--out", str(tmp_path / "runs")])
+
+
+def test_a_run_is_made_end_to_end_and_kept_in_its_own_file(tmp_path, monkeypatch) -> None:
+    import json
+
+    assert _drive(tmp_path, monkeypatch, {"retrieval": [reply(Q1_SQL)], "full_schema": [reply(Q1_SQL)]}) == 0
+    kept = json.loads((tmp_path / "runs" / "run-01.json").read_text())
+    assert (kept["run"], kept["file"], kept["void"], kept["head"], kept["manifest"]) == (
+        1, "run-01.json", None, SHA, "matches",
+    )  # fmt: skip
+    assert [r["mode"] for r in kept["records"]] == ["retrieval", "full_schema"]
+    assert kept["settings"]["cap_usd"] == 0.30 and kept["records"][0]["score"]["tables"] == "correct"
+    assert len(list((tmp_path / "runs" / "prompts").iterdir())) == 2
+    with pytest.raises(SystemExit) as stopped:
+        _drive(tmp_path, monkeypatch, {"retrieval": [reply(Q1_SQL)], "full_schema": [reply(Q1_SQL)]})
+    assert "run 1 is complete" in str(stopped.value)
+
+
+def test_run_2_puts_full_schema_first(tmp_path, monkeypatch) -> None:
+    import json
+
+    scripts = {"retrieval": [reply(Q1_SQL)], "full_schema": [reply(Q1_SQL)]}
+    assert _drive(tmp_path, monkeypatch, scripts, number=1) == 0
+    assert _drive(tmp_path, monkeypatch, scripts, number=2) == 0
+    kept = json.loads((tmp_path / "runs" / "run-02.json").read_text())
+    assert [r["mode"] for r in kept["records"]] == ["full_schema", "retrieval"]
+
+
+def test_a_void_run_is_kept_under_its_own_name_and_replaced_by_the_same_number(tmp_path, monkeypatch, capsys) -> None:
+    import json
+
+    lost = {"retrieval": [_transport()] * 3, "full_schema": []}
+    assert _drive(tmp_path, monkeypatch, lost) == 1
+    assert "replaced by running --run 1 again" in capsys.readouterr().out
+    assert _drive(tmp_path, monkeypatch, lost) == 1
+    void = json.loads((tmp_path / "runs" / "run-01-void-2.json").read_text())
+    assert void["void"] == "transport failure after retries" and void["file"] == "run-01-void-2.json"
+    assert _drive(tmp_path, monkeypatch, lost) == 1
+    assert "The step stops" in capsys.readouterr().out
+    with pytest.raises(SystemExit) as stopped:
+        _drive(tmp_path, monkeypatch, {"retrieval": [reply(Q1_SQL)], "full_schema": [reply(Q1_SQL)]})
+    assert "three void runs in a row" in str(stopped.value)

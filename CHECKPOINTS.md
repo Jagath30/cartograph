@@ -35,6 +35,9 @@ pass, 2 skip; frontend 211.
 - A commit may claim a check passed only if that check's own exit status was read.
 - Every paid command is its own shell command, never chained with `;` or
   `&&` to anything else (step 10, stop 2).
+- A run that may outlast the session's command time limit runs in the
+  background, with its output to a log, and the session waits for it to
+  end. Never two paid commands at once; never chained (step 10).
 
 **Frozen, never edited.** `backend/eval/questions.yaml`, `heldout.yaml`,
 `calibration.json`, `baseline_step5.txt`; `app/core/eval_set.py`,
@@ -8799,6 +8802,59 @@ no embedding.
    provider caching makes dollars depend on run order. Dollars stay in the
    spend lines. Added to the protocol draft.
 5. The protocol stays uncommitted; `heldout.yaml` stays unopened.
+
+### The owner's rulings at the review of stop 2 — 16 October 2026
+
+The owner read the four files copied for review and checked the two d4
+prompts: the opening rules and the question byte-identical; the four
+retrieval tables byte-identical in the full prompt; the 24 tables
+alphabetical; the 107 key lines unique and sorted, holding every
+retrieval join line; 24 pairs carrying 49 keys. "The baseline is fair."
+
+1. **Execution failures are measured on their SQL.** DD-20 measures the
+   SQL, and a timeout depends on this laptop and scale factor, not on the
+   method. An answer whose validated SQL fails at execution is scored on
+   tables and path like any other; d5's cross join would still be
+   diverged. Execution outcomes are reported beside the score, by
+   failure word. Validation and model failures stay wrong on both: they
+   leave no accepted SQL.
+2. The report gives input and output tokens per set and mode, total and
+   mean per answer. Dollars only in the spend lines.
+3. Identical rows, outside the score: where both modes executed ok and
+   neither result was truncated, whether the two rows hashes are equal;
+   it compares values returned, not correctness (finding 26, item 90).
+4. The protocol's text follows; each run file records the HEAD commit it
+   ran on and the manifest check's result. The container has no
+   repository, so `--head` is passed in, read by the session's own
+   `git rev-parse HEAD`.
+5. These were to be the last harness changes before the freeze
+   (`e4c7a21`; 16 mutations, all caught, the first run of them on a
+   failing baseline and so repeated; the mutation script now refuses to
+   run on one).
+
+### The owner's rulings after the pause — 18 October 2026
+
+State proven first: HEAD `e4c7a21`, the draft the only change and of the
+sha256 reviewed, the services up after Resource Saver (item 45).
+
+1. **The runner could not keep section 8**: it refused to start while
+   its folder held any run file, so all five runs would have been one
+   command, with nothing committed between them and no way to resume.
+   `--runs N` is replaced by `--run K --head SHA`, one run per command.
+   Before anything is opened or paid for it refuses unless the manifest
+   matches, runs 1 to K-1 each have a complete file and run K has none
+   (nor any later run), run K has been void fewer than three times, no
+   run was stopped by the step cap, and there is no report. A void run's
+   file never collides: `run-0K-void-N.json`. `--report` makes the report
+   from the files after five complete runs, never overwriting, with no
+   paid call. A run is driven end to end by a test over fake pipelines.
+   15 mutations, all caught.
+2. Protocol text: section 13's fix rule says "recorded in CHECKPOINTS.md"
+   (a committed protocol is never edited); sections 2, 8 and 10 say each
+   run is its own command and is committed as soon as it ends, the report
+   its own command after the fifth; the five may name different commits,
+   and the manifest shows the code was the same.
+3. The rule on background runs, in Current state.
 
 ### Carried forward
 

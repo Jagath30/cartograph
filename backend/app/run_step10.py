@@ -2,7 +2,8 @@
 
     docker compose exec backend python -m app.run_step10 --pilot
     docker compose exec backend python -m app.run_step10 --write-manifest
-    docker compose exec backend python -m app.run_step10 --runs 5 --head SHA
+    docker compose exec backend python -m app.run_step10 --run K --head SHA
+    docker compose exec backend python -m app.run_step10 --report
 
 `--pilot` puts the eight development questions through both modes once,
 to find faults in this harness on questions that decide nothing. They
@@ -12,24 +13,34 @@ carry no expectations and nothing is scored. Kept in eval/step10/pilot/.
 answers and measures (app.shell.step10.FROZEN), in
 eval/step10/frozen_code.json. It is written in the protocol's commit.
 
-`--runs N --head SHA` is the evaluation. SHA is the commit it runs on, read
-by the session with its own `git rev-parse HEAD` beforehand (the container
-has no repository) and recorded in every run file with the manifest
-check's result. It refuses to start unless the manifest exists and every
-file still matches it, and it is the only place that
-reads eval/heldout.yaml, through its loader, which checks the sha256.
-For each run, in order: the held-out set, then the original set; for each
-question both modes, retrieval first in odd runs and full schema first in
-even ones. Kept in eval/step10/runs/.
+`--run K --head SHA` is the evaluation, one run per command, K from 1 to
+5, so that each run's files can be committed before the next starts and
+a stopped run can be replaced. SHA is the commit it runs on, read by the
+session with its own `git rev-parse HEAD` beforehand (the container has
+no repository) and recorded in the run's file with the manifest check's
+result; the five may name different commits, and the manifest shows the
+code was the same. Before anything is opened or paid for it refuses
+unless the manifest matches, runs 1 to K-1 each have a complete file, run
+K has none, no later run has any file, run K has fewer than three void
+runs, no run was stopped by the step cap, and there is no report. It is
+the only place that reads eval/heldout.yaml, through its loader, which
+checks the sha256. In run K: the held-out set, then the original set; for
+each question both modes, retrieval first when K is odd and full schema
+first when it is even. Kept in eval/step10/runs/: run-0K.json, or
+run-0K-void-N.json for the Nth void run of that number.
+
+`--report` makes eval/step10/runs/report.txt from those files, once five
+runs are complete. It never overwrites and calls nothing that is paid.
 
 WHAT VOIDS A RUN (the owner's ruling 5 at stop 1). A transport or
 provider failure that survives two retries, a failure to embed, or the
 model's own spending ceiling: none is the method's behaviour. The run is
 recorded with its cause and replaced by a complete fresh run of the same
-number. The step cap is checked before every question: if what has been
-spent on purposes beginning `step10`, plus that question's worst case,
-would pass it, the run is void and nothing more is run. Three void runs
-in a row also stop it. No run is ever voided, kept or replaced because of
+number, by running `--run K` again. The step cap is checked before every
+question: if what has been spent on purposes beginning `step10`, plus
+that question's worst case, would pass it, the run is void and no run
+starts again. Three void runs of one number, which are three in a row,
+also stop the step. No run is ever voided, kept or replaced because of
 its results.
 
 Every model call and embedding goes to the spend ledger under the run's
@@ -89,6 +100,7 @@ DEV_QUESTIONS = EVAL / "dev_questions.yaml"
 ORIGINAL_SET = EVAL / "questions.yaml"
 HELDOUT_SET = EVAL / "heldout.yaml"
 MODES = ("retrieval", "full_schema")
+RUNS = 5
 MAX_VOID_IN_A_ROW = 3
 
 
@@ -339,43 +351,57 @@ def _manifest_differences() -> list[str] | None:
     return check_manifest(BACKEND, tuple(recorded["patterns"]), recorded["files"])
 
 
-def main(argv: list[str]) -> int:
+def _run_file(number: int) -> str:
+    return f"run-{number:02d}.json"
+
+
+def _voids(out: Path, number: int) -> list[Path]:
+    return sorted(out.glob(f"run-{number:02d}-void-*.json"))
+
+
+def void_name(out: Path, number: int) -> str:
+    """A name no file of this folder has: the next void of this number."""
+    taken = len(_voids(out, number))
+    while (out / f"run-{number:02d}-void-{taken + 1}.json").exists():
+        taken += 1
+    return f"run-{number:02d}-void-{taken + 1}.json"
+
+
+def refusal(out: Path, number: int) -> str | None:
+    """Why run `number` may not start in `out`, or None when it may."""
+    if not 1 <= number <= RUNS:
+        return f"runs are numbered 1 to {RUNS}, not {number}"
+    if (out / "report.txt").exists():
+        return "the report already exists; the runs are over"
+    for void in sorted(out.glob("run-*-void-*.json")):
+        if (json.loads(void.read_text())["void"] or "").startswith("the step cap"):
+            return f"{void.name} was stopped by the step cap; no run starts again"
+    for earlier in range(1, number):
+        if not (out / _run_file(earlier)).exists():
+            return f"run {earlier} has no complete file"
+    if (out / _run_file(number)).exists():
+        return f"run {number} is complete; it is never run again"
+    for later in range(number + 1, RUNS + 1):
+        if (out / _run_file(later)).exists() or _voids(out, later):
+            return f"run {later} already has files"
+    if len(_voids(out, number)) >= MAX_VOID_IN_A_ROW:
+        return f"run {number} has been void {MAX_VOID_IN_A_ROW} times: three void runs in a row stop the step"
+    return None
+
+
+def _report_refusal(out: Path) -> str | None:
+    if (out / "report.txt").exists():
+        return "the report already exists; nothing is overwritten"
+    for number in range(1, RUNS + 1):
+        if not (out / _run_file(number)).exists():
+            return f"run {number} has no complete file"
+    return None
+
+
+def _execute(label: str, number: int, sets: list[list[Asked]], out: Path, head: str | None,
+             differences: list[str] | None, cap: float, purpose: str) -> RunResult:
+    """One run, both modes, kept in its own file."""
     from app.shell.pipeline_session import open_pipeline
-
-    parser = argparse.ArgumentParser(description="Step 10's evaluation: both modes, both sets.")
-    which = parser.add_mutually_exclusive_group(required=True)
-    which.add_argument("--pilot", action="store_true", help="the development questions, both modes, once")
-    which.add_argument("--runs", type=int, help="the evaluation: this many complete runs")
-    which.add_argument("--write-manifest", action="store_true", help="record the frozen code's hashes")
-    parser.add_argument("--head", help="the commit the evaluation runs on: 40 hex characters (git rev-parse HEAD)")
-    parser.add_argument("--cap", type=float, default=STEP_CAP_USD, help="the step cap, in dollars")
-    parser.add_argument("--out", type=Path, help="where to keep the run (default: eval/step10/pilot or runs)")
-    arguments = parser.parse_args(argv)
-    logging.basicConfig(level=logging.WARNING, format="%(message)s", stream=sys.stderr)
-
-    if arguments.write_manifest:
-        return _write_manifest()
-    if arguments.runs is not None and not re.fullmatch(r"[0-9a-f]{40}", arguments.head or ""):
-        sys.exit("run_step10: the evaluation needs --head, the full sha of the commit it runs on (git rev-parse HEAD)")
-
-    differences = _manifest_differences()
-    if arguments.pilot:
-        label, total, sets = "pilot", 1, [development_questions()]
-        out = arguments.out or STEP10 / "pilot"
-    else:
-        if differences is None:
-            sys.exit("run_step10: no manifest. The protocol is committed with one: python -m app.run_step10 --write-manifest")
-        if differences:
-            sys.exit("run_step10: the frozen code has changed since the protocol: " + "; ".join(differences))
-        label, total, sets = "run", arguments.runs, evaluation_sets()
-        out = arguments.out or STEP10 / "runs"
-
-    # Before anything is opened or paid for: a run never overwrites a run.
-    taken = sorted(path.name for path in out.glob(f"{label}-*.json")) + (
-        ["report.txt"] if (out / "report.txt").exists() else []
-    )
-    if taken:
-        sys.exit(f"run_step10: {out} already holds {', '.join(taken)}; nothing is overwritten and nothing was run")
 
     settings = get_settings()
     price = MODEL_PRICES[settings.sql_model]
@@ -385,61 +411,109 @@ def main(argv: list[str]) -> int:
     def keep_prompt(digest: str, text: str) -> None:
         keep_identical(out / "prompts" / f"{digest}.txt", text)
 
-    complete, attempt, void_in_a_row, files = 0, 0, 0, []
-    while complete < total:
-        attempt += 1
-        number = complete + 1
-        purpose = f"{STEP_PREFIX} {label} {number}" if label == "run" else f"{STEP_PREFIX} pilot"
-        models: dict[str, RetryingModel] = {}
+    models: dict[str, RetryingModel] = {}
 
-        def wrap(model, mode):
-            models[mode] = RetryingModel(model)
-            return models[mode]
+    def wrap(model, mode):
+        models[mode] = RetryingModel(model)
+        return models[mode]
 
-        pipelines = {
-            mode: open_pipeline("run_step10", purpose, mode=mode, wrap_model=lambda m, mode=mode: wrap(m, mode))
-            for mode in MODES
-        }
-        some = pipelines["full_schema"]
-        schema, keys = schema_of(some.snapshot), key_columns(some.snapshot)
-        # The largest prompt either mode can send, with room for the question.
-        worst = worst_case_usd(len(build_full_prompt("", some.snapshot, some.graph).text) + 2000, price,
-                               settings.sql_model_max_output_tokens)  # fmt: skip
-        retrieval = pipelines["retrieval"].retrieval
-        began = datetime.now(UTC).isoformat(timespec="seconds")
-        result = run_once(number, sets, pipelines, models, some.ledger, arguments.cap, worst, schema, keys, keep_prompt)
-        document = {
-            "label": label, "run": number, "attempt": attempt, "void": result.void, "began": began,
-            "ended": datetime.now(UTC).isoformat(timespec="seconds"),
-            **provenance(arguments.head, differences),
-            "settings": {"model": settings.sql_model, "reasoning_effort": settings.sql_model_reasoning_effort,
-                         "temperature": settings.sql_model_temperature,
-                         "max_output_tokens": settings.sql_model_max_output_tokens, "price": vars(price),
-                         "alpha": retrieval.settings.alpha, "anchor_cut": retrieval.settings.anchor_cut,
-                         "anchor_cap": retrieval.settings.anchor_cap, "margin": retrieval.settings.margin,
-                         "schema_sha256": retrieval.stored.hash, "preferences_hash": preferences_hash(some.snapshot),
-                         "cap_usd": arguments.cap, "worst_case_per_question_usd": round(worst, 8)},
-            "spend": {"step10_usd_after": round(some.ledger.total(STEP_PREFIX), 8),
-                      "this_purpose_usd": round(some.ledger.total(purpose), 8)},
-            "records": result.records,
-        }  # fmt: skip
-        name = f"{label}-{attempt:02d}{'-void' if result.void else ''}.json"
-        keep_run(out / name, document)
-        files.append(name)
-        print(f"run_step10: {name}: {len(result.records)} answers" + (f"; VOID: {result.void}" if result.void else ""))
+    pipelines = {
+        mode: open_pipeline("run_step10", purpose, mode=mode, wrap_model=lambda m, mode=mode: wrap(m, mode))
+        for mode in MODES
+    }
+    some = pipelines["full_schema"]
+    schema, keys = schema_of(some.snapshot), key_columns(some.snapshot)
+    # The largest prompt either mode can send, with room for the question.
+    worst = worst_case_usd(len(build_full_prompt("", some.snapshot, some.graph).text) + 2000, price,
+                           settings.sql_model_max_output_tokens)  # fmt: skip
+    retrieval = pipelines["retrieval"].retrieval
+    began = datetime.now(UTC).isoformat(timespec="seconds")
+    result = run_once(number, sets, pipelines, models, some.ledger, cap, worst, schema, keys, keep_prompt)
+    name = (f"{label}-{number:02d}.json" if not result.void else
+            void_name(out, number) if label == "run" else f"{label}-{number:02d}-void.json")  # fmt: skip
+    document = {
+        "label": label, "run": number, "file": name, "void": result.void, "began": began,
+        "ended": datetime.now(UTC).isoformat(timespec="seconds"),
+        **provenance(head, differences),
+        "settings": {"model": settings.sql_model, "reasoning_effort": settings.sql_model_reasoning_effort,
+                     "temperature": settings.sql_model_temperature,
+                     "max_output_tokens": settings.sql_model_max_output_tokens, "price": vars(price),
+                     "alpha": retrieval.settings.alpha, "anchor_cut": retrieval.settings.anchor_cut,
+                     "anchor_cap": retrieval.settings.anchor_cap, "margin": retrieval.settings.margin,
+                     "schema_sha256": retrieval.stored.hash, "preferences_hash": preferences_hash(some.snapshot),
+                     "cap_usd": cap, "worst_case_per_question_usd": round(worst, 8)},
+        "spend": {"step10_usd_after": round(some.ledger.total(STEP_PREFIX), 8),
+                  "this_purpose_usd": round(some.ledger.total(purpose), 8)},
+        "records": result.records,
+    }  # fmt: skip
+    keep_run(out / name, document)
+    print(f"run_step10: {name}: {len(result.records)} answers" + (f"; VOID: {result.void}" if result.void else ""))
+    return result
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Step 10's evaluation: both modes, both sets.")
+    which = parser.add_mutually_exclusive_group(required=True)
+    which.add_argument("--pilot", action="store_true", help="the development questions, both modes, once")
+    which.add_argument("--run", type=int, help=f"the evaluation: run K, from 1 to {RUNS}, and only that run")
+    which.add_argument("--report", action="store_true", help="the report, once five runs are complete")
+    which.add_argument("--write-manifest", action="store_true", help="record the frozen code's hashes")
+    parser.add_argument("--head", help="the commit the run runs on: 40 hex characters (git rev-parse HEAD)")
+    parser.add_argument("--cap", type=float, default=STEP_CAP_USD, help="the step cap, in dollars")
+    parser.add_argument("--out", type=Path, help="where the files are kept (default: eval/step10/pilot or runs)")
+    arguments = parser.parse_args(argv)
+    logging.basicConfig(level=logging.WARNING, format="%(message)s", stream=sys.stderr)
+
+    if arguments.write_manifest:
+        return _write_manifest()
+
+    if arguments.report:
+        from app.step10_report import write_report
+
+        out = arguments.out or STEP10 / "runs"
+        refused = _report_refusal(out)
+        if refused:
+            sys.exit(f"run_step10: {refused}; no report was made")
+        report = write_report(out, "run")
+        print(f"run_step10: report in {report}")
+        return 0
+
+    if arguments.pilot:
+        out = arguments.out or STEP10 / "pilot"
+        # Before anything is opened or paid for: a run never overwrites a run.
+        taken = sorted(path.name for path in out.glob("pilot-*.json")) + (
+            ["report.txt"] if (out / "report.txt").exists() else []
+        )
+        if taken:
+            sys.exit(f"run_step10: {out} already holds {', '.join(taken)}; nothing is overwritten and nothing was run")
+        result = _execute("pilot", 1, [development_questions()], out, arguments.head, _manifest_differences(),
+                          arguments.cap, f"{STEP_PREFIX} pilot")  # fmt: skip
         if result.void:
-            void_in_a_row += 1
-            if result.void.startswith("the step cap") or void_in_a_row >= MAX_VOID_IN_A_ROW:
-                print("run_step10: stopped.")
-                return 1
-        else:
-            complete += 1
-            void_in_a_row = 0
+            return 1
+        from app.step10_report import write_report
 
-    from app.step10_report import write_report
+        print(f"run_step10: report in {write_report(out, 'pilot')}")
+        return 0
 
-    report = write_report(out, label)
-    print(f"run_step10: report in {report.relative_to(BACKEND)}")
+    if not re.fullmatch(r"[0-9a-f]{40}", arguments.head or ""):
+        sys.exit("run_step10: the evaluation needs --head, the full sha of the commit it runs on (git rev-parse HEAD)")
+    differences = _manifest_differences()
+    if differences is None:
+        sys.exit("run_step10: no manifest. The protocol is committed with one: python -m app.run_step10 --write-manifest")
+    if differences:
+        sys.exit("run_step10: the frozen code has changed since the protocol: " + "; ".join(differences))
+    out = arguments.out or STEP10 / "runs"
+    refused = refusal(out, arguments.run)
+    if refused:
+        sys.exit(f"run_step10: {refused}; nothing is overwritten and nothing was run")
+    number = arguments.run
+    result = _execute("run", number, evaluation_sets(), out, arguments.head, differences, arguments.cap,
+                      f"{STEP_PREFIX} run {number}")  # fmt: skip
+    if result.void:
+        again = refusal(out, number)
+        print(f"run_step10: run {number} is void. " + (f"The step stops: {again}." if again else
+              f"It is replaced by running --run {number} again."))  # fmt: skip
+        return 1
     return 0
 
 
