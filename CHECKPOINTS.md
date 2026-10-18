@@ -42,6 +42,11 @@ prompting wins at 24 tables (items 91 to 97). Smoke 39, 0, 0. Backend
 - A run that may outlast the session's command time limit runs in the
   background, with its output to a log, and the session waits for it to
   end. Never two paid commands at once; never chained (step 10).
+- **`backend/eval/heldout2.yaml` is never opened, printed, searched or
+  shown, in any form**: no `cat`, `head`, `grep`, `git diff`, `git show`
+  or `git log -p` on it, and none of its text in any output. Only code
+  reads it: to check it (step 10b) and to run it in the v2 evaluation.
+  `backend/eval/dev2.yaml` may be read freely (step 10b).
 
 **Frozen, never edited.** `backend/eval/questions.yaml`, `heldout.yaml`,
 `calibration.json`, `baseline_step5.txt`; `app/core/eval_set.py`,
@@ -49,7 +54,10 @@ prompting wins at 24 tables (items 91 to 97). Smoke 39, 0, 0. Backend
 protocol, manifest, run files and report (`backend/eval/step10_protocol.md`,
 `backend/eval/step10/`). The held-out set is spent: its questions have
 been run, so any future change to retrieval needs a fresh held-out set,
-written and frozen before the change (items 98 to 100).
+written and frozen before the change (items 98 to 100). Step 10b's fresh
+held-out set, `backend/eval/heldout2.yaml` (sha256 `ffd28657...20f3d1`,
+`8577fce`), and development set 2, `backend/eval/dev2.yaml` (sha256
+`4d6dd232...6c13da`, `e78b98a`).
 
 **Next.** Step 10b, before step 11: first, a fresh held-out set of 12
 questions, drafted blind from the schema alone, reviewed by the owner
@@ -8953,6 +8961,45 @@ sha256 reviewed, the services up after Resource Saver (item 45).
    its own command after the fifth; the five may name different commits,
    and the manifest shows the code was the same.
 3. The rule on background runs, in Current state.
+
+## Step 10b in progress: a fresh held-out set, then v2 — opened 18 October 2026
+
+### Part 1: the schema and the format for a blind drafter — 18 October 2026
+
+Two files were prepared for a drafter outside the repository, in the
+owner's Windows folder `cartograph-stop2/heldout2/`; nothing in the
+repository changed. `cartograph-schema.txt` (sha256 `0f0f189b...18147cc`):
+the 24 tables and the keys section with its 107 lines exactly as step
+10's frozen full-schema prompt renders them, cut where the question would
+begin, the code checked against step 10's manifest first.
+`heldout-format.txt` (sha256 `34a579b8...12d8a7ba3`): the YAML the frozen
+`parse_heldout` reads, every field's rules, what it refuses, what the
+first set's tests also checked, and a two-question example that parses.
+
+### Part 1b: the two sets, checked and frozen — 18 October 2026
+
+The owner saved two files in the held-out format, both by the same
+drafter, approved by the owner on 18 October 2026.
+
+    backend/eval/heldout2.yaml   the fresh held-out set, for the v2
+                                 evaluation; never opened (Current state)
+      sha256 ffd28657f7fd1c44d519b84fc63f87e02e0f4504dadfe0393c99b275de20f3d1
+      committed alone in 8577fce, before any v2 code
+    backend/eval/dev2.yaml       an earlier draft; seen by the planning
+                                 chat, so a development set, not held out
+      sha256 4d6dd232aa75181e79c0efa162bd1ea118c305e5d3899aed91654076046c13da
+      committed alone in e78b98a
+
+**The check, by code only.** A script parsed each file with the frozen
+`parse_heldout` and checked it against the live snapshot and graph: 12
+questions, ids H1 to H12, exactly one decline; every table and column
+exists; every join one of the 107 keys, its column pairs as on that key's
+line; each answerable question's joins connect all its tables, one join
+fewer than tables, at most three; every question ends with "?"; the
+provenance carries an approval date. For `heldout2.yaml` it printed only
+the counts and "ok" or a check's name per id: 12 questions, 1 decline,
+the set and H1 to H12 all ok. `dev2.yaml`: 12 questions, 1 decline (H12),
+all ok.
 
 ### Carried forward
 
