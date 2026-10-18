@@ -7,17 +7,21 @@ to explain, and what the next single deliverable is.
 
 ---
 
-## Current state — 15 October 2026, kept current at every close
+## Current state — 18 October 2026, kept current at every close
 
-**What exists.** Steps 1 to 9 and a retrieval pass, tagged
-`checkpoint-01-stack` to `checkpoint-09-frontend`. Steps 1 to 8's
+**What exists.** Steps 1 to 10 and a retrieval pass, tagged
+`checkpoint-01-stack` to `checkpoint-10-eval`. Steps 1 to 8's
 pipeline, its decisions unchanged but for two declared preferences (a
 sale over the page it was made through). Step 9: one page, `/ask`: the
 amber block when a choice had no basis; the narrative beside the results
 (copy, CSV); the graph of the plan and of the joins the SQL made; the
 detail behind disclosures; `?id=` reopens a stored answer. No WCAG 2.1 AA
-violation by axe; keyboard throughout. Smoke 39, 0, 0. Backend 1297
-pass, 2 skip; frontend 211.
+violation by axe; keyboard throughout. Step 10: the evaluation, run by a
+protocol frozen before any run, five runs in two modes over the held-out
+and the original sets; its record is committed files under
+`backend/eval/step10/`, its result is in the README, and full-schema
+prompting wins at 24 tables (items 91 to 97). Smoke 39, 0, 0. Backend
+1454 pass, 2 skip; frontend 211.
 
 **Rules every session follows.**
 - `OPENAI_API_KEY` is never printed, displayed or read; `.env` is never
@@ -41,17 +45,17 @@ pass, 2 skip; frontend 211.
 
 **Frozen, never edited.** `backend/eval/questions.yaml`, `heldout.yaml`,
 `calibration.json`, `baseline_step5.txt`; `app/core/eval_set.py`,
-`eval_step6.py`; the step 7 instrument and the prompt builder.
-`heldout.yaml` is not opened, run or embedded, and `app/core/heldout.py`
-is not imported, before step 10.
+`eval_step6.py`; the step 7 instrument and the prompt builder; step 10's
+protocol, manifest, run files and report (`backend/eval/step10_protocol.md`,
+`backend/eval/step10/`). The held-out set is spent: its questions have
+been run, so any future change to retrieval needs a fresh held-out set,
+written and frozen before the change (items 98 to 100).
 
-**Next.** Step 10, in progress: its working record is the newest entry.
-Ruled at its stop 1: items 54 (Q14), 60, 63; 89 done. Step 10: 47, 48,
-61, 66; heldout's first run. Step 11: 76, 88.
+**Next.** Step 11: 76, 88.
 Step 12: 1, 8, 9, 10, 14, 18, 41, 73, 77, 80, 85; owed to the Design:
 DD-01, 06, 07, 12 to 16, 19, 21, FR-13, IR-05, section 04. Step 13: 86,
-90. Step 14: 75. Future work: 53, 55, 56. Known limits: 62, 68, 69,
-78, 87. Left behind: 79. **Resume:** read this, the newest entry and the
+90. Step 14: 75. Future work: 53, 55, 56, 98, 99, 100. Known limits:
+62, 68, 69, 78, 87, 91. Left behind: 79. **Resume:** read this, the newest entry and the
 items named; `git status`; `./scripts/smoke.sh` (two paid calls).
 
 ## checkpoint-01-stack — 12 September 2026
@@ -8635,7 +8639,91 @@ string, no frozen file changed, `npm audit --omit=dev` 0 found,
 `step2-backup` not on the remote. Tagged `checkpoint-09-frontend`.
 Nothing is pushed.
 
-## Step 10 in progress: the evaluation — opened 16 October 2026
+## checkpoint-10-eval — 18 October 2026
+
+**What works now that did not before.** The project has its measured
+result, and the method behind it was fixed before the result existed.
+`python -m app.run_step10 --run K --head SHA` puts both question sets
+through two modes with the same model, rules, validator, checker and
+executor: Cartograph's pipeline, and full-schema prompting, which gets
+all 24 tables and all 107 keys, with no plan. The generated SQL is scored
+on the tables it read and the path it joined, by the frozen step 7
+instrument, and every answer is kept whole in committed files. The
+protocol (`backend/eval/step10_protocol.md`) and the manifest of the code
+were committed in `24c59a1` before any question of either set went to a
+model; `heldout.yaml` was first read, by its loader, in run 1. Five runs,
+each its own command and its own commit, none void, no retry, every
+manifest matching. Backend 1454 pass, 2 skip; CI conditions 1366 pass,
+90 skip; frontend 211; smoke 39, 0, 0.
+
+**The result, reported whatever it says (Design section 12).** Means of
+five runs, with their range.
+
+    held-out set, 12 questions, the headline
+      Cartograph     tables 20.0% (16.7 to 25.0)   path 20.0% (16.7 to 25.0)
+      full schema    tables 90.0% (83.3 to 100)    path 90.0% (83.3 to 100)
+    original set, scored on 15, tuned and developed against
+      Cartograph     tables 65.3% (60.0 to 66.7)   path 67.1% (64.3 to 71.4)
+      full schema    tables 78.7% (73.3 to 80.0)   path 84.3% (78.6 to 85.7)
+    retrieval recall, tables shown   held-out 64.3%, original 91.9%
+    path verdicts the same where both modes wrote SQL   50 of 59
+    void runs 0; retries 0; execution failures 0
+
+At 24 tables full-schema prompting wins, as the protocol predicted. The
+cause is retrieval's recall (item 91); the model, missing a table,
+declined every time rather than guess (item 92). The structural claim,
+that Cartograph says when a choice had no basis and checks the joins that
+ran, is a property and is not measured by these figures.
+
+**The nine predictions.** Held: 1, 4, 5, 7, 8, 9. Not held: 2 (full schema
+got Q7 and Q13 right in none of five runs), 3 (full schema also declined
+Q13, five times, and Q8 once), 6 (held-out retrieval: 2 of 12 questions
+gave more than one distinct SQL, against a third predicted).
+
+**What was built.**
+
+    app/core/full_schema.py     the full-schema prompt from the frozen
+                                parts, and the stand-in for retrieval
+    app/core/eval_step10.py     the judgement: tables, path over one_of
+                                choices, declines, failures, Q14's
+                                exclusion, recall, runs combined
+    app/shell/step10.py         transport retries, the rows hash, the cap,
+                                the manifest, the held-out loader,
+                                files created exclusively
+    app/run_step10.py           --pilot, --write-manifest, --run K,
+                                --report
+    app/step10_report.py        the report, from the kept files alone
+    app/shell/embedding_ledger  item 89: embedding spend on the ledger
+
+**Faults of mine, recorded in the working record below.** Two modules
+written before their tests; the first pilot's files overwritten by a
+command chained after a move that failed; a mutation run on a failing
+baseline; and at stop 3 the count "10 of the 11 answerable held-out
+questions declined every run", which was 9 (the owner's correction: H5 was
+answered in every run, H12 declined once, 9 x 5 + 1 = 46).
+
+**To dissect.**
+- the two modes' prompts byte for byte: what is the same, and the one
+  section that differs; why the keys lines are `render_joins` with its
+  heading taken off
+- `choices_of` and `path_verdict`: why one conforming choice is enough,
+  and why Q14's two item keys fall into one class
+- item 66 on paper: why `item.i_category = item.i_category` is implied by
+  any path, and what an attribute join is instead
+- the cap's worst case: three uncached attempts, each resending the last
+- why a run file is created exclusively, and what `refusal` checks before
+  anything is paid for
+- the rows hash: canonical values, sorted lines, and why a capped result's
+  hash says less
+- H1 whole: the anchors, the tables shown, the decline, and the
+  full-schema SQL beside it
+
+**Next single deliverable.** Step 11: history, the local user and its
+rows (item 76), and whether a stored answer keeps its rows (item 88).
+
+**The close, 18 October 2026.** Recorded in the commit that tags it.
+
+### The working record of step 10 — opened 16 October 2026
 
 The working record of step 10, kept as written. HEAD at the start
 `f4eefc5`, clean. `heldout.yaml` is not opened, run, embedded or sent to a
@@ -9058,6 +9146,8 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     conformance checker of step 7. The set's `joins` field, with its
     `one_of` alternatives, is what that harness will compare against; the
     `checks` field is for the PathFinder alone.
+    **Done at step 10**: `app/core/eval_step10.py` and `app/run_step10.py`,
+    with the frozen `extract_joins` and `compare`.
 48. The evaluation set lives in a file. SDD figure 4 has `eval_questions`
     and `eval_runs` as tables in the application store; loading the file
     into them is step 8 or step 10 work, and the file's hash, not the
@@ -9104,7 +9194,9 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     **Ruled at step 10's stop 1: deleted from scoring in both modes.** It
     is still run and its raw results are reported apart; the exclusion is
     pinned by a test and its reason stated in the protocol. The original
-    set is scored on 15.
+    set is scored on 15. **Run at step 10**: wrong on both measures in
+    every run of both modes; full schema read `catalog_returns`,
+    `store_returns` and `web_returns` together in four of five.
 55. **A structural definition of "alternatives"** (fourth review stop,
     step 6). Ruling c wanted a warning when a word of the question could
     as well have meant another table. Two definitions were tried: any two
@@ -9168,7 +9260,9 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     measures joins and tables, which a relative date does not move. Each
     answer's row count is recorded, and whether its SQL uses
     `current_date`, `now()` or `current_timestamp`; empty results are
-    reported as a known limit, outside the score.
+    reported as a known limit, outside the score. **Run at step 10**: no
+    SQL in either mode took today's date; question 1 returned no rows in
+    all five runs of both modes, and H5 likewise.
 61. **Semi-joins are not extracted** (step 7). `x IN (SELECT key FROM
     t)`, EXISTS with a correlation, and a comparison with a subquery that
     passes a column through are joins spelled as filters. The
@@ -9177,7 +9271,10 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     stress run over the benchmark's 99 queries these two reasons touch
     22 queries. Extracting them would return such SQL to step 10's
     denominator; it is a change to a frozen instrument and needs a
-    ruling.
+    ruling. **Run at step 10**: neither reason left a path unmeasured in
+    280 answers. Paths not measured: 2 in retrieval mode, 5 in full
+    schema; their reasons, counted by occurrence, `computed_join_key` (2
+    and 8) and `self_join` (3, full schema).
 62. **Declines that are retrieval's, not the warehouse's** (step 7).
     Three of seven answerable development questions were declined by the
     model because retrieval had not brought a table the answer needs
@@ -9202,7 +9299,8 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     reporting the mean, the range and per-question stability, with the
     number of runs and how they are combined fixed before the first.
     **Ruled at step 10's stop 1: five runs**, fixed in advance, and a cap
-    of $0.30 on ledger purposes beginning `step10`.
+    of $0.30 on ledger purposes beginning `step10`. **Run**: the joins
+    were stable where the SQL text was not; prediction 6 records how far.
 64. **A warning can be marked as having touched the answer or not**
     (step 7, for steps 8 and 9). The warnings are raised about the tree
     retrieval built; the SQL may use a fraction of it. d1 of the
@@ -9496,3 +9594,41 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     plainly at step 13.
     **Moved to step 13 at step 10's stop 1**, by the owner's ruling: it
     does not touch joins or tables.
+91. **Retrieval's recall decided the evaluation** (step 10). In each of the
+    9 held-out questions declined in every run of retrieval mode, a table
+    the question needs was never shown: `date_dim` for a year (H1, H2, H3,
+    H8, H10); `time_dim` (H6); the channel's own returns table (H4 was
+    shown `store_returns`, H7 `web_returns`); `customer_address` (H11,
+    where `store` and `call_center` also hold a county); `customer` (H3).
+    The five-anchor cap fills with tables the question never needed (H1:
+    `web_sales`, `store_returns`, `catalog_returns`). Recall of tables
+    shown: 64.3% on the held-out set, against 91.9% on the tuned set
+    (prediction 8). Items 56 and 68 met on fresh questions.
+92. **The safe failure** (step 10). With a needed table missing, the model
+    declined in all 45 such answers rather than guess. No wrong figure came
+    from a missing table.
+93. **Where retrieval showed every expected table** (13 questions), the
+    modes scored the same on 9; retrieval was better on Q6; full schema
+    was better on Q8, Q16 and H12.
+94. **Q16: a table the question never needed bent the tree** (step 10).
+    The plan reached `customer` through `customer_demographics`, flagged
+    `arbitrary_choice` and `many_to_many`. Told to join exactly so, the
+    model left `customer` out. The warning fired.
+95. **H12**: `customer_address` was shown but not in the tree; across the
+    runs the model joined it two ways.
+96. **Q6: a strictness of the measure, the same in both modes** (step 10).
+    Full schema joined the two fact tables on their item keys and skipped
+    `item`. That is scored incomplete, though equivalent in meaning. The
+    plan made retrieval go through `item`.
+97. **Q8**: retrieval declined in all five runs with both tables and the
+    join shown; full schema answered in four.
+98. **Future work: path selection over the whole schema** (step 10, the
+    owner's ruling). At a schema this size, keep the explanation and the
+    conformance check without the retrieval filter. Not built now; needs a
+    fresh held-out set, since this one is spent.
+99. **Future work: retrieval recall** (step 10, the owner's ruling). The
+    date table when a year or period is named (item 68); anchors that
+    crowd the cap (item 56). Not built now; needs a fresh held-out set.
+100. **Future work: a second attempt with the full schema after a decline
+     in retrieval mode** (step 10, the owner's ruling). Not built now;
+     needs a fresh held-out set.

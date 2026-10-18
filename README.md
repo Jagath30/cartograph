@@ -2,6 +2,23 @@
 
 Natural-language querying of complex data warehouses with schema-graph retrieval and explainable join-path selection.
 
+## Evaluation
+
+Measured on 18 October 2026, by a protocol committed before any run (`backend/eval/step10_protocol.md`). Two modes, with the same model (gpt-6-luna, temperature 0) and the same rules: Cartograph's pipeline, and full-schema prompting, which gives the model all 24 tables and all 107 keys between them, with no plan. Each question was asked five times in each mode. What is measured is whether the generated SQL read the expected tables and joined along the expected path, not whether its numbers were right.
+
+| | Tables | Path |
+|---|---|---|
+| Held-out, 12 questions never run before: Cartograph | 20% (17–25) | 20% (17–25) |
+| Held-out: full schema | 90% (83–100) | 90% (83–100) |
+| Development, the 15 questions the system was tuned against: Cartograph | 65% (60–67) | 67% (64–71) |
+| Development: full schema | 79% (73–80) | 84% (79–86) |
+
+Means of five runs, with their range in brackets. A sixteenth development question was deleted from scoring before the runs; the protocol gives the reason.
+
+At 24 tables the whole schema fits easily in the model's context, and full-schema prompting wins, as the protocol predicted before the runs. The cause is retrieval. For 9 of the 11 answerable held-out questions it did not bring a table the question needed (the date table, for a year, in 5 of them), and the model, told to use only the tables it was given, declined rather than guess. Retrieval found 64% of the tables the held-out questions needed, against 92% on the questions it was tuned on. Where it brought every table, the two modes scored the same on 9 of 13 questions.
+
+These figures do not measure Cartograph's other claim, which is a property rather than a result: it says when a join choice had no basis, and it checks that the SQL that ran joined the way its explanation says.
+
 ## Running it locally
 
 Requires Docker Desktop with the WSL2 backend.
