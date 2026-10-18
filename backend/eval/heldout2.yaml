@@ -1,0 +1,101 @@
+provenance: >-
+  Drafted by Claude in a separate chat on 18 October 2026, from the schema
+  alone (cartograph-schema.txt, sha256
+  0f0f189bbba1187d2b06e066c293a5eb347a77bbd5b3d30d4d1ee062718147cc), without
+  sight of any evaluation result. Approved by Jagath Manjunath on 18 October 2026.
+questions:
+  - id: H1
+    question: How many customers were born in each country?
+    tables: [customer]
+    joins: []
+  - id: H2
+    question: For catalog sales made in 2002, what was the total revenue from each catalog, identified by its catalog number?
+    tables: [catalog_sales, date_dim, catalog_page]
+    joins:
+      - from: catalog_sales.cs_sold_date_sk
+        to:   date_dim.d_date_sk
+      - from: catalog_sales.cs_catalog_page_sk
+        to:   catalog_page.cp_catalog_page_sk
+  - id: H3
+    question: On catalog returns made in 2001, what was the total net loss for each call center that handled the return, by call center name?
+    tables: [catalog_returns, date_dim, call_center]
+    joins:
+      - from: catalog_returns.cr_returned_date_sk
+        to:   date_dim.d_date_sk
+      - from: catalog_returns.cr_call_center_sk
+        to:   call_center.cc_call_center_sk
+  - id: H4
+    question: For web sales made in 2001, what was the total revenue by the type of web page the order was placed on?
+    tables: [web_sales, date_dim, web_page]
+    joins:
+      - from: web_sales.ws_sold_date_sk
+        to:   date_dim.d_date_sk
+      - from: web_sales.ws_web_page_sk
+        to:   web_page.wp_web_page_sk
+  - id: H5
+    question: For goods returned to stores in 2000, how many units were returned by customers of each marital status, as recorded on the return itself?
+    tables: [store_returns, date_dim, customer_demographics]
+    joins:
+      - from: store_returns.sr_returned_date_sk
+        to:   date_dim.d_date_sk
+      - from: store_returns.sr_cdemo_sk
+        to:   customer_demographics.cd_demo_sk
+  - id: H6
+    question: On web returns made in 2002, how much cash was refunded to customers flagged as preferred, taking the customer who received the refund?
+    tables: [web_returns, date_dim, customer]
+    joins:
+      - from: web_returns.wr_returned_date_sk
+        to:   date_dim.d_date_sk
+      - from: web_returns.wr_refunded_customer_sk
+        to:   customer.c_customer_sk
+  - id: H7
+    question: What was the in-store revenue in 2002 from Electronics items, on sales where the shopper's address recorded on the sale was in Georgia?
+    tables: [store_sales, date_dim, item, customer_address]
+    joins:
+      - from: store_sales.ss_sold_date_sk
+        to:   date_dim.d_date_sk
+      - from: store_sales.ss_item_sk
+        to:   item.i_item_sk
+      - from: store_sales.ss_addr_sk
+        to:   customer_address.ca_address_sk
+  - id: H8
+    question: For catalog orders sold in 2001 at or after 6 p.m., how many units were shipped from each warehouse, by warehouse name?
+    tables: [catalog_sales, date_dim, time_dim, warehouse]
+    joins:
+      - from: catalog_sales.cs_sold_date_sk
+        to:   date_dim.d_date_sk
+      - from: catalog_sales.cs_sold_time_sk
+        to:   time_dim.t_time_sk
+      - from: catalog_sales.cs_warehouse_sk
+        to:   warehouse.w_warehouse_sk
+  - id: H9
+    question: For web orders sold in 2002 and shipped to addresses in New York state, how many units went by each type of shipping mode?
+    tables: [web_sales, date_dim, ship_mode, customer_address]
+    joins:
+      - from: web_sales.ws_sold_date_sk
+        to:   date_dim.d_date_sk
+      - from: web_sales.ws_ship_mode_sk
+        to:   ship_mode.sm_ship_mode_sk
+      - from: web_sales.ws_ship_addr_sk
+        to:   customer_address.ca_address_sk
+  - id: H10
+    question: How many promotions began in 2000?
+    tables: [promotion, date_dim]
+    joins:
+      - from: promotion.p_start_date_sk
+        to:   date_dim.d_date_sk
+  - id: H11
+    question: For in-store sales made in 2000 that were later returned, what was the total net loss on those returns, by the state of the store that made the sale?
+    tables: [store_returns, store_sales, date_dim, store]
+    joins:
+      - from: [store_returns.sr_item_sk, store_returns.sr_ticket_number]
+        to:   [store_sales.ss_item_sk, store_sales.ss_ticket_number]
+      - from: store_sales.ss_sold_date_sk
+        to:   date_dim.d_date_sk
+      - from: store_sales.ss_store_sk
+        to:   store.s_store_sk
+  - id: H12
+    question: How much were store employees paid per hour, on average, in each state during 2001?
+    tables: []
+    joins: []
+    decline: true
