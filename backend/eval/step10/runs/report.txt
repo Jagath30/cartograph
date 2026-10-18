@@ -1,0 +1,167 @@
+STEP 10: THE EVALUATION
+
+complete runs 5; void runs 0
+model gpt-6-luna, effort none, temperature 0.0; retrieval alpha 0.5, cut 0.5, cap 5, margin 0.10705139708498754; schema 4e674c8f1628, preferences 59022985a4452cb3ff99b618dd7a2cf90663df78be9e6c5bb78198a9474d1c26
+Measured: whether the generated SQL read the expected tables and joined along the expected path.
+Not measured: whether the numbers it returned were right (FR-37's scope).
+
+THE HELD-OUT SET (12 questions): the headline
+  retrieval
+    tables correctness: mean 20.0%, range 16.7% to 25.0%, over 5 runs
+      run 1: 2 of 12
+      run 2: 2 of 12
+      run 3: 3 of 12
+      run 4: 2 of 12
+      run 5: 3 of 12
+    path correctness: mean 20.0%, range 16.7% to 25.0%, over 5 runs
+      run 1: 2 of 12
+      run 2: 2 of 12
+      run 3: 3 of 12
+      run 4: 2 of 12
+      run 5: 3 of 12
+    path not measured, by the instrument's reason: none
+    tables not measured, by reason: none
+    decided before any SQL was read: declined 46, declined as expected 5
+    execution outcomes, beside the score: not executed 51, ok 9
+    attribute joins, beside the score: 0
+    SQL taking today's date (item 60): 0
+    empty results (item 60, outside the score): 5: H5 (run 1), H5 (run 2), H5 (run 3), H5 (run 4), H5 (run 5)
+    tokens, every answer of question 14 included: 125815 in, 1438 out, over 60 answers; mean per answer 2096.9 in, 24.0 out
+  full_schema
+    tables correctness: mean 90.0%, range 83.3% to 100.0%, over 5 runs
+      run 1: 12 of 12
+      run 2: 10 of 12
+      run 3: 11 of 12
+      run 4: 11 of 12
+      run 5: 10 of 12
+    path correctness: mean 90.0%, range 83.3% to 100.0%, over 5 runs
+      run 1: 12 of 12
+      run 2: 10 of 12
+      run 3: 11 of 12
+      run 4: 11 of 12
+      run 5: 10 of 12
+    path not measured, by the instrument's reason: none
+    tables not measured, by reason: none
+    decided before any SQL was read: declined as expected 5
+    execution outcomes, beside the score: not executed 5, ok 55
+    attribute joins, beside the score: 0
+    SQL taking today's date (item 60): 0
+    empty results (item 60, outside the score): 5: H5 (run 1), H5 (run 2), H5 (run 3), H5 (run 4), H5 (run 5)
+    tokens, every answer of question 14 included: 472015 in, 4731 out, over 60 answers; mean per answer 7866.9 in, 78.8 out
+  the two modes, question by question (runs correct)
+    tables: retrieval better on 0 (none); full schema better on 10 (H1, H2, H3, H4, H6, H7, H8, H10, H11, H12); the same on 2
+    path: retrieval better on 0 (none); full schema better on 10 (H1, H2, H3, H4, H6, H7, H8, H10, H11, H12); the same on 2
+  identical rows, outside the score: whether the two modes returned the same rows. This compares values returned, not their correctness; a different column order counts as different.
+    where both modes executed ok and neither result was truncated: equal in 6 of 9 question-runs
+    heldout H5: equal in 5 of 5 runs
+    heldout H12: equal in 1 of 4 runs
+  retrieval recall and precision, a diagnostic outside the headline
+    tables shown to the model: recall 18 of 28 (64.3%), precision 18 of 64 (28.1%)
+    tables in the selected tree: recall 17 of 28 (60.7%), precision 17 of 51 (33.3%)
+    the same in every run: yes
+  each question over the runs (correct/measured)
+    heldout H1: retrieval tables 0/5; retrieval path 0/5; retrieval distinct SQL 1; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 3
+    heldout H2: retrieval tables 0/5; retrieval path 0/5; retrieval distinct SQL 1; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 3
+    heldout H3: retrieval tables 0/5; retrieval path 0/5; retrieval distinct SQL 1; full_schema tables 1/5 UNSTABLE; full_schema path 1/5 UNSTABLE; full_schema distinct SQL 3
+    heldout H4: retrieval tables 0/5; retrieval path 0/5; retrieval distinct SQL 1; full_schema tables 3/5 UNSTABLE; full_schema path 3/5 UNSTABLE; full_schema distinct SQL 4
+    heldout H5: retrieval tables 5/5; retrieval path 5/5; retrieval distinct SQL 2; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 1
+    heldout H6: retrieval tables 0/5; retrieval path 0/5; retrieval distinct SQL 1; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 2
+    heldout H7: retrieval tables 0/5; retrieval path 0/5; retrieval distinct SQL 1; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 3
+    heldout H8: retrieval tables 0/5; retrieval path 0/5; retrieval distinct SQL 1; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 2
+    heldout H9: retrieval tables 5/5; retrieval path 5/5; retrieval distinct SQL 1; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 1
+    heldout H10: retrieval tables 0/5; retrieval path 0/5; retrieval distinct SQL 1; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 1
+    heldout H11: retrieval tables 0/5; retrieval path 0/5; retrieval distinct SQL 1; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 2
+    heldout H12: retrieval tables 2/5 UNSTABLE; retrieval path 2/5 UNSTABLE; retrieval distinct SQL 3; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 3
+
+THE ORIGINAL SET, scored on 15: the set the system was tuned and developed against (steps 6 and 7b)
+  retrieval
+    tables correctness: mean 65.3%, range 60.0% to 66.7%, over 5 runs
+      run 1: 10 of 15
+      run 2: 10 of 15
+      run 3: 9 of 15
+      run 4: 10 of 15
+      run 5: 10 of 15
+    path correctness: mean 67.1%, range 64.3% to 71.4%, over 5 runs
+      run 1: 10 of 15
+      run 2: 10 of 15
+      run 3: 9 of 14 (1 not measured)
+      run 4: 10 of 15
+      run 5: 10 of 14 (1 not measured)
+    path not measured, by the instrument's reason: computed_join_key 2
+    tables not measured, by reason: none
+    decided before any SQL was read: declined 20, declined as expected 5
+    execution outcomes, beside the score: not executed 25, ok 50
+    attribute joins, beside the score: 0
+    SQL taking today's date (item 60): 0
+    empty results (item 60, outside the score): 5: 1 (run 1), 1 (run 2), 1 (run 3), 1 (run 4), 1 (run 5)
+    tokens, every answer of question 14 included: 160525 in, 5301 out, over 80 answers; mean per answer 2006.6 in, 66.3 out
+  full_schema
+    tables correctness: mean 78.7%, range 73.3% to 80.0%, over 5 runs
+      run 1: 12 of 15
+      run 2: 11 of 15
+      run 3: 12 of 15
+      run 4: 12 of 15
+      run 5: 12 of 15
+    path correctness: mean 84.3%, range 78.6% to 85.7%, over 5 runs
+      run 1: 12 of 14 (1 not measured)
+      run 2: 11 of 14 (1 not measured)
+      run 3: 12 of 14 (1 not measured)
+      run 4: 12 of 14 (1 not measured)
+      run 5: 12 of 14 (1 not measured)
+    path not measured, by the instrument's reason: computed_join_key 8, self_join 3
+    tables not measured, by reason: none
+    decided before any SQL was read: declined 6, declined as expected 5
+    execution outcomes, beside the score: not executed 11, ok 64
+    attribute joins, beside the score: 0
+    SQL taking today's date (item 60): 0
+    empty results (item 60, outside the score): 5: 1 (run 1), 1 (run 2), 1 (run 3), 1 (run 4), 1 (run 5)
+    tokens, every answer of question 14 included: 629120 in, 8206 out, over 80 answers; mean per answer 7864.0 in, 102.6 out
+  the two modes, question by question (runs correct)
+    tables: retrieval better on 1 (6); full schema better on 3 (4, 8, 16); the same on 11
+    path: retrieval better on 1 (6); full schema better on 3 (4, 8, 16); the same on 11
+  identical rows, outside the score: whether the two modes returned the same rows. This compares values returned, not their correctness; a different column order counts as different.
+    where both modes executed ok and neither result was truncated: equal in 24 of 35 question-runs
+    original 1: equal in 5 of 5 runs
+    original 2: equal in 0 of 5 runs
+    original 5: equal in 5 of 5 runs
+    original 9: equal in 5 of 5 runs
+    original 10: equal in 0 of 5 runs
+    original 11: equal in 5 of 5 runs
+    original 12: equal in 4 of 5 runs
+  retrieval recall and precision, a diagnostic outside the headline
+    tables shown to the model: recall 34 of 37 (91.9%), precision 34 of 78 (43.6%)
+    tables in the selected tree: recall 34 of 37 (91.9%), precision 34 of 66 (51.5%)
+    the same in every run: yes
+  each question over the runs (correct/measured)
+    original 1: retrieval tables 5/5; retrieval path 5/5; retrieval distinct SQL 3; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 3
+    original 2: retrieval tables 5/5; retrieval path 5/5; retrieval distinct SQL 3; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 1
+    original 3: retrieval tables 5/5; retrieval path 5/5; retrieval distinct SQL 3; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 1
+    original 4: retrieval tables 0/5; retrieval path 0/5; retrieval distinct SQL 1; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 2
+    original 5: retrieval tables 5/5; retrieval path 5/5; retrieval distinct SQL 2; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 1
+    original 6: retrieval tables 4/5 UNSTABLE; retrieval path 4/5 UNSTABLE; retrieval distinct SQL 3; full_schema tables 0/5; full_schema path 0/5; full_schema distinct SQL 2
+    original 7: retrieval tables 0/5; retrieval path 0/3 UNSTABLE; retrieval distinct SQL 2; full_schema tables 0/5; full_schema path 0/0; full_schema distinct SQL 4
+    original 8: retrieval tables 0/5; retrieval path 0/5; retrieval distinct SQL 1; full_schema tables 4/5 UNSTABLE; full_schema path 4/5 UNSTABLE; full_schema distinct SQL 4
+    original 9: retrieval tables 5/5; retrieval path 5/5; retrieval distinct SQL 2; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 2
+    original 10: retrieval tables 5/5; retrieval path 5/5; retrieval distinct SQL 1; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 2
+    original 11: retrieval tables 5/5; retrieval path 5/5; retrieval distinct SQL 1; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 2
+    original 12: retrieval tables 5/5; retrieval path 5/5; retrieval distinct SQL 1; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 2
+    original 13: retrieval tables 0/5; retrieval path 0/5; retrieval distinct SQL 1; full_schema tables 0/5; full_schema path 0/5; full_schema distinct SQL 1
+    original 14 (EXCLUDED): retrieval tables 0/5; retrieval path 0/5; retrieval distinct SQL 3; full_schema tables 0/5; full_schema path 0/5; full_schema distinct SQL 5
+    original 15: retrieval tables 5/5; retrieval path 5/5; retrieval distinct SQL 1; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 1
+    original 16: retrieval tables 0/5; retrieval path 0/5; retrieval distinct SQL 4; full_schema tables 5/5; full_schema path 5/5; full_schema distinct SQL 2
+
+QUESTION 14, deleted from scoring (item 54); its raw results, apart
+    run 1 original 14 retrieval: not_answerable; tables wrong, path wrong; SQL tables none
+    run 1 original 14 full_schema: answered; tables wrong, path wrong; SQL tables catalog_returns, promotion, store_returns, web_returns
+    run 2 original 14 full_schema: answered; tables wrong, path wrong; SQL tables catalog_returns, item, promotion, store_returns, web_returns
+    run 2 original 14 retrieval: answered; tables wrong, path wrong; SQL tables item, promotion, web_returns
+    run 3 original 14 retrieval: not_answerable; tables wrong, path wrong; SQL tables none
+    run 3 original 14 full_schema: answered; tables wrong, path wrong; SQL tables catalog_returns, promotion
+    run 4 original 14 full_schema: answered; tables wrong, path wrong; SQL tables catalog_returns, promotion, store_returns, web_returns
+    run 4 original 14 retrieval: not_answerable; tables wrong, path wrong; SQL tables none
+    run 5 original 14 retrieval: answered; tables wrong, path wrong; SQL tables item, promotion, web_returns
+    run 5 original 14 full_schema: answered; tables wrong, path wrong; SQL tables catalog_returns, promotion, store_returns, web_returns
+
+SPEND
+    model calls 280: 1387475 tokens in (1105640 cached), 19676 out, $0.049078
+    the ledger on step10 purposes after the last run: $0.058442 of a cap of $0.30
