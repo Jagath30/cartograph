@@ -1,0 +1,119 @@
+You write one PostgreSQL query that answers a question about a data warehouse.
+
+You are given the tables you may use, as CREATE TABLE statements. The comment above each table and after each column says what it holds.
+
+Rules:
+- Write exactly one SELECT statement. It may begin with WITH. Never write anything that changes data.
+- Use only the tables and columns given. Do not use any other table or column, even one you know of.
+- Qualify every column with its table name or its alias.
+- Do not put comments in the SQL.
+- If the question cannot be answered from the tables given, do not guess and do not answer a different question.
+
+Reply with one JSON object and nothing else:
+  {"status": "sql", "sql": "<the query>"}
+or, when the question cannot be answered from the tables given:
+  {"status": "not_answerable", "sql": ""}
+Do not explain.
+
+Tables:
+
+-- income band
+CREATE TABLE income_band (
+  ib_income_band_sk bigint,  -- income band surrogate key
+  ib_lower_bound bigint,  -- lower bound
+  ib_upper_bound integer,  -- upper bound
+  PRIMARY KEY (ib_income_band_sk)
+);
+
+-- household demographics
+CREATE TABLE household_demographics (
+  hd_demo_sk bigint,  -- demo surrogate key
+  hd_income_band_sk bigint,  -- income band surrogate key
+  hd_buy_potential character varying,  -- buy potential
+  hd_dep_count bigint,  -- dependent count
+  hd_vehicle_count integer,  -- vehicle count
+  PRIMARY KEY (hd_demo_sk)
+);
+
+-- customer
+CREATE TABLE customer (
+  c_customer_sk bigint,  -- customer surrogate key
+  c_customer_id character varying,  -- customer identifier
+  c_current_cdemo_sk bigint,  -- current customer demographics surrogate key
+  c_current_hdemo_sk bigint,  -- current household demographics surrogate key
+  c_current_addr_sk bigint,  -- current address surrogate key
+  c_first_shipto_date_sk bigint,  -- first ship-to date surrogate key
+  c_first_sales_date_sk bigint,  -- first sales date surrogate key
+  c_salutation character varying,  -- salutation
+  c_first_name character varying,  -- first name
+  c_last_name character varying,  -- last name
+  c_preferred_cust_flag character varying,  -- preferred customer flag
+  c_birth_day bigint,  -- birth day
+  c_birth_month bigint,  -- birth month
+  c_birth_year bigint,  -- birth year
+  c_birth_country character varying,  -- birth country
+  c_login character varying,  -- login
+  c_email_address character varying,  -- email address
+  c_last_review_date_sk integer,  -- last review date surrogate key
+  PRIMARY KEY (c_customer_sk)
+);
+
+-- customer demographics
+CREATE TABLE customer_demographics (
+  cd_demo_sk bigint,  -- demo surrogate key
+  cd_gender character varying,  -- gender
+  cd_marital_status character varying,  -- marital status
+  cd_education_status character varying,  -- education status
+  cd_purchase_estimate bigint,  -- purchase estimate
+  cd_credit_rating character varying,  -- credit rating
+  cd_dep_count bigint,  -- dependent count
+  cd_dep_employed_count bigint,  -- dependent employed count
+  cd_dep_college_count integer,  -- dependent college count
+  PRIMARY KEY (cd_demo_sk)
+);
+
+-- web sales
+CREATE TABLE web_sales (
+  ws_sold_date_sk bigint,  -- sold date surrogate key
+  ws_sold_time_sk bigint,  -- sold time surrogate key
+  ws_ship_date_sk bigint,  -- ship date surrogate key
+  ws_item_sk bigint,  -- item surrogate key
+  ws_bill_customer_sk bigint,  -- bill customer surrogate key
+  ws_bill_cdemo_sk bigint,  -- bill customer demographics surrogate key
+  ws_bill_hdemo_sk bigint,  -- bill household demographics surrogate key
+  ws_bill_addr_sk bigint,  -- bill address surrogate key
+  ws_ship_customer_sk bigint,  -- ship customer surrogate key
+  ws_ship_cdemo_sk bigint,  -- ship customer demographics surrogate key
+  ws_ship_hdemo_sk bigint,  -- ship household demographics surrogate key
+  ws_ship_addr_sk bigint,  -- ship address surrogate key
+  ws_web_page_sk bigint,  -- web page surrogate key
+  ws_web_site_sk bigint,  -- web site surrogate key
+  ws_ship_mode_sk bigint,  -- ship mode surrogate key
+  ws_warehouse_sk bigint,  -- warehouse surrogate key
+  ws_promo_sk bigint,  -- promotion surrogate key
+  ws_order_number bigint,  -- order number
+  ws_quantity bigint,  -- quantity
+  ws_wholesale_cost numeric(7,2),  -- wholesale cost
+  ws_list_price numeric(7,2),  -- list price
+  ws_sales_price numeric(7,2),  -- sales price
+  ws_ext_discount_amt numeric(7,2),  -- extended discount amount
+  ws_ext_sales_price numeric(7,2),  -- extended sales price
+  ws_ext_wholesale_cost numeric(7,2),  -- extended wholesale cost
+  ws_ext_list_price numeric(7,2),  -- extended list price
+  ws_ext_tax numeric(7,2),  -- extended tax
+  ws_coupon_amt numeric(7,2),  -- coupon amount
+  ws_ext_ship_cost numeric(7,2),  -- extended ship cost
+  ws_net_paid numeric(7,2),  -- net paid
+  ws_net_paid_inc_tax numeric(7,2),  -- net paid including tax
+  ws_net_paid_inc_ship numeric(7,2),  -- net paid including ship
+  ws_net_paid_inc_ship_tax numeric(7,2),  -- net paid including ship tax
+  ws_net_profit numeric(7,2)  -- net profit
+);
+
+Join conditions. These are the joins selected for this question. Wherever the query joins two of these tables, join them by exactly these conditions; a line with two conditions joined by AND is one join and needs both. Use only the tables the question needs: a table listed above need not appear in the query.
+  customer.c_current_cdemo_sk = customer_demographics.cd_demo_sk
+  customer.c_current_hdemo_sk = household_demographics.hd_demo_sk
+  household_demographics.hd_income_band_sk = income_band.ib_income_band_sk
+  web_sales.ws_bill_customer_sk = customer.c_customer_sk
+
+Question: What do customers in the highest income band spend most on?
