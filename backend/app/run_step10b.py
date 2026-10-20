@@ -1,5 +1,5 @@
-"""Step 10b: the evaluation of v2, three modes, four sets (the owner's
-rulings at stop A, 18 October 2026).
+"""Step 10b: the evaluation of v2 and v2.1, four modes, four sets (the
+owner's rulings at stop A, 18 October 2026, and at stop A2, 20 October).
 
     docker compose exec backend python -m app.run_step10b --pilot --head SHA
     docker compose exec backend python -m app.run_step10b --write-manifest
@@ -9,13 +9,22 @@ rulings at stop A, 18 October 2026).
 Step 10's harness, imported and never edited: the judge (`eval_step10`),
 the record of an answer (`run_step10.record_of`), the transport retries,
 the rows hash, the worst case, the manifest, the void rules and the files
-created exclusively (`app.shell.step10`). What is new here is a third
-mode and the sets.
+created exclusively (`app.shell.step10`). What is new here is two modes
+and the sets.
 
 THE MODES. `retrieval` is v1, run afresh; `linked` is v2: a linking call,
 shown every table and key, names the tables, and from those on it is v1;
+`chosen` is v2.1: linked, then, where the tree holds a choice the
+alphabet made, a choosing call names the route the question means;
 `full_schema` is step 10's baseline. Their order rotates with the run:
-R-L-F, L-F-R, F-R-L, R-L-F, L-F-R.
+R-L-C-F, L-C-F-R, C-F-R-L, F-R-L-C, R-L-C-F.
+
+LINKED AND CHOSEN ARE PAIRED (ruling 8 at stop A2). One linking call per
+question serves both: the first of the two in the run's order makes it,
+the other is handed the same reply, so the difference between them is
+choosing's alone. The call is counted in each mode's tokens, as each
+would pay for it in the app, and once in the spend; each record says
+whether its linking was made there or shared.
 
 THE SETS, in this order in every run: heldout2, the fresh held-out set,
 the headline; the original set, scored on 15 (Q14's exclusion stands);
@@ -23,10 +32,11 @@ the first held-out set, now development; dev2, development. Each loader
 checks its own file's sha256 before parsing it. heldout2.yaml is read by
 its loader only, and only inside `--run`, after every refusal.
 
-`--pilot` puts dev2 and the eight development questions through the three
+`--pilot` puts dev2 and the eight development questions through the four
 modes once, to find faults in this harness. dev2 is scored (it is a
 development set); d1 to d8 carry no expectations. Kept in
-eval/step10b/pilot/. It never reads heldout2.yaml.
+eval/step10b/pilot2/ (the first pilot, of three modes, stays in
+eval/step10b/pilot/). It never reads heldout2.yaml.
 
 `--write-manifest`, `--run K --head SHA` and `--report` are step 10's,
 in eval/step10b/: the manifest written in the protocol's commit and
@@ -36,15 +46,16 @@ later run have no file, run K has been void fewer than three times, no
 run was stopped by the step cap and there is no report; the report once
 five runs are complete, never overwritten, with no paid call.
 
-THE CAP. $0.75 on ledger purposes beginning `step10b`. Before each answer:
-what has been spent, plus that answer's worst case, must stay within it,
-or the run is void and no run starts again. A linked answer's worst case
-is its linking call's and its generation's together, each at three
-uncached attempts: more than the shared budget of two retries allows, and
-so on the safe side.
+THE CAP. $1.00 on ledger purposes beginning `step10b` (ruling 8 at stop
+A2). Before each answer: what has been spent, plus that answer's worst
+case, must stay within it, or the run is void and no run starts again. A
+linked answer's worst case is its linking call's and its generation's
+together; a chosen answer's adds the choosing call's, bounded by the
+largest prompt any call sends. Each is at three uncached attempts: more
+than the shared budget of two retries allows, and so on the safe side.
 
 WHAT VOIDS A RUN is as at step 10: a transport or provider failure of
-either model that survives two retries, the model's spending ceiling, a
+any of the models that survives two retries, the model's spending ceiling, a
 failure to embed, the step cap. No run is ever voided, kept or replaced
 because of its results.
 """
@@ -65,6 +76,8 @@ from app.config import MODEL_PRICES, ModelPrice, get_settings
 from app.core.eval_set import parse_eval_set
 from app.core.eval_step10 import from_heldout, from_original, key_columns, retrieval_recall
 from app.core.full_schema import build_full_prompt
+from app.core.choosing import CHOOSE_MAX_OUTPUT_TOKENS, label
+from app.core.eval_step10 import expected_edge
 from app.core.linking import LINK_MAX_OUTPUT_TOKENS, build_link_prompt
 from app.core.sql_reading import schema_of
 from app.core.trace_document import preferences_hash
@@ -84,7 +97,7 @@ from app.run_step10 import (
     void_name,
 )
 from app.shell.embedder import EmbeddingFailed
-from app.shell.model_client import SpendLedger
+from app.shell.model_client import Message, ModelClient, ModelReply, ReplyShape, SpendLedger
 from app.shell.step10 import (
     FROZEN,
     HeldOutChanged,
@@ -100,9 +113,14 @@ from app.shell.step10 import (
 EVAL = BACKEND / "eval"
 STEP10B = EVAL / "step10b"
 MANIFEST = STEP10B / "frozen_code.json"
-MODES = ("retrieval", "linked", "full_schema")
+# v2.1's pilot. The first, of three modes, stays in eval/step10b/pilot/ as
+# it was written.
+PILOT = STEP10B / "pilot2"
+MODES = ("retrieval", "linked", "chosen", "full_schema")
 STEP_PREFIX_B = "step10b"
-STEP_CAP_B_USD = 0.75
+STEP_CAP_B_USD = 1.00
+# The modes with a linking call, and so a tree located from named tables.
+LINKING = ("linked", "chosen")
 
 # The code that answers and measures, as at step 10. Not the sets: each
 # has its own pinned hash, checked by its loader.
@@ -118,9 +136,74 @@ SETS: dict[str, tuple[Path, str]] = {
 
 
 def mode_order(number: int) -> tuple[str, ...]:
-    """R-L-F in run 1, L-F-R in run 2, F-R-L in run 3, and round again."""
+    """R-L-C-F in run 1, L-C-F-R in run 2, C-F-R-L in run 3, F-R-L-C in
+    run 4, and round again."""
     shift = (number - 1) % len(MODES)
     return MODES[shift:] + MODES[:shift]
+
+
+# --------------------------------------------------------------------------
+# One linking call for linked and chosen, and each failed call's class
+# --------------------------------------------------------------------------
+
+
+class SharedLinking:
+    """One linking call per question for linked and chosen. Each mode's
+    linking model is wrapped by `wrap`; the first asked for given messages
+    makes the call, any other is handed the same reply. Cleared between
+    questions."""
+
+    def __init__(self) -> None:
+        self._replies: dict[tuple, tuple[str, ModelReply]] = {}
+        self._said: dict[str, list[tuple[bool, str | None]]] = {}
+
+    def wrap(self, model: ModelClient, mode: str) -> ModelClient:
+        return _Shared(self, model, mode)
+
+    def clear(self) -> None:
+        self._replies.clear()
+        self._said.clear()
+
+    def take(self, mode: str) -> list[tuple[bool, str | None]]:
+        """Per linking call of `mode` since it was last asked: whether the
+        reply was shared, and the mode that made the call."""
+        return self._said.pop(mode, [])
+
+
+class _Shared:
+    def __init__(self, shared: SharedLinking, inner: ModelClient, mode: str) -> None:
+        self._shared, self._inner, self.model, self.mode = shared, inner, inner.model, mode
+
+    def complete(self, messages: tuple[Message, ...], shape: ReplyShape) -> ModelReply:
+        key = (messages, shape.name)
+        said = self._shared._said.setdefault(self.mode, [])
+        if key in self._shared._replies:
+            maker, reply = self._shared._replies[key]
+            said.append((True, maker))
+            return reply
+        reply = self._inner.complete(messages, shape)
+        self._shared._replies[key] = (self.mode, reply)
+        said.append((False, None))
+        return reply
+
+
+class FailureClasses:
+    """Between the ledgered model and the transport retries: keeps each
+    failed reply's failure and exception class, for the answer's record."""
+
+    def __init__(self, inner: ModelClient, role: str) -> None:
+        self._inner, self.model, self.role = inner, inner.model, role
+        self.failed: list[dict] = []
+
+    def complete(self, messages: tuple[Message, ...], shape: ReplyShape) -> ModelReply:
+        reply = self._inner.complete(messages, shape)
+        if reply.failure:
+            self.failed.append({"call": self.role, "failure": reply.failure, "class": reply.failure_class})
+        return reply
+
+    def take(self) -> list[dict]:
+        failed, self.failed = self.failed, []
+        return failed
 
 
 # --------------------------------------------------------------------------
@@ -170,43 +253,96 @@ def declined_at(trace: Trace) -> str | None:
     return "model" if trace.attempts else "locate"
 
 
-def _linking(trace: Trace) -> dict | None:
+def _attempt(a) -> dict:
+    return {"number": a.number, "outcome": a.outcome, "fault": a.fault,
+            "requested_model": a.reply.requested_model, "returned_model": a.reply.returned_model,
+            "tokens_in": a.reply.tokens_in, "tokens_cached": a.reply.tokens_cached, "tokens_out": a.reply.tokens_out,
+            "cost_usd": a.reply.cost_usd, "duration_ms": a.reply.duration_ms, "failure": a.reply.failure,
+            "failure_class": a.reply.failure_class}  # fmt: skip
+
+
+def _sums(attempts: list[dict]) -> dict:
+    return {key: sum(a[key] for a in attempts) for key in ("tokens_in", "tokens_out", "cost_usd")}
+
+
+def _linking(trace: Trace, shared: list[tuple[bool, str | None]]) -> dict | None:
+    """`shared`, per attempt: whether its reply was handed over from the
+    other linking mode, and which."""
     linking = trace.linking
     if linking is None:
         return None
-    attempts = [
-        {"number": a.number, "outcome": a.outcome, "tables": list(a.tables), "fault": a.fault,
-         "requested_model": a.reply.requested_model, "returned_model": a.reply.returned_model,
-         "tokens_in": a.reply.tokens_in, "tokens_cached": a.reply.tokens_cached, "tokens_out": a.reply.tokens_out,
-         "cost_usd": a.reply.cost_usd, "duration_ms": a.reply.duration_ms, "failure": a.reply.failure}
-        for a in linking.attempts
-    ]  # fmt: skip
+    attempts = [{**_attempt(a), "tables": list(a.tables)} for a in linking.attempts]
+    for attempt, (was_shared, _) in zip(attempts, shared):
+        attempt["shared"] = was_shared
+    makers = {maker for was_shared, maker in shared if was_shared}
     return {
         "tables": None if linking.tables is None else list(linking.tables),
         "prompt": {"sha256": sha256(linking.prompt.text), "chars": len(linking.prompt.text)},
         "attempts": attempts,
-        "tokens_in": sum(a["tokens_in"] for a in attempts),
-        "tokens_out": sum(a["tokens_out"] for a in attempts),
-        "cost_usd": sum(a["cost_usd"] for a in attempts),
+        "shared_with": next(iter(makers)) if makers else None,
+        **_sums(attempts),
     }
 
 
-def record_b(trace: Trace, asked: Asked, mode: str, schema, keys, extra: dict) -> dict:
-    """Step 10's record, plus where a decline was decided and, for linked,
-    the linking: the tables it named, each attempt's tokens, cost and fault,
-    and the recall of the tables named beside those in the tree and shown.
+def _edge_ids(expectation) -> set[str]:
+    """Every join an expectation lists, as a route id of one join."""
+    return {" / ".join(sorted(f"{a[0]}.{a[1]}={b[0]}.{b[1]}" for a, b in expected_edge(join)))
+            for alternatives in expectation.joins for join in alternatives}  # fmt: skip
 
-    Linked mode has a tree and a selection as retrieval does, so its record
-    is step 10's record of a retrieval answer, under its own mode."""
-    record = record_of(trace, asked, "retrieval" if mode == "linked" else mode, schema, keys, extra)
+
+def _choosing(trace: Trace, expectation) -> dict | None:
+    choosing = trace.choosing
+    if choosing is None:
+        return None
+    expected = _edge_ids(expectation) if expectation is not None and not expectation.decline else None
+    named = choosing.named or (None,) * len(choosing.choices)
+    asked = []
+    for choice, letter, settled in zip(choosing.choices, named, choosing.settled or (None,) * len(choosing.choices)):
+        route = settled.route if settled else None
+        asked.append({
+            "number": choice.number, "anchor": choice.anchor, "attached_to": choice.attached_to,
+            "alternatives": [{"letter": label(i), "route": path.id} for i, path in enumerate(choice.alternatives)],
+            "alphabet": choice.alphabet, "named": letter, "named_route": route,
+            "outcome": settled.outcome if settled else "left_open",
+            "named_alphabet": None if route is None else route == choice.alphabet,
+            "named_first": None if route is None else route == choice.alternatives[0].id,
+            "named_expected": None if route is None or expected is None else route in expected,
+        })  # fmt: skip
+    attempts = [{**_attempt(a), "named": list(a.named)} for a in choosing.attempts]
+    return {
+        "asked": asked,
+        "arose": [{"anchor": c.anchor, "attached_to": c.attached_to, "alternatives": [p.id for p in c.alternatives]}
+                  for c in choosing.arose],
+        "prompt": None if choosing.prompt is None else {"sha256": sha256(choosing.prompt.text),
+                                                       "chars": len(choosing.prompt.text)},
+        "attempts": attempts,
+        "fault": choosing.fault,
+        **_sums(attempts),
+    }  # fmt: skip
+
+
+def record_b(trace: Trace, asked: Asked, mode: str, schema, keys, extra: dict,
+             shared: list[tuple[bool, str | None]] = ()) -> dict:  # fmt: skip
+    """Step 10's record, plus where a decline was decided and, for linked
+    and chosen, the linking: the tables it named, each attempt's tokens,
+    cost and fault, whether it was shared, and the recall of the tables
+    named beside those in the tree and shown; for chosen, the choosing:
+    each choice asked, its alternatives as listed, what was named and how
+    the rebuilt tree took it.
+
+    Linked and chosen have a tree and a selection as retrieval does, so
+    their record is step 10's record of a retrieval answer, under its own
+    mode."""
+    record = record_of(trace, asked, "retrieval" if mode in LINKING else mode, schema, keys, extra)
     record["mode"] = mode
     record["declined_at"] = declined_at(trace)
-    record["linking"] = _linking(trace) if mode == "linked" else None
+    record["linking"] = _linking(trace, list(shared)) if mode in LINKING else None
+    record["choosing"] = _choosing(trace, asked.expectation) if mode == "chosen" else None
     e = asked.expectation
     record["expected"] = None if e is None else {
         "tables": list(e.tables), "tables_one_of": list(e.tables_one_of), "decline": e.decline,
     }  # fmt: skip
-    if mode == "linked":
+    if mode in LINKING:
         named = tuple(trace.linking.tables or ()) if trace.linking else ()
         if record["located"] is not None:
             record["located"]["linked"] = list(named)
@@ -220,10 +356,15 @@ def record_b(trace: Trace, asked: Asked, mode: str, schema, keys, extra: dict) -
 
 
 def void_cause_b(trace) -> str | None:
-    """Step 10's rule, read on the stage that ended the question: generation
-    when it was reached, linking when it was not."""
-    attempts = trace.attempts or (trace.linking.attempts if trace.linking is not None else ())
-    return void_cause(SimpleNamespace(attempts=attempts))
+    """Step 10's rule, read on the last attempt of every call the question
+    made: linking, choosing and generation. A failed choosing call does not
+    end the question (option i), so generation may follow it."""
+    stages = (getattr(trace, "linking", None), getattr(trace, "choosing", None))
+    for attempts in (*(stage.attempts for stage in stages if stage is not None), trace.attempts):
+        cause = void_cause(SimpleNamespace(attempts=attempts))
+        if cause:
+            return cause
+    return None
 
 
 # --------------------------------------------------------------------------
@@ -240,6 +381,15 @@ def worst_case_b(prompt_chars: int, link_chars: int, price: ModelPrice, max_outp
     )
 
 
+def worst_case_chosen(prompt_chars: int, link_chars: int, choose_chars: int, price: ModelPrice,
+                      max_output_tokens: int, link_max_output_tokens: int,
+                      choose_max_output_tokens: int) -> float:  # fmt: skip
+    """A chosen answer at most: linking's, choosing's and generation's."""
+    return worst_case_b(prompt_chars, link_chars, price, max_output_tokens, link_max_output_tokens) + worst_case_usd(
+        choose_chars, price, choose_max_output_tokens
+    )
+
+
 def run_once_b(
     number: int,
     sets: list[list[Asked]],
@@ -251,12 +401,16 @@ def run_once_b(
     schema,
     keys,
     keep_prompt: Callable[[str, str], None],
+    shared: SharedLinking | None = None,
+    classes: dict[str, list[FailureClasses]] | None = None,
 ) -> RunResult:
-    """One run: every question of every set, each in the three modes."""
+    """One run: every question of every set, each in the four modes."""
     result = RunResult()
     position = 0
     for questions in sets:
         for asked in questions:
+            if shared is not None:
+                shared.clear()
             for mode in mode_order(number):
                 position += 1
                 spent = ledger.total(STEP_PREFIX_B)
@@ -276,12 +430,16 @@ def run_once_b(
                     return result
                 if trace.linking is not None:
                     keep_prompt(sha256(trace.linking.prompt.text), trace.linking.prompt.text)
+                if trace.choosing is not None and trace.choosing.prompt is not None:
+                    keep_prompt(sha256(trace.choosing.prompt.text), trace.choosing.prompt.text)
                 if trace.prompt is not None:
                     keep_prompt(sha256(trace.prompt.text), trace.prompt.text)
                 retried = [event for model in models[mode] for event in model.take_events()]
+                failed = [call for watched in (classes or {}).get(mode, ()) for call in watched.take()]
+                linking_said = shared.take(mode) if shared is not None else []
                 extra = {"run": number, "position": position, "began": began, "cap_check": cap_check,
-                         "transport_retries": retried}  # fmt: skip
-                result.records.append(record_b(trace, asked, mode, schema, keys, extra))
+                         "transport_retries": retried, "failed_calls": failed}  # fmt: skip
+                result.records.append(record_b(trace, asked, mode, schema, keys, extra, linking_said))
                 cause = void_cause_b(trace)
                 if cause:
                     result.void = cause
@@ -343,7 +501,7 @@ def pilot_refusal(out: Path) -> str | None:
 
 def _execute(label: str, number: int, sets: list[list[Asked]], out: Path, head: str | None,
              differences: list[str] | None, cap: float, purpose: str) -> RunResult:
-    """One run, three modes, kept in its own file."""
+    """One run, four modes, kept in its own file."""
     from app.shell.pipeline_session import open_pipeline
 
     settings = get_settings()
@@ -355,15 +513,24 @@ def _execute(label: str, number: int, sets: list[list[Asked]], out: Path, head: 
         keep_identical(out / "prompts" / f"{digest}.txt", text)
 
     models: dict[str, list[RetryingModel]] = {mode: [] for mode in MODES}
+    classes: dict[str, list[FailureClasses]] = {mode: [] for mode in MODES}
+    # open_pipeline makes generation's model first, then linking's, then
+    # choosing's (app.shell.pipeline_session).
+    roles = ("generation", "linking", "choosing")
+    shared = SharedLinking()
 
     def wrap(model, mode):
-        models[mode].append(RetryingModel(model))
+        classes[mode].append(FailureClasses(model, roles[len(classes[mode])]))
+        models[mode].append(RetryingModel(classes[mode][-1]))
         return models[mode][-1]
 
     pipelines = {
-        mode: open_pipeline("run_step10b", purpose, mode=mode, wrap_model=lambda m, mode=mode: wrap(m, mode))
+        mode: open_pipeline(
+            "run_step10b", purpose, mode=mode, wrap_model=lambda m, mode=mode: wrap(m, mode),
+            wrap_linking=(lambda m, mode=mode: shared.wrap(m, mode)) if mode in LINKING else None,
+        )
         for mode in MODES
-    }
+    }  # fmt: skip
     some = pipelines["full_schema"]
     schema, keys = schema_of(some.snapshot), key_columns(some.snapshot)
     # The largest prompt each call can send, with room for the question.
@@ -375,10 +542,15 @@ def _execute(label: str, number: int, sets: list[list[Asked]], out: Path, head: 
         "full_schema": plain,
         "linked": worst_case_b(full_chars, link_chars, price, settings.sql_model_max_output_tokens,
                                LINK_MAX_OUTPUT_TOKENS),
+        # A choosing prompt is bounded here by the largest prompt any call sends.
+        "chosen": worst_case_chosen(full_chars, link_chars, max(full_chars, link_chars), price,
+                                    settings.sql_model_max_output_tokens, LINK_MAX_OUTPUT_TOKENS,
+                                    CHOOSE_MAX_OUTPUT_TOKENS),
     }  # fmt: skip
     retrieval = pipelines["retrieval"].retrieval
     began = datetime.now(UTC).isoformat(timespec="seconds")
-    result = run_once_b(number, sets, pipelines, models, some.ledger, cap, worst, schema, keys, keep_prompt)
+    result = run_once_b(number, sets, pipelines, models, some.ledger, cap, worst, schema, keys, keep_prompt, shared,
+                        classes)  # fmt: skip
     name = (f"{label}-{number:02d}.json" if not result.void else
             void_name(out, number) if label == "run" else pilot_void_name(out))  # fmt: skip
     document = {
@@ -389,7 +561,8 @@ def _execute(label: str, number: int, sets: list[list[Asked]], out: Path, head: 
         "settings": {"model": settings.sql_model, "reasoning_effort": settings.sql_model_reasoning_effort,
                      "temperature": settings.sql_model_temperature,
                      "max_output_tokens": settings.sql_model_max_output_tokens,
-                     "link_max_output_tokens": LINK_MAX_OUTPUT_TOKENS, "price": vars(price),
+                     "link_max_output_tokens": LINK_MAX_OUTPUT_TOKENS,
+                     "choose_max_output_tokens": CHOOSE_MAX_OUTPUT_TOKENS, "price": vars(price),
                      "alpha": retrieval.settings.alpha, "anchor_cut": retrieval.settings.anchor_cut,
                      "anchor_cap": retrieval.settings.anchor_cap, "margin": retrieval.settings.margin,
                      "schema_sha256": retrieval.stored.hash, "preferences_hash": preferences_hash(some.snapshot),
@@ -404,9 +577,9 @@ def _execute(label: str, number: int, sets: list[list[Asked]], out: Path, head: 
 
 
 def main(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(description="Step 10b's evaluation: three modes, four sets.")
+    parser = argparse.ArgumentParser(description="Step 10b's evaluation: four modes, four sets.")
     which = parser.add_mutually_exclusive_group(required=True)
-    which.add_argument("--pilot", action="store_true", help="dev2 and the development questions, three modes, once")
+    which.add_argument("--pilot", action="store_true", help="dev2 and the development questions, four modes, once")
     which.add_argument("--run", type=int, help="the evaluation: run K, from 1 to 5, and only that run")
     which.add_argument("--report", action="store_true", help="the report, once five runs are complete")
     which.add_argument("--write-manifest", action="store_true", help="record the frozen code's hashes")
@@ -430,7 +603,7 @@ def main(argv: list[str]) -> int:
         return 0
 
     if arguments.pilot:
-        out = arguments.out or STEP10B / "pilot"
+        out = arguments.out or PILOT
         # Before anything is opened or paid for: a run never overwrites a run.
         refused = pilot_refusal(out)
         if refused:

@@ -9185,6 +9185,21 @@ the ledger is never rewritten. From now on purpose "test linked" is left
 out of every count of calls (`NOT_CALLS` in `model_client.py`); dollar
 totals are unaffected.
 
+### Steps 4 to 6 of v2.1, and a fault of mine — 20 October 2026
+
+The choose stage and the chosen mode; the client's failure class; the
+runner and report for four modes, linked and chosen paired on one linking
+call per question, the cap $1.00, the second pilot's folder
+`eval/step10b/pilot2/` (the first pilot's files stay as written).
+
+**A fault of mine in `c4b3c94`, the client's failure class.** Its
+message says "Suite 1607 pass, 2 skip; CI conditions 1515 pass, 94 skip".
+The counts read were 1606 pass, 2 skip and 1514 pass, 94 skip; both exit
+statuses were 0 and were read before the commit. I wrote the message in
+the same command that printed the counts, and guessed them. Corrected
+here, history not rewritten. From then on the counts are read in a
+command of their own before any message names them.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:

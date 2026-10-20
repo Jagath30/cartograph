@@ -6,25 +6,30 @@ take the mode as given (`measures`, `causes`, `executions`, `apart`,
 `excluded_lines`); where they are written for two modes, the three-mode
 forms are here.
 
-For the evaluation, in this order (the owner's ruling 9 at stop A):
+For the evaluation, in this order (the owner's ruling 9 at stop A2):
 
-  the fresh held-out set first, the headline: linked against full
-    schema, then linked against retrieval, question by question; then
-    the three modes side by side;
+  the fresh held-out set first, the headline: chosen against full
+    schema, then linked against full schema, then chosen against linked,
+    question by question; then the four modes side by side;
   then the original set (scored on 15), the first held-out set and dev2,
     each labelled for what it is, in the same form;
   for each set and mode: table and path correctness, each run's count and
     the mean of the runs with their range; declines by stage (linking,
     locate, the model); what left a denominator; execution outcomes;
     attribute joins, today's date and empty results; tokens of generation,
-    and linking's tokens apart;
+    and linking's and choosing's tokens apart; for chosen, the choices
+    asked, named, left open, not met and arisen after the rebuild, and
+    how often the alphabet's own pick and the first-listed alternative
+    were named;
   recall and precision of the tables named by linking, in the tree and
     shown, a diagnostic outside the headline;
-  each question's stability over the runs, the three modes side by side;
+  each question's stability over the runs, the four modes side by side;
   question 14 apart; void runs; spend.
 
 Tokens, not dollars, per set and mode: dollars depend on the provider's
-cache and so on run order, and appear only as spend.
+cache and so on run order, and appear only as spend. A linking call
+shared by linked and chosen is in each mode's tokens, and once in the
+spend.
 """
 
 from pathlib import Path
@@ -34,8 +39,10 @@ from app.shell.step10 import create_exclusively
 from app.step10_report import _by_question, _count, _pct, _scored, apart, causes, excluded_lines, executions, load, measures
 
 # The order the modes are shown in: the headline's.
-SHOWN = ("linked", "full_schema", "retrieval")
-NAMES = {"linked": "linked", "full_schema": "full schema", "retrieval": "retrieval"}
+SHOWN = ("chosen", "linked", "full_schema", "retrieval")
+NAMES = {"chosen": "chosen", "linked": "linked", "full_schema": "full schema", "retrieval": "retrieval"}
+# The comparisons, in the headline's order (ruling 9 at stop A2).
+VERSUS = (("chosen", "full_schema"), ("linked", "full_schema"), ("chosen", "linked"))
 SETS_B = (
     ("heldout2", "THE FRESH HELD-OUT SET (heldout2, 12 questions): the headline"),
     ("original", "THE ORIGINAL SET, scored on 15: the set the system was tuned and developed against (steps 6 and 7b)"),
@@ -76,7 +83,7 @@ def declines(records: list[dict]) -> list[str]:
 
 
 def tokens_b(records: list[dict], mode: str) -> list[str]:
-    """Generation's tokens; linking's apart, in linked mode."""
+    """Generation's tokens; linking's and choosing's apart."""
     n = len(records)
     if not n:
         return ["    tokens: no answers"]
@@ -84,12 +91,35 @@ def tokens_b(records: list[dict], mode: str) -> list[str]:
     tout = sum(a["tokens_out"] for r in records for a in r["attempts"])
     lines = [f"    tokens of generation, every answer: {tin} in, {tout} out, over {n} answers; "
              f"mean per answer {tin / n:.1f} in, {tout / n:.1f} out"]  # fmt: skip
-    if mode == "linked":
-        calls = [a for r in records if r["linking"] for a in r["linking"]["attempts"]]
-        lin, lout = sum(a["tokens_in"] for a in calls), sum(a["tokens_out"] for a in calls)
-        lines.append(f"    linking, apart: {lin} in, {lout} out, over {len(calls)} calls in {n} answers; "
-                     f"mean per answer {lin / n:.1f} in, {lout / n:.1f} out")  # fmt: skip
+    for stage in ("linking", "choosing"):
+        if not any(r.get(stage) for r in records):
+            continue
+        calls = [a for r in records if r.get(stage) for a in r[stage]["attempts"]]
+        sin, sout = sum(a["tokens_in"] for a in calls), sum(a["tokens_out"] for a in calls)
+        lines.append(f"    {stage}, apart: {sin} in, {sout} out, over {len(calls)} calls in {n} answers; "
+                     f"mean per answer {sin / n:.1f} in, {sout / n:.1f} out")  # fmt: skip
     return lines
+
+
+def choosing_lines(records: list[dict]) -> list[str]:
+    """Chosen mode: what was asked, what was named, and how it was taken."""
+    with_choosing = [r for r in records if r.get("choosing")]
+    asking = [r for r in with_choosing if r["choosing"]["asked"]]
+    asked = [c for r in asking for c in r["choosing"]["asked"]]
+    named = [c for c in asked if c["named_route"] is not None]
+    outcomes = [c["outcome"] for c in asked]
+    failed = sum(1 for r in asking if r["choosing"]["fault"])
+    arose = sum(len(r["choosing"]["arose"]) for r in with_choosing)
+    judged = [c for c in named if c["named_expected"] is not None]
+    return [
+        f"    choosing: {len(asking)} of {len(with_choosing)} answers asked; {len(asked)} choices asked: "
+        f"{len(named)} named (applied {outcomes.count('applied')}, not met {outcomes.count('not_met')}), "
+        f"{outcomes.count('left_open')} left open; {arose} arose after the rebuild; {failed} calls failed",
+        f"    named the alphabet's own pick {sum(1 for c in named if c['named_alphabet'])} of {len(named)}; "
+        f"named the first-listed alternative {sum(1 for c in named if c['named_first'])} of {len(named)}",
+        f"    named the route the expectation lists {sum(1 for c in judged if c['named_expected'])} of {len(judged)}, "
+        "a diagnostic",
+    ]  # fmt: skip
 
 
 def recall_b(runs: list[dict], set_name: str) -> list[str]:
@@ -97,6 +127,8 @@ def recall_b(runs: list[dict], set_name: str) -> list[str]:
     lines = []
     whats = (("linked", "named", "tables named by linking"), ("linked", "tree", "linked, tables in the selected tree"),
              ("linked", "shown", "linked, tables shown to the model"),
+             ("chosen", "tree", "chosen, tables in the selected tree"),
+             ("chosen", "shown", "chosen, tables shown to the model"),
              ("retrieval", "tree", "retrieval, tables in the selected tree"),
              ("retrieval", "shown", "retrieval, tables shown to the model"))  # fmt: skip
     for mode, which, label in whats:
@@ -153,22 +185,29 @@ def mode_lines(runs: list[dict], set_name: str, mode: str) -> list[str]:
     lines += executions(runs, set_name, mode)
     lines += apart(runs, set_name, mode)
     lines += tokens_b(_counted(runs, set_name, mode), mode)
+    if mode == "chosen":
+        lines += choosing_lines(_counted(runs, set_name, mode))
+    return lines
+
+
+def comparisons(runs: list[dict], set_name: str) -> list[str]:
+    lines = []
+    for first, second in VERSUS:
+        lines.append(f"  {NAMES[first]} against {NAMES[second]}, question by question (runs correct)")
+        lines += versus(runs, set_name, first, second)
     return lines
 
 
 def set_lines(runs: list[dict], set_name: str, title: str) -> list[str]:
     lines = ["", title]
-    lines.append("  linked against full schema, question by question (runs correct)")
-    lines += versus(runs, set_name, "linked", "full_schema")
-    lines.append("  linked against retrieval, question by question (runs correct)")
-    lines += versus(runs, set_name, "linked", "retrieval")
-    lines.append("  the three modes side by side")
+    lines += comparisons(runs, set_name)
+    lines.append("  the four modes side by side")
     for mode in SHOWN:
         lines += mode_lines(runs, set_name, mode)
     lines.append("  identical rows, outside the score: whether two modes returned the same rows. This compares values "
                  "returned, not their correctness; a different column order counts as different.")  # fmt: skip
-    lines += identical_rows_b(runs, set_name, "linked", "full_schema")
-    lines += identical_rows_b(runs, set_name, "linked", "retrieval")
+    for first, second in VERSUS:
+        lines += identical_rows_b(runs, set_name, first, second)
     lines.append("  recall and precision of tables, a diagnostic outside the headline")
     lines += recall_b(runs, set_name)
     lines.append("  each question over the runs (correct/measured)")
@@ -193,11 +232,16 @@ def _spend(runs: list[dict], void: list[dict]) -> list[str]:
     last = max(every, key=lambda d: d["ended"])
     records = [r for d in every for r in d["records"]]
     generation = [a for r in records for a in r["attempts"]]
-    linking = [a for r in records if r.get("linking") for a in r["linking"]["attempts"]]
-    calls = generation + linking
-    cost = sum(r["cost_usd"] for r in records)
+    every_link = [a for r in records if r.get("linking") for a in r["linking"]["attempts"]]
+    # A linking call shared by linked and chosen was made once.
+    linking = [a for a in every_link if not a.get("shared")]
+    choosing = [a for r in records if r.get("choosing") for a in r["choosing"]["attempts"]]
+    calls = generation + linking + choosing
+    cost = sum(a["cost_usd"] for a in calls)
+    shared = len(every_link) - len(linking)
     lines = [
-        f"    model calls {len(calls)} ({len(generation)} generation, {len(linking)} linking): "
+        f"    model calls {len(calls)} ({len(generation)} generation, {len(linking)} linking, {len(choosing)} choosing"
+        + (f"; {shared} linking call{'s' if shared != 1 else ''} shared, counted once" if shared else "") + "): "
         f"{sum(a['tokens_in'] for a in calls)} tokens in ({sum(a['tokens_cached'] for a in calls)} cached), "
         f"{sum(a['tokens_out'] for a in calls)} out, ${cost:.6f}",
         f"    the ledger on step10b purposes after the last run: ${last['spend']['step10b_usd_after']:.6f}"
@@ -247,6 +291,34 @@ def linked_line(r: dict) -> str:
     return line
 
 
+def _outcome(r: dict | None) -> str:
+    if r is None:
+        return "not run"
+    said = r["outcome"] + (f" (at {r['declined_at']})" if r["declined_at"] else "")
+    return said + (f"; tables {r['score']['tables']}, path {r['score']['path']}" if r["score"] else "")
+
+
+def chosen_lines(r: dict, linked: dict | None) -> list[str]:
+    choosing = r["choosing"]
+    lines = []
+    if choosing is None:
+        lines.append(f"{r['id']} chosen: nothing located, nothing to choose")
+    elif not choosing["asked"]:
+        lines.append(f"{r['id']} chosen: no choice the alphabet made; no call")
+    for c in (choosing or {}).get("asked", []):
+        alternatives = "; ".join(f"{a['letter']}. {a['route']}" for a in c["alternatives"])
+        alphabet = next(a["letter"] for a in c["alternatives"] if a["route"] == c["alphabet"])
+        named = f"named {c['named']} ({c['named_route']})" if c["named"] else "named none"
+        lines.append(f"{r['id']} choice {c['number']}: {c['anchor']}, which the alphabet attached to {c['attached_to']}; "
+                     f"{alternatives}; the alphabet's {alphabet}; {named}: {c['outcome']}")  # fmt: skip
+    if choosing and choosing["fault"]:
+        lines.append(f"{r['id']} choosing failed: {choosing['fault']}; every choice left open")
+    for a in (choosing or {}).get("arose", []):
+        lines.append(f"{r['id']} arose after the rebuild: {a['anchor']}, attached to {a['attached_to']}")
+    lines.append(f"{r['id']} chosen: {_outcome(r)} | linked: {_outcome(linked)}")
+    return lines
+
+
 def _answer_lines(r: dict) -> list[str]:
     lines = ["", f"{r['set']} {r['id']} {r['mode']} (position {r['position']}): {r['outcome']}"
              + (f", declined at {r['declined_at']}" if r["declined_at"] else "")]  # fmt: skip
@@ -258,6 +330,14 @@ def _answer_lines(r: dict) -> list[str]:
             lines.append(f"    link {a['number']}       {a['outcome']}" + (f" ({a['fault']})" if a["fault"] else "")
                          + f"; {a['tokens_in']} in ({a['tokens_cached']} cached), {a['tokens_out']} out, "
                          f"{a['duration_ms']} ms; returned model {a['returned_model']}")  # fmt: skip
+    if r.get("choosing") and r["choosing"]["attempts"]:
+        for a in r["choosing"]["attempts"]:
+            lines.append(f"    choose {a['number']}     {a['outcome']}" + (f" ({a['fault']})" if a["fault"] else "")
+                         + f"; named {', '.join(n or 'none' for n in a['named']) or '-'}; {a['tokens_in']} in "
+                         f"({a['tokens_cached']} cached), {a['tokens_out']} out, {a['duration_ms']} ms")  # fmt: skip
+    if r.get("failed_calls"):
+        lines.append("    failed calls " + "; ".join(f"{f['call']} {f['failure']} ({f['class'] or 'no class'})"
+                                                   for f in r["failed_calls"]))  # fmt: skip
     if r["located"]:
         lines.append(f"    tree         {_names(r['located']['tree_tables'])}; joins "
                      f"{'; '.join(r['located']['tree_joins']) or 'none'}; warnings "
@@ -291,7 +371,7 @@ def _answer_lines(r: dict) -> list[str]:
 
 def pilot_report_b(runs: list[dict], void: list[dict]) -> str:
     lines = ["STEP 10B: THE PILOT", "",
-             "dev2 and the eight development questions, three modes, once. dev2 is scored, as a development set; "
+             "dev2 and the eight development questions, four modes, once. dev2 is scored, as a development set; "
              "d1 to d8 carry no expectations and are not scored.",
              f"complete runs {len(runs)}; void runs {len(void)}"]  # fmt: skip
     lines += [f"    void, {d['file']}: {d['void']}" for d in void]
@@ -304,11 +384,15 @@ def pilot_report_b(runs: list[dict], void: list[dict]) -> str:
     lines += ["", "LINKED MODE, QUESTION BY QUESTION: the tables linking named, the tables in the tree, the outcome"]
     lines += [linked_line(r) for r in records if r["mode"] == "linked"]
 
+    lines += ["", "CHOSEN MODE, CHOICE BY CHOICE: each choice the alphabet made, its alternatives as listed, what the "
+              "model named and how the rebuilt tree took it; then the outcome, beside linked's"]  # fmt: skip
+    linked_of = {(r["set"], r["id"]): r for r in records if r["mode"] == "linked"}
+    for r in records:
+        if r["mode"] == "chosen":
+            lines += chosen_lines(r, linked_of.get((r["set"], r["id"])))
+
     lines += ["", "DEVELOPMENT SET 2 (dev2), scored"]
-    lines.append("  linked against full schema, question by question (runs correct)")
-    lines += versus(complete, "dev2", "linked", "full_schema")
-    lines.append("  linked against retrieval, question by question (runs correct)")
-    lines += versus(complete, "dev2", "linked", "retrieval")
+    lines += comparisons(complete, "dev2")
     for mode in SHOWN:
         lines += mode_lines(complete, "dev2", mode)
     lines.append("  recall and precision of tables, a diagnostic")
