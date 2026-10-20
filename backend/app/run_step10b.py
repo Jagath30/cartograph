@@ -608,8 +608,10 @@ def main(argv: list[str]) -> int:
         refused = pilot_refusal(out)
         if refused:
             sys.exit(f"run_step10b: {refused}; nothing was run")
+        # Each pilot spends under its own folder's name. The first two pilots
+        # both spent under "step10b pilot", before this was so.
         result = _execute("pilot", 1, pilot_sets(), out, arguments.head, _manifest_differences(), arguments.cap,
-                          f"{STEP_PREFIX_B} pilot")  # fmt: skip
+                          f"{STEP_PREFIX_B} {out.name}")  # fmt: skip
         if result.void:
             again = pilot_refusal(out)
             print("run_step10b: the pilot is void. " + (f"The pilot stops: {again}." if again else

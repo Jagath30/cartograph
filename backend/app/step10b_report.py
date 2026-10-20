@@ -112,7 +112,7 @@ def choosing_lines(records: list[dict]) -> list[str]:
     arose = sum(len(r["choosing"]["arose"]) for r in with_choosing)
     judged = [c for c in named if c["named_expected"] is not None]
     return [
-        f"    choosing: {len(asking)} of {len(with_choosing)} answers asked; {len(asked)} choices asked: "
+        f"    choosing: {len(asking)} of {len(with_choosing)} located answers asked; {len(asked)} choices asked: "
         f"{len(named)} named (applied {outcomes.count('applied')}, not met {outcomes.count('not_met')}), "
         f"{outcomes.count('left_open')} left open; {arose} arose after the rebuild; {failed} calls failed",
         f"    named the alphabet's own pick {sum(1 for c in named if c['named_alphabet'])} of {len(named)}; "
@@ -219,8 +219,9 @@ def _settings(runs: list[dict]) -> list[str]:
     if not runs:
         return []
     s = runs[0]["settings"]
+    choosing = f", choosing's {s['choose_max_output_tokens']}" if "choose_max_output_tokens" in s else ""
     return [f"model {s['model']}, effort {s['reasoning_effort']}, temperature {s['temperature']}; linking's output cap "
-            f"{s['link_max_output_tokens']} tokens; retrieval alpha {s['alpha']}, cut {s['anchor_cut']}, cap "
+            f"{s['link_max_output_tokens']} tokens{choosing}; retrieval alpha {s['alpha']}, cut {s['anchor_cut']}, cap "
             f"{s['anchor_cap']}, margin {s['margin']}; schema {s['schema_sha256'][:12]}, preferences "
             f"{s['preferences_hash']}"]  # fmt: skip
 

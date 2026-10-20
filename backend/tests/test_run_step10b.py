@@ -866,7 +866,7 @@ def test_the_report_counts_the_choices_and_what_was_named(tmp_path) -> None:
     result, _, _ = _run(tmp_path, [[Q1]], {m: [reply(Q1_SQL)] for m in MODES}, [Q1_TABLES], choose_script=[named])
     head = runs_report_b([_document([_heldout2(r) for r in result.records], 1)], []).split("THE ORIGINAL SET", 1)[0]
     chosen = head.split("  chosen\n", 1)[1].split("  linked\n", 1)[0]
-    assert ("    choosing: 1 of 1 answers asked; 1 choices asked: 1 named (applied 1, not met 0), 0 left open; "
+    assert ("    choosing: 1 of 1 located answers asked; 1 choices asked: 1 named (applied 1, not met 0), 0 left open; "
             "0 arose after the rebuild; 0 calls failed") in chosen
     assert "    named the alphabet's own pick 0 of 1; named the first-listed alternative " in chosen
     assert "    named the route the expectation lists 1 of 1, a diagnostic" in chosen
@@ -924,3 +924,30 @@ def test_a_mode_without_linking_or_choosing_has_no_line_for_them(tmp_path) -> No
     linked = head.split("  linked\n", 1)[1].split("  full_schema\n", 1)[0]
     assert "linking, apart" not in retrieval and "choosing, apart" not in retrieval
     assert "linking, apart" in linked and "choosing, apart" not in linked
+
+
+def test_a_pilot_spends_under_a_purpose_of_its_own_folder(tmp_path, monkeypatch) -> None:
+    """Both pilots spent under "step10b pilot", so the second's "this
+    purpose" counted the first's too (found by the second pilot)."""
+    import app.run_step10b as runner
+    from app.shell import pipeline_session
+
+    purposes: list[str] = []
+    fake = _fake_open_pipeline(tmp_path, {m: [reply(Q1_SQL)] * 2 for m in MODES}, LINKS * 2)
+
+    def open_pipeline(name, purpose, **keywords):
+        purposes.append(purpose)
+        return fake(name, purpose, **keywords)
+
+    monkeypatch.setattr(pipeline_session, "open_pipeline", open_pipeline)
+    monkeypatch.setattr(runner, "pilot_sets", lambda: [[Asked("dev2", "H1", Q1.question, ORIGINAL["1"])], [DEV]])
+    monkeypatch.setattr(runner, "RetryingModel", lambda model: RetryingModel(model, sleep=lambda seconds: None))
+    assert main(["--pilot", "--out", str(tmp_path / "pilot3")]) == 0
+    assert set(purposes) == {"step10b pilot3"}
+
+
+def test_the_settings_line_gives_both_output_caps(tmp_path) -> None:
+    result, _, _ = _run(tmp_path, [[Q1]], {m: [reply(Q1_SQL)] for m in MODES}, [Q1_TABLES])
+    document = _document(result.records, 1)
+    document["settings"]["choose_max_output_tokens"] = 400
+    assert "linking's output cap 400 tokens, choosing's 400" in runs_report_b([document], [])
