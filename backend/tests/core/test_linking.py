@@ -257,3 +257,15 @@ def test_no_tables_never_reach_locate_and_an_unknown_one_is_refused(graph) -> No
         locate_linked("q", (), scores, (), graph, SETTINGS)
     with pytest.raises(ValueError, match="not in the graph"):
         locate_linked("q", ("store", "warehouse"), scores, (), graph, SETTINGS)
+
+
+def test_a_route_named_for_the_question_reaches_the_tree(graph) -> None:
+    """v2.1: the routes the choosing call named are build_tree's `chosen`."""
+    scores = _scores(graph, catalog_sales=1.0, customer_address=0.9)
+    plain = locate_linked("q", ("catalog_sales", "customer_address"), scores, (), graph, SETTINGS)
+    (ship,) = [p for p in plain.tree.attachments[1].tied if "cs_ship_addr_sk" in p.id]
+    located = locate_linked("q", ("catalog_sales", "customer_address"), scores, (), graph, SETTINGS,
+                            chosen=frozenset({ship.id}))  # fmt: skip
+    assert located.tree.attachments[1].rule == "model_choice" and located.tree.attachments[1].path.id == ship.id
+    assert located.warning_codes == frozenset()
+    assert located.linked == plain.linked and located.retrieval == plain.retrieval

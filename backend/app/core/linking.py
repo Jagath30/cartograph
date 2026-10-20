@@ -142,9 +142,11 @@ def locate_linked(
     settings: Settings,
     max_joins: int = DEFAULT_MAX_JOINS,
     subgraph_bound: int = DEFAULT_SUBGRAPH_BOUND,
+    chosen: frozenset[str] = frozenset(),
 ) -> LinkedLocated:
     """`linked` is never empty: no tables is the decline, decided before
-    anything is located."""
+    anything is located. `chosen` is v2.1's: the routes the choosing call
+    named for this question (app.core.choosing)."""
     if not linked:
         raise ValueError("no tables were linked; a decline is never located")
     unknown = sorted(set(linked) - set(table_nodes(graph)))
@@ -160,6 +162,7 @@ def locate_linked(
         set_aside=(),
         max_joins=max_joins,
         subgraph_bound=subgraph_bound,
+        chosen=chosen,
     )
     declined = tree.decline_reason == ANCHORS_NOT_CONNECTED
     return LinkedLocated(
