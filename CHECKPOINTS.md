@@ -9092,6 +9092,69 @@ the model joined both). Reported, not tuned.
 Spend on step10b purposes: $0.04163545, 107 model calls and 12
 embeddings, both pilots. Stop C.
 
+### The owner's rulings at stop C, and at stop A2 on v2.1 — 20 October 2026
+
+At stop C: the two harness fixes of `4e1e58b` approved, the void pilot
+kept as written; all the wording quoted at stop C approved as written; no
+diagnostic call for H7.
+
+What the pilot showed: linking named exactly the expected tables (36 of
+36), and every linked loss on dev2 is a choice of key among the right
+tables. Before heldout2 is spent v2 gains one part, v2.1, "choosing": when
+the tree holds a choice the alphabet made (DD-12's last rule), one model
+call is shown the question and each such choice's alternatives, and names
+for each the alternative the question means, or none. A named alternative
+decides that choice for this question alone, after DD-12's other rules and
+ahead of the alphabet; the tree is rebuilt with it; from there nothing
+changes. At stop A2 the plan was found to place H8 under this too: its
+linked tree carries `multi_anchor`, raised only for an alphabetical choice.
+
+The rulings at stop A2:
+1. H8: an offline rebuild (no model call; the vector is cached), reported
+   at stop C1, so that "alphabetical" is confirmed, not inferred.
+2. `build_tree` gains `chosen`, the routes named for one question, and the
+   rule `model_choice`. The Explainer's branch for it raises neither
+   arbitrary_choice nor multi_anchor. With `chosen` absent or empty v1 and
+   v2 are byte-identical, pinned by tests.
+3. A choice is an attachment the alphabet decided, of either kind: a tie
+   at one table, or between places. One call and one rebuild; a choice
+   that arises after the rebuild, and a named route the rebuilt tree never
+   meets, are recorded as such. No cap on alternatives. An output cap of
+   400 tokens, held by its test.
+4. The choosing prompt as drafted, its second paragraph reading "The
+   tables a query needs have been chosen. Between some of them there is
+   more than one way to join. For each choice below you are given its
+   alternatives, each as a join condition and a sentence saying what it
+   joins."
+5. Position bias: each choice's alternatives are listed in the order of
+   the sha256 of the question's text joined to the route's id, never in
+   the alphabet's order. The report counts how often the alphabet's pick
+   was named, and how often the first-listed alternative was.
+6. The reply form, validation and the shared budget of two retries as
+   planned. A failed choosing call leaves the v2 tree: every choice open,
+   the fault recorded, the question goes on.
+7. The choosing call: the same model and settings as linking (gpt-6-luna,
+   effort none, temperature 0).
+8. The evaluation: four modes (retrieval, linked, chosen, full schema),
+   rotating R-L-C-F, L-C-F-R, C-F-R-L, F-R-L-C, R-L-C-F; the same sets;
+   N = 5; a cap of $1.00. Chosen and linked are paired: in each run one
+   linking call per question serves both, counted in each mode's tokens
+   and once in the spend, its record saying it is shared.
+9. The headline, on heldout2: chosen against full schema, then linked
+   against full schema, then chosen against linked, then the four side by
+   side. The README will say that dev2 helped shape v2.1.
+10. `run_step10b.py` and `step10b_report.py` may change, step 10b having no
+    protocol yet; tests first; the first pilot's committed files stay.
+11. The model client records a transport failure's exception class name,
+    never its text, on three conditions (only `type(error).__name__` of an
+    httpx error, in that except clause alone; never its str, repr, args,
+    request, cause or context), with a fake-key test, before the manifest.
+
+The order of work: `join_tree` and the Explainer; `choosing.py`; stop C1
+(dev2 H7's choosing prompt and reply schema as they would be sent, and
+H8's rebuild); then the orchestrator stage, the client's failure class,
+the runner and report, the second pilot (stop C2), the protocol (stop D).
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:

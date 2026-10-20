@@ -40,6 +40,15 @@ candidates, it withdraws the OTHER candidates that end at the same table
 -- the other keys to it -- and says nothing of the rest. The same two
 outcomes follow: one left, chosen by preference; several, the alphabet.
 
+A ROUTE NAMED FOR THIS QUESTION (step 10b, v2.1; the owner's rulings at
+stop A2). `chosen` holds the ids of routes a model named, reading the
+question, for this question alone. One decides an attachment only where
+the alphabet would have: after the wording, a declared preference of
+either kind and the narrowing between places, and only when exactly one
+of the routes left is named. The rule is then `model_choice`: never a
+rule's, never the overlay's, and not arbitrary. A route a preference
+withdrew cannot be named back. With `chosen` empty nothing here runs.
+
 No kind of table is favoured anywhere in this (Charter D-06): no fact table
 as hub, no ranking by fan-out. Distance and the question decide; where they
 cannot, the alphabet does and the tree says so.
@@ -65,6 +74,7 @@ What was dropped and what was cut are both recorded.
 """
 
 from dataclasses import dataclass, replace
+from typing import Literal
 
 import networkx as nx
 
@@ -83,6 +93,10 @@ from app.core.path_finder import (
 from app.core.snapshot import AttachPreference, Preference
 
 DEFAULT_SUBGRAPH_BOUND = 10
+
+# How an attachment was decided: the PathFinder's rules, or a route named
+# for this question by a model reading it.
+TreeRule = Rule | Literal["model_choice"]
 
 NO_ANCHORS = "no_anchors"
 ANCHORS_NOT_CONNECTED = "anchors_not_connected"
@@ -112,7 +126,7 @@ class Attachment:
     path: Path | None
     # The tree table the route ends at.
     attached_to: str | None
-    rule: Rule | None
+    rule: TreeRule | None
     # Every candidate route when there was more than one, chosen included.
     tied: tuple[Path, ...] = ()
     evidence: tuple[tuple[str, float], ...] = ()
@@ -224,9 +238,10 @@ def build_tree(
     set_aside: tuple[SetAside, ...] = (),
     max_joins: int = DEFAULT_MAX_JOINS,
     subgraph_bound: int = DEFAULT_SUBGRAPH_BOUND,
+    chosen: frozenset[str] = frozenset(),
 ) -> JoinTree:
     """`scores` is each anchor's retrieval score; `evidence` and `margin` are
-    as for find_paths."""
+    as for find_paths; `chosen` the ids of routes named for this question."""
     if len(set(anchors)) != len(anchors):
         raise ValueError(f"an anchor is named twice: {anchors}")
     missing = [anchor for anchor in anchors if anchor not in scores]
@@ -242,7 +257,7 @@ def build_tree(
     dropped: list[str] = []
     while True:
         kept = tuple(anchor for anchor in ranked if anchor not in dropped)
-        attachments, tables, joins, unconnected = _grow(graph, kept, scores, evidence, margin, max_joins)
+        attachments, tables, joins, unconnected = _grow(graph, kept, scores, evidence, margin, max_joins, chosen)
         if unconnected:
             return _declined(anchors, max_joins, ANCHORS_NOT_CONNECTED, unconnected, subgraph_bound, tuple(dropped))
         if len(tables) <= subgraph_bound or len(kept) == 1:
@@ -276,7 +291,14 @@ def build_tree(
     )
 
 
-def _grow(graph, anchors, scores, evidence, margin, max_joins):
+def _named(paths: tuple[Path, ...], chosen: frozenset[str]) -> Path | None:
+    """The one route of `paths` named for this question, or None when none
+    or several are."""
+    named = [path for path in paths if path.id in chosen]
+    return named[0] if len(named) == 1 else None
+
+
+def _grow(graph, anchors, scores, evidence, margin, max_joins, chosen=frozenset()):
     """The tree over `anchors`, best first: (attachments, tables, joins,
     unconnected). `unconnected` is the anchors with no route to the tree
     within the limit; when it is not empty the rest is as far as it got."""
@@ -315,8 +337,12 @@ def _grow(graph, anchors, scores, evidence, margin, max_joins):
             # One place to attach: this is the PathFinder's own answer for
             # that pair, preference and evidence included.
             (result,) = nearest
+            selected, rule = result.selected, result.rule
+            named = _named(result.tied, chosen) if chosen and rule == "alphabetical" else None
+            if named is not None:
+                selected, rule = named, "model_choice"
             attachment = Attachment(
-                anchor, len(attachments), result.selected, result.end, result.rule,
+                anchor, len(attachments), selected, result.end, rule,
                 tied=result.tied, evidence=result.evidence, margin=result.margin,
                 discovered=len(result.discovered),
                 preference_applied=result.preference_applied,
@@ -352,6 +378,9 @@ def _grow(graph, anchors, scores, evidence, margin, max_joins):
                 left, routes = _narrow_routes(left, naming)
             if applied or routes:
                 choice = Choice(left[0], "preference" if len(left) == 1 else "alphabetical", choice.evidence)
+            named = _named(left, chosen) if chosen and choice.rule == "alphabetical" else None
+            if named is not None:
+                choice = Choice(named, "model_choice", choice.evidence)
             declared = next((p for p in routes_declared if p not in naming), None)
             outranked = next(
                 (p for p in naming if choice.rule == "question_evidence" and choice.selected.edges != frozenset(p.prefer)),

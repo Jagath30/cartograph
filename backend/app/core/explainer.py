@@ -448,6 +448,12 @@ def _attachment_reason(attachment: Attachment, chosen: ExplainedPath, alternativ
             f"{tie}. The wording of the question points to this one: it scores {best:.3f} against "
             f"{next_best:.3f} for the next, more than the {attachment.margin:.3f} that could be chance. {others}"
         ) + _outranked(attachment.preference_outranked)
+    if attachment.rule == "model_choice":
+        # Step 10b, v2.1: decided where the alphabet would have, by a route
+        # named for this question. Never said to be a rule's or arbitrary.
+        others = " ".join(f"Not taken: {path.description}" for path in alternatives)
+        left = f" {len(attachment.tied)} routes were left." if narrowed else ""
+        return f"{tie}.{narrowed}{left} No rule chose between them: the model, reading the question, named this one. {others}"
     reason = f"{tie}.{narrowed}"
     if narrowed:
         reason += f" {len(attachment.tied)} routes were left."
