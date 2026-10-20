@@ -9061,6 +9061,37 @@ approved wording opens "You name the tables of a data warehouse", and
 same phrase. The test checks whole words and allows that phrase alone;
 the wording was not changed.
 
+### Steps 4 to 6: the link stage, the runner, the pilot — 18 to 20 October 2026
+
+    333adb7  the orchestrator's link stage and the linked pipeline mode
+    f468b62  app/run_step10b.py and app/step10b_report.py
+    4e1e58b  a void pilot replaced; the void pilot kept
+    (this)   the pilot
+
+Step 10's harness is imported and none of it edited. Tests first, each
+step's mutations all caught on a passing baseline (20, 34, then 41).
+
+**The pilot**, dev2 and d1 to d8, three modes, eval/step10b/pilot/. The
+first was void at answer 20 of 60: dev2 H7's linking call failed as
+transport three times, about 4 s each, and the provider answered at once
+afterwards; kept as `pilot-01-void.json`. It showed two harness faults,
+fixed in `4e1e58b`: a void pilot could not be replaced without moving
+files by hand, and the pilot report would have counted its answers. The
+replacement completed: 60 answers, one provider 500 retried away (d6,
+retrieval). No system fault.
+
+dev2, one run, tables and path: linked 11 and 9 of 12, full schema 12 and
+12, retrieval 3 and 3. Linking named exactly the expected tables of every
+answerable question, 36 of 36, and declined H12 (the decline) and d8. All
+three of linked's losses are in path selection over the right tables: H4
+(the date hung on `customer` by the first-sales date, arbitrary), H7
+(`wr_refunded_addr_sk` for "the returning customer's address", arbitrary;
+then declined by the model), H8 (the bill address for "current address";
+the model joined both). Reported, not tuned.
+
+Spend on step10b purposes: $0.04163545, 107 model calls and 12
+embeddings, both pilots. Stop C.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
