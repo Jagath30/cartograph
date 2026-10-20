@@ -316,3 +316,34 @@ def test_paid_the_real_model_accepts_the_parameters_and_answers_in_the_shape() -
     assert reply.ok, reply.message
     assert json.loads(reply.text) == {"ok": True}
     assert reply.returned_model and 0 < reply.cost_usd < 0.001
+
+
+# --------------------------------------------------------------------------
+# A transport failure's exception class (step 10b, the owner's ruling 11 at
+# stop A2): its class name and nothing else of it
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("raised", [httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError, httpx.ReadError])
+def test_a_transport_failure_keeps_its_exception_class_name_and_nothing_else_of_it(raised, tmp_path, caplog) -> None:
+    def refuse(request: httpx.Request) -> httpx.Response:
+        error = raised(f"failed sending Authorization: Bearer {KEY} to {request.url}", request=request)
+        error.__cause__ = RuntimeError(f"underneath: {KEY}")
+        raise error
+
+    ledger = SpendLedger(tmp_path / "model_calls.jsonl")
+    model = LedgeredModel(_model(httpx.Client(transport=httpx.MockTransport(refuse))), ledger, "test", 1.0)
+    with caplog.at_level(logging.INFO, logger="cartograph.model"):
+        reply = model.complete(ASK, SHAPE)
+    assert reply.failure == "transport" and reply.failure_class == raised.__name__
+    assert reply.message == FAILURES["transport"] and reply.status is None and reply.code is None
+    written = (tmp_path / "model_calls.jsonl").read_text()
+    assert json.loads(written)["failure_class"] == raised.__name__
+    assert json.loads(caplog.records[-1].message)["failure_class"] == raised.__name__
+    for said in (_everything_said(reply), written, caplog.text):
+        assert KEY not in said and "Bearer" not in said and "underneath" not in said and "api.openai.com" not in said
+
+
+def test_only_a_transport_failure_has_a_failure_class() -> None:
+    assert _model(_client([])).complete(ASK, SHAPE).failure_class is None
+    assert _model(_client([], status=500, body={"error": {"code": "server_error"}})).complete(ASK, SHAPE).failure_class is None

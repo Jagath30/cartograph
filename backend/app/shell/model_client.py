@@ -99,6 +99,10 @@ class ModelReply:
     message: str | None = None
     status: int | None = None
     code: str | None = None
+    # A transport failure's exception class name, as httpx names it
+    # ("ConnectError", "ReadTimeout"): never its text, arguments, request,
+    # cause or context (step 10b, the owner's ruling 11 at stop A2).
+    failure_class: str | None = None
 
     @property
     def ok(self) -> bool:
@@ -184,6 +188,7 @@ class OpenAIModel:
                     "outcome": reply.failure or "ok",
                     "status": reply.status,
                     "code": reply.code,
+                    "failure_class": reply.failure_class,
                 }
             )
         )
@@ -215,9 +220,10 @@ class OpenAIModel:
                     },
                 },
             )
-        except httpx.HTTPError:
-            # Nothing of the exception is kept: its text can carry the request.
-            return self._failed("transport")
+        except httpx.HTTPError as error:
+            # Nothing of the exception is kept but its class's name: its
+            # text, its request and what it was raised from can carry the key.
+            return self._failed("transport", failure_class=type(error).__name__)
 
         if response.status_code != 200:
             return self._failed("provider", status=response.status_code, code=provider_error_code(response))
@@ -321,6 +327,7 @@ class SpendLedger:
             "tokens_out": reply.tokens_out,
             "cost_usd": reply.cost_usd,
             "outcome": reply.failure or "ok",
+            "failure_class": reply.failure_class,
         }
         self._write(line)
 
