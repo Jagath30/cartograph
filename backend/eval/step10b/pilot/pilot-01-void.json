@@ -1,0 +1,3170 @@
+{
+ "label": "pilot",
+ "run": 1,
+ "file": "pilot-01-void.json",
+ "void": "transport failure after retries",
+ "began": "2026-10-20T11:39:44+00:00",
+ "ended": "2026-10-20T11:41:40+00:00",
+ "head": "f468b626a56d5bd5c6f41e073f9b17e1f44f734a",
+ "manifest": "no manifest",
+ "modes": [
+  "retrieval",
+  "linked",
+  "full_schema"
+ ],
+ "sets": [
+  "dev2",
+  "dev"
+ ],
+ "settings": {
+  "model": "gpt-6-luna",
+  "reasoning_effort": "none",
+  "temperature": 0.0,
+  "max_output_tokens": 800,
+  "link_max_output_tokens": 400,
+  "price": {
+   "input": 0.1,
+   "cached_input": 0.01,
+   "output": 0.5,
+   "as_of": "2026-10-09"
+  },
+  "alpha": 0.5,
+  "anchor_cut": 0.5,
+  "anchor_cap": 5,
+  "margin": 0.10705139708498754,
+  "schema_sha256": "4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4302547",
+  "preferences_hash": "59022985a4452cb3ff99b618dd7a2cf90663df78be9e6c5bb78198a9474d1c26",
+  "cap_usd": 0.75,
+  "worst_case_per_answer_usd": {
+   "retrieval": 0.0048172,
+   "full_schema": 0.0048172,
+   "linked": 0.0088966
+  }
+ },
+ "spend": {
+  "step10b_usd_after": 0.0126764,
+  "this_purpose_usd": 0.0126764
+ },
+ "records": [
+  {
+   "set": "dev2",
+   "id": "H1",
+   "question": "What is the total floor space, in square feet, of the warehouses in each state?",
+   "mode": "retrieval",
+   "run": 1,
+   "position": 1,
+   "began": "2026-10-20T11:39:44+00:00",
+   "cap_check": {
+    "spent_usd": 0,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": {
+    "anchors": [
+     "warehouse",
+     "store",
+     "call_center"
+    ],
+    "tree_tables": [
+     "warehouse",
+     "call_center",
+     "catalog_returns",
+     "store",
+     "date_dim"
+    ],
+    "tree_joins": [
+     "call_center.cc_closed_date_sk = date_dim.d_date_sk",
+     "catalog_returns.cr_call_center_sk = call_center.cc_call_center_sk",
+     "catalog_returns.cr_warehouse_sk = warehouse.w_warehouse_sk",
+     "store.s_closed_date_sk = date_dim.d_date_sk"
+    ],
+    "subgraph": [
+     "warehouse",
+     "call_center",
+     "catalog_returns",
+     "store",
+     "date_dim",
+     "catalog_sales"
+    ],
+    "warnings": [
+     "arbitrary_choice",
+     "many_to_many",
+     "multi_anchor"
+    ],
+    "declined": false,
+    "decline_reason": null
+   },
+   "prompt": {
+    "sha256": "980e583b1b3818a43ece3696cbbff5c9563452b9ed82caed64c43fc297abe81d",
+    "chars": 10136,
+    "tables": [
+     "warehouse",
+     "call_center",
+     "catalog_returns",
+     "store",
+     "date_dim",
+     "catalog_sales"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 2614,
+     "tokens_cached": 0,
+     "tokens_out": 44,
+     "cost_usd": 0.00028340000000000006,
+     "duration_ms": 2765,
+     "failure": null,
+     "sql": "SELECT warehouse.w_state, SUM(warehouse.w_warehouse_sq_ft) AS total_floor_space_sq_ft\nFROM warehouse\nGROUP BY warehouse.w_state",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT warehouse.w_state, SUM(warehouse.w_warehouse_sq_ft) AS total_floor_space_sq_ft\nFROM warehouse\nGROUP BY warehouse.w_state",
+   "validated_sha256": "1206e1e11cb71e4b4cedf43b9a22a7fd51ab583d0f81ecca5876dfed010a082c",
+   "executed_sha256": "1206e1e11cb71e4b4cedf43b9a22a7fd51ab583d0f81ecca5876dfed010a082c",
+   "extraction": {
+    "equalities": [],
+    "tables": [
+     "warehouse"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": "incomplete",
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 1,
+    "truncated": false,
+    "rows_sha256": "c46cb53771373dbe88a5afd385f7553df31d7c0e978d9633f719ab306f7e0bef",
+    "duration_ms": 42,
+    "columns": 2
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 5164,
+    "prompt": 1,
+    "generate": 2773,
+    "validate": 23,
+    "conform": 6,
+    "execute": 42
+   },
+   "tokens_in": 2614,
+   "tokens_out": 44,
+   "cost_usd": 0.00028340000000000006,
+   "score": {
+    "tables": "correct",
+    "path": "correct",
+    "why": "read",
+    "sql_tables": [
+     "warehouse"
+    ],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": [
+     {
+      "edges": [],
+      "outcome": "conforms",
+      "findings": []
+     }
+    ]
+   },
+   "recall": {
+    "shown": {
+     "matched": 1,
+     "expected": 1,
+     "count": 6
+    },
+    "tree": {
+     "matched": 1,
+     "expected": 1,
+     "count": 5
+    }
+   },
+   "excluded": null,
+   "declined_at": null,
+   "linking": null,
+   "expected": {
+    "tables": [
+     "warehouse"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H1",
+   "question": "What is the total floor space, in square feet, of the warehouses in each state?",
+   "mode": "linked",
+   "run": 1,
+   "position": 2,
+   "began": "2026-10-20T11:39:52+00:00",
+   "cap_check": {
+    "spent_usd": 0.00028402,
+    "worst_case_usd": 0.0088966,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": {
+    "anchors": [
+     "warehouse"
+    ],
+    "tree_tables": [
+     "warehouse"
+    ],
+    "tree_joins": [],
+    "subgraph": [
+     "warehouse"
+    ],
+    "warnings": [],
+    "declined": false,
+    "decline_reason": null,
+    "linked": [
+     "warehouse"
+    ]
+   },
+   "prompt": {
+    "sha256": "f9b8fd0a5e4d73ec2e27b2d06213d11f38ac3040fa3e47a89b7d55a2722bcccf",
+    "chars": 1688,
+    "tables": [
+     "warehouse"
+    ],
+    "has_join_section": false
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 448,
+     "tokens_cached": 0,
+     "tokens_out": 44,
+     "cost_usd": 6.680000000000001e-05,
+     "duration_ms": 2009,
+     "failure": null,
+     "sql": "SELECT warehouse.w_state, SUM(warehouse.w_warehouse_sq_ft) AS total_floor_space_sq_ft\nFROM warehouse\nGROUP BY warehouse.w_state",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT warehouse.w_state, SUM(warehouse.w_warehouse_sq_ft) AS total_floor_space_sq_ft\nFROM warehouse\nGROUP BY warehouse.w_state",
+   "validated_sha256": "1206e1e11cb71e4b4cedf43b9a22a7fd51ab583d0f81ecca5876dfed010a082c",
+   "executed_sha256": "1206e1e11cb71e4b4cedf43b9a22a7fd51ab583d0f81ecca5876dfed010a082c",
+   "extraction": {
+    "equalities": [],
+    "tables": [
+     "warehouse"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": "conforms",
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 1,
+    "truncated": false,
+    "rows_sha256": "c46cb53771373dbe88a5afd385f7553df31d7c0e978d9633f719ab306f7e0bef",
+    "duration_ms": 21,
+    "columns": 2
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "link": 2337,
+    "locate": 364,
+    "prompt": 0,
+    "generate": 2015,
+    "validate": 2,
+    "conform": 1,
+    "execute": 21
+   },
+   "tokens_in": 8338,
+   "tokens_out": 57,
+   "cost_usd": 0.0008623,
+   "score": {
+    "tables": "correct",
+    "path": "correct",
+    "why": "read",
+    "sql_tables": [
+     "warehouse"
+    ],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": [
+     {
+      "edges": [],
+      "outcome": "conforms",
+      "findings": []
+     }
+    ]
+   },
+   "recall": {
+    "shown": {
+     "matched": 1,
+     "expected": 1,
+     "count": 1
+    },
+    "tree": {
+     "matched": 1,
+     "expected": 1,
+     "count": 1
+    },
+    "named": {
+     "matched": 1,
+     "expected": 1,
+     "count": 1
+    }
+   },
+   "excluded": null,
+   "declined_at": null,
+   "linking": {
+    "tables": [
+     "warehouse"
+    ],
+    "prompt": {
+     "sha256": "362fa8094843a0483727bb139f1f3d0126dbd711ca86d64d163f2469fa395094",
+     "chars": 30773
+    },
+    "attempts": [
+     {
+      "number": 1,
+      "outcome": "accepted",
+      "tables": [
+       "warehouse"
+      ],
+      "fault": null,
+      "requested_model": "gpt-6-luna",
+      "returned_model": "gpt-6-luna",
+      "tokens_in": 7890,
+      "tokens_cached": 0,
+      "tokens_out": 13,
+      "cost_usd": 0.0007955,
+      "duration_ms": 2332,
+      "failure": null
+     }
+    ],
+    "tokens_in": 7890,
+    "tokens_out": 13,
+    "cost_usd": 0.0007955
+   },
+   "expected": {
+    "tables": [
+     "warehouse"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H1",
+   "question": "What is the total floor space, in square feet, of the warehouses in each state?",
+   "mode": "full_schema",
+   "run": 1,
+   "position": 3,
+   "began": "2026-10-20T11:39:57+00:00",
+   "cap_check": {
+    "spent_usd": 0.00114632,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": null,
+   "prompt": {
+    "sha256": "58632e96f9202c11a66a8e2913034cafa4df0aa42546892424597bde2399577d",
+    "chars": 30951,
+    "tables": [
+     "call_center",
+     "catalog_page",
+     "catalog_returns",
+     "catalog_sales",
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "date_dim",
+     "household_demographics",
+     "income_band",
+     "inventory",
+     "item",
+     "promotion",
+     "reason",
+     "ship_mode",
+     "store",
+     "store_returns",
+     "store_sales",
+     "time_dim",
+     "warehouse",
+     "web_page",
+     "web_returns",
+     "web_sales",
+     "web_site"
+    ],
+    "has_join_section": false
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 7871,
+     "tokens_cached": 0,
+     "tokens_out": 44,
+     "cost_usd": 0.0008091,
+     "duration_ms": 1923,
+     "failure": null,
+     "sql": "SELECT warehouse.w_state, SUM(warehouse.w_warehouse_sq_ft) AS total_floor_space_sq_ft\nFROM warehouse\nGROUP BY warehouse.w_state",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT warehouse.w_state, SUM(warehouse.w_warehouse_sq_ft) AS total_floor_space_sq_ft\nFROM warehouse\nGROUP BY warehouse.w_state",
+   "validated_sha256": "1206e1e11cb71e4b4cedf43b9a22a7fd51ab583d0f81ecca5876dfed010a082c",
+   "executed_sha256": "1206e1e11cb71e4b4cedf43b9a22a7fd51ab583d0f81ecca5876dfed010a082c",
+   "extraction": {
+    "equalities": [],
+    "tables": [
+     "warehouse"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": null,
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 1,
+    "truncated": false,
+    "rows_sha256": "c46cb53771373dbe88a5afd385f7553df31d7c0e978d9633f719ab306f7e0bef",
+    "duration_ms": 21,
+    "columns": 2
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 0,
+    "prompt": 4,
+    "generate": 1928,
+    "validate": 2,
+    "conform": 1,
+    "execute": 21
+   },
+   "tokens_in": 7871,
+   "tokens_out": 44,
+   "cost_usd": 0.0008091,
+   "score": {
+    "tables": "correct",
+    "path": "correct",
+    "why": "read",
+    "sql_tables": [
+     "warehouse"
+    ],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": [
+     {
+      "edges": [],
+      "outcome": "conforms",
+      "findings": []
+     }
+    ]
+   },
+   "recall": null,
+   "excluded": null,
+   "declined_at": null,
+   "linking": null,
+   "expected": {
+    "tables": [
+     "warehouse"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H2",
+   "question": "In 2001, how much revenue did stores located in Tennessee take from in-store sales made before noon?",
+   "mode": "retrieval",
+   "run": 1,
+   "position": 4,
+   "began": "2026-10-20T11:39:59+00:00",
+   "cap_check": {
+    "spent_usd": 0.00195542,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "not_answerable",
+   "code": "question_not_answerable",
+   "message": "This cannot be answered from the tables retrieved: the model, shown those tables, said they do not hold the answer.",
+   "located": {
+    "anchors": [
+     "store_sales",
+     "store_returns",
+     "store",
+     "web_sales"
+    ],
+    "tree_tables": [
+     "store_sales",
+     "store_returns",
+     "store",
+     "web_sales",
+     "date_dim"
+    ],
+    "tree_joins": [
+     "store.s_closed_date_sk = date_dim.d_date_sk",
+     "store_returns.sr_item_sk = store_sales.ss_item_sk AND store_returns.sr_ticket_number = store_sales.ss_ticket_number",
+     "store_sales.ss_store_sk = store.s_store_sk",
+     "web_sales.ws_ship_date_sk = date_dim.d_date_sk"
+    ],
+    "subgraph": [
+     "store_sales",
+     "store_returns",
+     "store",
+     "web_sales",
+     "date_dim",
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "household_demographics",
+     "item"
+    ],
+    "warnings": [
+     "arbitrary_choice",
+     "many_to_many",
+     "multi_anchor"
+    ],
+    "declined": false,
+    "decline_reason": null
+   },
+   "prompt": {
+    "sha256": "b64debb163dff9bb8e83da8fb374ace782667b3efd93cfa93bfc31fd4235e8c0",
+    "chars": 12316,
+    "tables": [
+     "store_sales",
+     "store_returns",
+     "store",
+     "web_sales",
+     "date_dim",
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "household_demographics",
+     "item"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "not_answerable",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 3180,
+     "tokens_cached": 0,
+     "tokens_out": 18,
+     "cost_usd": 0.000327,
+     "duration_ms": 1697,
+     "failure": null,
+     "sql": null,
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": null,
+   "validated_sha256": null,
+   "executed_sha256": null,
+   "extraction": null,
+   "conformance_to_selected": null,
+   "execution": null,
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 1031,
+    "prompt": 1,
+    "generate": 1702
+   },
+   "tokens_in": 3180,
+   "tokens_out": 18,
+   "cost_usd": 0.000327,
+   "score": {
+    "tables": "wrong",
+    "path": "wrong",
+    "why": "declined",
+    "sql_tables": [],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": []
+   },
+   "recall": {
+    "shown": {
+     "matched": 3,
+     "expected": 4,
+     "count": 10
+    },
+    "tree": {
+     "matched": 3,
+     "expected": 4,
+     "count": 5
+    }
+   },
+   "excluded": null,
+   "declined_at": "model",
+   "linking": null,
+   "expected": {
+    "tables": [
+     "store_sales",
+     "date_dim",
+     "time_dim",
+     "store"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H2",
+   "question": "In 2001, how much revenue did stores located in Tennessee take from in-store sales made before noon?",
+   "mode": "linked",
+   "run": 1,
+   "position": 5,
+   "began": "2026-10-20T11:40:02+00:00",
+   "cap_check": {
+    "spent_usd": 0.00228314,
+    "worst_case_usd": 0.0088966,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": {
+    "anchors": [
+     "store_sales",
+     "store",
+     "date_dim",
+     "time_dim"
+    ],
+    "tree_tables": [
+     "store_sales",
+     "store",
+     "time_dim",
+     "date_dim"
+    ],
+    "tree_joins": [
+     "store_sales.ss_sold_date_sk = date_dim.d_date_sk",
+     "store_sales.ss_sold_time_sk = time_dim.t_time_sk",
+     "store_sales.ss_store_sk = store.s_store_sk"
+    ],
+    "subgraph": [
+     "store_sales",
+     "store",
+     "time_dim",
+     "date_dim"
+    ],
+    "warnings": [],
+    "declined": false,
+    "decline_reason": null,
+    "linked": [
+     "store_sales",
+     "store",
+     "date_dim",
+     "time_dim"
+    ]
+   },
+   "prompt": {
+    "sha256": "a13e0d159e7f128d6859f3e043766dd02397f9671561b6269bed0f1da0fd5f2f",
+    "chars": 5869,
+    "tables": [
+     "store_sales",
+     "store",
+     "time_dim",
+     "date_dim"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 1561,
+     "tokens_cached": 0,
+     "tokens_out": 109,
+     "cost_usd": 0.00021060000000000002,
+     "duration_ms": 2026,
+     "failure": null,
+     "sql": "SELECT SUM(store_sales.ss_net_paid) AS revenue\nFROM store_sales\nJOIN date_dim ON store_sales.ss_sold_date_sk = date_dim.d_date_sk\nJOIN time_dim ON store_sales.ss_sold_time_sk = time_dim.t_time_sk\nJOIN store ON store_sales.ss_store_sk = store.s_store_sk\nWHERE date_dim.d_year = 2001\n  AND store.s_state = 'TN'\n  AND time_dim.t_hour < 12",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT SUM(store_sales.ss_net_paid) AS revenue\nFROM store_sales\nJOIN date_dim ON store_sales.ss_sold_date_sk = date_dim.d_date_sk\nJOIN time_dim ON store_sales.ss_sold_time_sk = time_dim.t_time_sk\nJOIN store ON store_sales.ss_store_sk = store.s_store_sk\nWHERE date_dim.d_year = 2001\n  AND store.s_state = 'TN'\n  AND time_dim.t_hour < 12",
+   "validated_sha256": "ab04fbc305743bf8b38dcb389f66a2e0d07710d813a212be34f2fad9d705c200",
+   "executed_sha256": "ab04fbc305743bf8b38dcb389f66a2e0d07710d813a212be34f2fad9d705c200",
+   "extraction": {
+    "equalities": [
+     "date_dim.d_date_sk = store_sales.ss_sold_date_sk",
+     "store.s_store_sk = store_sales.ss_store_sk",
+     "store_sales.ss_sold_time_sk = time_dim.t_time_sk"
+    ],
+    "tables": [
+     "date_dim",
+     "store",
+     "store_sales",
+     "time_dim"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": "conforms",
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 1,
+    "truncated": false,
+    "rows_sha256": "dcf69a06609cffb7a33fea6ec8ab195e53187b123e6d469b1fffe6832345d353",
+    "duration_ms": 5515,
+    "columns": 1
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "link": 1499,
+    "locate": 366,
+    "prompt": 0,
+    "generate": 2032,
+    "validate": 6,
+    "conform": 2,
+    "execute": 5516
+   },
+   "tokens_in": 9455,
+   "tokens_out": 131,
+   "cost_usd": 0.0010110000000000002,
+   "score": {
+    "tables": "correct",
+    "path": "correct",
+    "why": "read",
+    "sql_tables": [
+     "date_dim",
+     "store",
+     "store_sales",
+     "time_dim"
+    ],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": [
+     {
+      "edges": [
+       "store_sales.ss_sold_date_sk = date_dim.d_date_sk",
+       "store_sales.ss_sold_time_sk = time_dim.t_time_sk",
+       "store_sales.ss_store_sk = store.s_store_sk"
+      ],
+      "outcome": "conforms",
+      "findings": []
+     }
+    ]
+   },
+   "recall": {
+    "shown": {
+     "matched": 4,
+     "expected": 4,
+     "count": 4
+    },
+    "tree": {
+     "matched": 4,
+     "expected": 4,
+     "count": 4
+    },
+    "named": {
+     "matched": 4,
+     "expected": 4,
+     "count": 4
+    }
+   },
+   "excluded": null,
+   "declined_at": null,
+   "linking": {
+    "tables": [
+     "store_sales",
+     "store",
+     "date_dim",
+     "time_dim"
+    ],
+    "prompt": {
+     "sha256": "af71ba5024f4d490133c01f4f7e336c8853f16ffc190659e6b8ed07e87463180",
+     "chars": 30794
+    },
+    "attempts": [
+     {
+      "number": 1,
+      "outcome": "accepted",
+      "tables": [
+       "store_sales",
+       "store",
+       "date_dim",
+       "time_dim"
+      ],
+      "fault": null,
+      "requested_model": "gpt-6-luna",
+      "returned_model": "gpt-6-luna",
+      "tokens_in": 7894,
+      "tokens_cached": 0,
+      "tokens_out": 22,
+      "cost_usd": 0.0008004,
+      "duration_ms": 1492,
+      "failure": null
+     }
+    ],
+    "tokens_in": 7894,
+    "tokens_out": 22,
+    "cost_usd": 0.0008004
+   },
+   "expected": {
+    "tables": [
+     "store_sales",
+     "date_dim",
+     "time_dim",
+     "store"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H2",
+   "question": "In 2001, how much revenue did stores located in Tennessee take from in-store sales made before noon?",
+   "mode": "full_schema",
+   "run": 1,
+   "position": 6,
+   "began": "2026-10-20T11:40:11+00:00",
+   "cap_check": {
+    "spent_usd": 0.00329414,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": null,
+   "prompt": {
+    "sha256": "b3ff04ab33106d7d7d51d1642dade0369bdb54e9085aa33faa53df466ce58bb2",
+    "chars": 30972,
+    "tables": [
+     "call_center",
+     "catalog_page",
+     "catalog_returns",
+     "catalog_sales",
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "date_dim",
+     "household_demographics",
+     "income_band",
+     "inventory",
+     "item",
+     "promotion",
+     "reason",
+     "ship_mode",
+     "store",
+     "store_returns",
+     "store_sales",
+     "time_dim",
+     "warehouse",
+     "web_page",
+     "web_returns",
+     "web_sales",
+     "web_site"
+    ],
+    "has_join_section": false
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 7875,
+     "tokens_cached": 0,
+     "tokens_out": 109,
+     "cost_usd": 0.000842,
+     "duration_ms": 2041,
+     "failure": null,
+     "sql": "SELECT SUM(ss.ss_net_paid) AS revenue\nFROM store_sales AS ss\nJOIN store AS s ON ss.ss_store_sk = s.s_store_sk\nJOIN date_dim AS d ON ss.ss_sold_date_sk = d.d_date_sk\nJOIN time_dim AS t ON ss.ss_sold_time_sk = t.t_time_sk\nWHERE d.d_year = 2001\n  AND s.s_state = 'TN'\n  AND t.t_hour < 12",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT SUM(ss.ss_net_paid) AS revenue\nFROM store_sales AS ss\nJOIN store AS s ON ss.ss_store_sk = s.s_store_sk\nJOIN date_dim AS d ON ss.ss_sold_date_sk = d.d_date_sk\nJOIN time_dim AS t ON ss.ss_sold_time_sk = t.t_time_sk\nWHERE d.d_year = 2001\n  AND s.s_state = 'TN'\n  AND t.t_hour < 12",
+   "validated_sha256": "b7073a522e603eaa4826dbc08e2ee83fd655db5898cd5d3464e65df3cc979170",
+   "executed_sha256": "b7073a522e603eaa4826dbc08e2ee83fd655db5898cd5d3464e65df3cc979170",
+   "extraction": {
+    "equalities": [
+     "date_dim.d_date_sk = store_sales.ss_sold_date_sk",
+     "store.s_store_sk = store_sales.ss_store_sk",
+     "store_sales.ss_sold_time_sk = time_dim.t_time_sk"
+    ],
+    "tables": [
+     "date_dim",
+     "store",
+     "store_sales",
+     "time_dim"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": null,
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 1,
+    "truncated": false,
+    "rows_sha256": "dcf69a06609cffb7a33fea6ec8ab195e53187b123e6d469b1fffe6832345d353",
+    "duration_ms": 1272,
+    "columns": 1
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 0,
+    "prompt": 3,
+    "generate": 2047,
+    "validate": 8,
+    "conform": 5,
+    "execute": 1272
+   },
+   "tokens_in": 7875,
+   "tokens_out": 109,
+   "cost_usd": 0.000842,
+   "score": {
+    "tables": "correct",
+    "path": "correct",
+    "why": "read",
+    "sql_tables": [
+     "date_dim",
+     "store",
+     "store_sales",
+     "time_dim"
+    ],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": [
+     {
+      "edges": [
+       "store_sales.ss_sold_date_sk = date_dim.d_date_sk",
+       "store_sales.ss_sold_time_sk = time_dim.t_time_sk",
+       "store_sales.ss_store_sk = store.s_store_sk"
+      ],
+      "outcome": "conforms",
+      "findings": []
+     }
+    ]
+   },
+   "recall": null,
+   "excluded": null,
+   "declined_at": null,
+   "linking": null,
+   "expected": {
+    "tables": [
+     "store_sales",
+     "date_dim",
+     "time_dim",
+     "store"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H3",
+   "question": "How many catalog orders were shipped in March 2002 by each shipping carrier?",
+   "mode": "retrieval",
+   "run": 1,
+   "position": 7,
+   "began": "2026-10-20T11:40:15+00:00",
+   "cap_check": {
+    "spent_usd": 0.00413614,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "not_answerable",
+   "code": "question_not_answerable",
+   "message": "This cannot be answered from the tables retrieved: the model, shown those tables, said they do not hold the answer.",
+   "located": {
+    "anchors": [
+     "catalog_sales",
+     "ship_mode",
+     "web_sales",
+     "web_returns",
+     "catalog_page"
+    ],
+    "tree_tables": [
+     "catalog_sales",
+     "ship_mode",
+     "web_sales",
+     "web_returns",
+     "catalog_page"
+    ],
+    "tree_joins": [
+     "catalog_sales.cs_catalog_page_sk = catalog_page.cp_catalog_page_sk",
+     "catalog_sales.cs_ship_mode_sk = ship_mode.sm_ship_mode_sk",
+     "web_returns.wr_item_sk = web_sales.ws_item_sk AND web_returns.wr_order_number = web_sales.ws_order_number",
+     "web_sales.ws_ship_mode_sk = ship_mode.sm_ship_mode_sk"
+    ],
+    "subgraph": [
+     "catalog_sales",
+     "ship_mode",
+     "web_sales",
+     "web_returns",
+     "catalog_page"
+    ],
+    "warnings": [
+     "many_to_many"
+    ],
+    "declined": false,
+    "decline_reason": null
+   },
+   "prompt": {
+    "sha256": "6356cb4e5fc1b4e7233a35124814de3b1ef5ee5714375da11f6aa973a189873c",
+    "chars": 7827,
+    "tables": [
+     "catalog_sales",
+     "ship_mode",
+     "web_sales",
+     "web_returns",
+     "catalog_page"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "not_answerable",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 2028,
+     "tokens_cached": 0,
+     "tokens_out": 18,
+     "cost_usd": 0.0002118,
+     "duration_ms": 1191,
+     "failure": null,
+     "sql": null,
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": null,
+   "validated_sha256": null,
+   "executed_sha256": null,
+   "extraction": null,
+   "conformance_to_selected": null,
+   "execution": null,
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 1771,
+    "prompt": 0,
+    "generate": 1195
+   },
+   "tokens_in": 2028,
+   "tokens_out": 18,
+   "cost_usd": 0.0002118,
+   "score": {
+    "tables": "wrong",
+    "path": "wrong",
+    "why": "declined",
+    "sql_tables": [],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": []
+   },
+   "recall": {
+    "shown": {
+     "matched": 2,
+     "expected": 3,
+     "count": 5
+    },
+    "tree": {
+     "matched": 2,
+     "expected": 3,
+     "count": 5
+    }
+   },
+   "excluded": null,
+   "declined_at": "model",
+   "linking": null,
+   "expected": {
+    "tables": [
+     "catalog_sales",
+     "date_dim",
+     "ship_mode"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H3",
+   "question": "How many catalog orders were shipped in March 2002 by each shipping carrier?",
+   "mode": "linked",
+   "run": 1,
+   "position": 8,
+   "began": "2026-10-20T11:40:17+00:00",
+   "cap_check": {
+    "spent_usd": 0.0043485,
+    "worst_case_usd": 0.0088966,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": {
+    "anchors": [
+     "catalog_sales",
+     "date_dim",
+     "ship_mode"
+    ],
+    "tree_tables": [
+     "catalog_sales",
+     "ship_mode",
+     "date_dim"
+    ],
+    "tree_joins": [
+     "catalog_sales.cs_ship_date_sk = date_dim.d_date_sk",
+     "catalog_sales.cs_ship_mode_sk = ship_mode.sm_ship_mode_sk"
+    ],
+    "subgraph": [
+     "catalog_sales",
+     "ship_mode",
+     "date_dim"
+    ],
+    "warnings": [],
+    "declined": false,
+    "decline_reason": null,
+    "linked": [
+     "catalog_sales",
+     "date_dim",
+     "ship_mode"
+    ]
+   },
+   "prompt": {
+    "sha256": "8393fd5d0d347184a542bf377154b4577b226bb04cea4c675725a298892033cb",
+    "chars": 5003,
+    "tables": [
+     "catalog_sales",
+     "ship_mode",
+     "date_dim"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 1322,
+     "tokens_cached": 0,
+     "tokens_out": 104,
+     "cost_usd": 0.0001842,
+     "duration_ms": 2066,
+     "failure": null,
+     "sql": "SELECT ship_mode.sm_carrier, COUNT(DISTINCT catalog_sales.cs_order_number) AS catalog_order_count\nFROM catalog_sales\nJOIN date_dim ON catalog_sales.cs_ship_date_sk = date_dim.d_date_sk\nJOIN ship_mode ON catalog_sales.cs_ship_mode_sk = ship_mode.sm_ship_mode_sk\nWHERE date_dim.d_year = 2002\n  AND date_dim.d_moy = 3\nGROUP BY ship_mode.sm_carrier",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT ship_mode.sm_carrier, COUNT(DISTINCT catalog_sales.cs_order_number) AS catalog_order_count\nFROM catalog_sales\nJOIN date_dim ON catalog_sales.cs_ship_date_sk = date_dim.d_date_sk\nJOIN ship_mode ON catalog_sales.cs_ship_mode_sk = ship_mode.sm_ship_mode_sk\nWHERE date_dim.d_year = 2002\n  AND date_dim.d_moy = 3\nGROUP BY ship_mode.sm_carrier",
+   "validated_sha256": "9ecd734306cb0e55f7a235d2896f8dff249ad993bd5616ba1a8c97beb375797b",
+   "executed_sha256": "9ecd734306cb0e55f7a235d2896f8dff249ad993bd5616ba1a8c97beb375797b",
+   "extraction": {
+    "equalities": [
+     "catalog_sales.cs_ship_date_sk = date_dim.d_date_sk",
+     "catalog_sales.cs_ship_mode_sk = ship_mode.sm_ship_mode_sk"
+    ],
+    "tables": [
+     "catalog_sales",
+     "date_dim",
+     "ship_mode"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": "conforms",
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 20,
+    "truncated": false,
+    "rows_sha256": "bd70aaaa1a2c420f774ea043fc4322ebec9d6932c4d02eb9c0140992f7f093bd",
+    "duration_ms": 4263,
+    "columns": 2
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "link": 1446,
+    "locate": 324,
+    "prompt": 1,
+    "generate": 2077,
+    "validate": 4,
+    "conform": 2,
+    "execute": 4264
+   },
+   "tokens_in": 9210,
+   "tokens_out": 124,
+   "cost_usd": 0.0009830000000000001,
+   "score": {
+    "tables": "correct",
+    "path": "correct",
+    "why": "read",
+    "sql_tables": [
+     "catalog_sales",
+     "date_dim",
+     "ship_mode"
+    ],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": [
+     {
+      "edges": [
+       "catalog_sales.cs_ship_date_sk = date_dim.d_date_sk",
+       "catalog_sales.cs_ship_mode_sk = ship_mode.sm_ship_mode_sk"
+      ],
+      "outcome": "conforms",
+      "findings": []
+     }
+    ]
+   },
+   "recall": {
+    "shown": {
+     "matched": 3,
+     "expected": 3,
+     "count": 3
+    },
+    "tree": {
+     "matched": 3,
+     "expected": 3,
+     "count": 3
+    },
+    "named": {
+     "matched": 3,
+     "expected": 3,
+     "count": 3
+    }
+   },
+   "excluded": null,
+   "declined_at": null,
+   "linking": {
+    "tables": [
+     "catalog_sales",
+     "date_dim",
+     "ship_mode"
+    ],
+    "prompt": {
+     "sha256": "6872fb005811665ab379bc413345b6a3881d60462d2adc4c1d41a7f5fe8572dd",
+     "chars": 30770
+    },
+    "attempts": [
+     {
+      "number": 1,
+      "outcome": "accepted",
+      "tables": [
+       "catalog_sales",
+       "date_dim",
+       "ship_mode"
+      ],
+      "fault": null,
+      "requested_model": "gpt-6-luna",
+      "returned_model": "gpt-6-luna",
+      "tokens_in": 7888,
+      "tokens_cached": 0,
+      "tokens_out": 20,
+      "cost_usd": 0.0007988000000000001,
+      "duration_ms": 1440,
+      "failure": null
+     }
+    ],
+    "tokens_in": 7888,
+    "tokens_out": 20,
+    "cost_usd": 0.0007988000000000001
+   },
+   "expected": {
+    "tables": [
+     "catalog_sales",
+     "date_dim",
+     "ship_mode"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H3",
+   "question": "How many catalog orders were shipped in March 2002 by each shipping carrier?",
+   "mode": "full_schema",
+   "run": 1,
+   "position": 9,
+   "began": "2026-10-20T11:40:26+00:00",
+   "cap_check": {
+    "spent_usd": 0.0053315,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": null,
+   "prompt": {
+    "sha256": "e61e339ccb527a2ae817bd68277a75d4c4b9e4094a29de16b6b674df227499e6",
+    "chars": 30948,
+    "tables": [
+     "call_center",
+     "catalog_page",
+     "catalog_returns",
+     "catalog_sales",
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "date_dim",
+     "household_demographics",
+     "income_band",
+     "inventory",
+     "item",
+     "promotion",
+     "reason",
+     "ship_mode",
+     "store",
+     "store_returns",
+     "store_sales",
+     "time_dim",
+     "warehouse",
+     "web_page",
+     "web_returns",
+     "web_sales",
+     "web_site"
+    ],
+    "has_join_section": false
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 7869,
+     "tokens_cached": 0,
+     "tokens_out": 100,
+     "cost_usd": 0.0008369000000000001,
+     "duration_ms": 2372,
+     "failure": null,
+     "sql": "SELECT sm.sm_carrier, COUNT(DISTINCT cs.cs_order_number) AS catalog_orders\nFROM catalog_sales AS cs\nJOIN date_dim AS d ON cs.cs_ship_date_sk = d.d_date_sk\nJOIN ship_mode AS sm ON cs.cs_ship_mode_sk = sm.sm_ship_mode_sk\nWHERE d.d_year = 2002\n  AND d.d_moy = 3\nGROUP BY sm.sm_carrier",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT sm.sm_carrier, COUNT(DISTINCT cs.cs_order_number) AS catalog_orders\nFROM catalog_sales AS cs\nJOIN date_dim AS d ON cs.cs_ship_date_sk = d.d_date_sk\nJOIN ship_mode AS sm ON cs.cs_ship_mode_sk = sm.sm_ship_mode_sk\nWHERE d.d_year = 2002\n  AND d.d_moy = 3\nGROUP BY sm.sm_carrier",
+   "validated_sha256": "8d246b857a6d8b3f17fc5894c11cc2a2bec738e1cf7b521d598f4457670c48c4",
+   "executed_sha256": "8d246b857a6d8b3f17fc5894c11cc2a2bec738e1cf7b521d598f4457670c48c4",
+   "extraction": {
+    "equalities": [
+     "catalog_sales.cs_ship_date_sk = date_dim.d_date_sk",
+     "catalog_sales.cs_ship_mode_sk = ship_mode.sm_ship_mode_sk"
+    ],
+    "tables": [
+     "catalog_sales",
+     "date_dim",
+     "ship_mode"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": null,
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 20,
+    "truncated": false,
+    "rows_sha256": "bd70aaaa1a2c420f774ea043fc4322ebec9d6932c4d02eb9c0140992f7f093bd",
+    "duration_ms": 793,
+    "columns": 2
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 0,
+    "prompt": 4,
+    "generate": 2378,
+    "validate": 5,
+    "conform": 2,
+    "execute": 793
+   },
+   "tokens_in": 7869,
+   "tokens_out": 100,
+   "cost_usd": 0.0008369000000000001,
+   "score": {
+    "tables": "correct",
+    "path": "correct",
+    "why": "read",
+    "sql_tables": [
+     "catalog_sales",
+     "date_dim",
+     "ship_mode"
+    ],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": [
+     {
+      "edges": [
+       "catalog_sales.cs_ship_date_sk = date_dim.d_date_sk",
+       "catalog_sales.cs_ship_mode_sk = ship_mode.sm_ship_mode_sk"
+      ],
+      "outcome": "conforms",
+      "findings": []
+     }
+    ]
+   },
+   "recall": null,
+   "excluded": null,
+   "declined_at": null,
+   "linking": null,
+   "expected": {
+    "tables": [
+     "catalog_sales",
+     "date_dim",
+     "ship_mode"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H4",
+   "question": "For web orders sold in 2000 and shipped to customers born before 1950, what was the total sales revenue of each web site, by site name?",
+   "mode": "retrieval",
+   "run": 1,
+   "position": 10,
+   "began": "2026-10-20T11:40:29+00:00",
+   "cap_check": {
+    "spent_usd": 0.0061684,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "not_answerable",
+   "code": "question_not_answerable",
+   "message": "This cannot be answered from the tables retrieved: the model, shown those tables, said they do not hold the answer.",
+   "located": {
+    "anchors": [
+     "web_sales",
+     "web_site",
+     "web_page",
+     "store_sales",
+     "customer"
+    ],
+    "tree_tables": [
+     "web_sales",
+     "web_site",
+     "web_page",
+     "customer",
+     "store_sales"
+    ],
+    "tree_joins": [
+     "store_sales.ss_customer_sk = customer.c_customer_sk",
+     "web_sales.ws_ship_customer_sk = customer.c_customer_sk",
+     "web_sales.ws_web_page_sk = web_page.wp_web_page_sk",
+     "web_sales.ws_web_site_sk = web_site.web_site_sk"
+    ],
+    "subgraph": [
+     "web_sales",
+     "web_site",
+     "web_page",
+     "customer",
+     "store_sales"
+    ],
+    "warnings": [
+     "many_to_many"
+    ],
+    "declined": false,
+    "decline_reason": null
+   },
+   "prompt": {
+    "sha256": "66d5a76dcf8f7808cd54c1995bcbcd47c922d5cfed653987ac632c832038a1a9",
+    "chars": 7883,
+    "tables": [
+     "web_sales",
+     "web_site",
+     "web_page",
+     "customer",
+     "store_sales"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "not_answerable",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 2039,
+     "tokens_cached": 0,
+     "tokens_out": 18,
+     "cost_usd": 0.0002129,
+     "duration_ms": 1165,
+     "failure": null,
+     "sql": null,
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": null,
+   "validated_sha256": null,
+   "executed_sha256": null,
+   "extraction": null,
+   "conformance_to_selected": null,
+   "execution": null,
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 1353,
+    "prompt": 0,
+    "generate": 1170
+   },
+   "tokens_in": 2039,
+   "tokens_out": 18,
+   "cost_usd": 0.0002129,
+   "score": {
+    "tables": "wrong",
+    "path": "wrong",
+    "why": "declined",
+    "sql_tables": [],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": []
+   },
+   "recall": {
+    "shown": {
+     "matched": 3,
+     "expected": 4,
+     "count": 5
+    },
+    "tree": {
+     "matched": 3,
+     "expected": 4,
+     "count": 5
+    }
+   },
+   "excluded": null,
+   "declined_at": "model",
+   "linking": null,
+   "expected": {
+    "tables": [
+     "web_sales",
+     "date_dim",
+     "customer",
+     "web_site"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H4",
+   "question": "For web orders sold in 2000 and shipped to customers born before 1950, what was the total sales revenue of each web site, by site name?",
+   "mode": "linked",
+   "run": 1,
+   "position": 11,
+   "began": "2026-10-20T11:40:31+00:00",
+   "cap_check": {
+    "spent_usd": 0.0063822,
+    "worst_case_usd": 0.0088966,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": {
+    "anchors": [
+     "web_sales",
+     "date_dim",
+     "customer",
+     "web_site"
+    ],
+    "tree_tables": [
+     "web_sales",
+     "web_site",
+     "customer",
+     "date_dim"
+    ],
+    "tree_joins": [
+     "customer.c_first_sales_date_sk = date_dim.d_date_sk",
+     "web_sales.ws_ship_customer_sk = customer.c_customer_sk",
+     "web_sales.ws_web_site_sk = web_site.web_site_sk"
+    ],
+    "subgraph": [
+     "web_sales",
+     "web_site",
+     "customer",
+     "date_dim"
+    ],
+    "warnings": [
+     "arbitrary_choice",
+     "multi_anchor"
+    ],
+    "declined": false,
+    "decline_reason": null,
+    "linked": [
+     "web_sales",
+     "date_dim",
+     "customer",
+     "web_site"
+    ]
+   },
+   "prompt": {
+    "sha256": "7fc9857e5ee73cc1eeba37888a629d963bfa3bbdb6996cc6063cc6479b2c364f",
+    "chars": 7147,
+    "tables": [
+     "web_sales",
+     "web_site",
+     "customer",
+     "date_dim"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 1850,
+     "tokens_cached": 0,
+     "tokens_out": 116,
+     "cost_usd": 0.000243,
+     "duration_ms": 1962,
+     "failure": null,
+     "sql": "SELECT web_site.web_name, SUM(web_sales.ws_ext_sales_price) AS total_sales_revenue\nFROM web_sales\nJOIN date_dim ON web_sales.ws_sold_date_sk = date_dim.d_date_sk\nJOIN customer ON web_sales.ws_ship_customer_sk = customer.c_customer_sk\nJOIN web_site ON web_sales.ws_web_site_sk = web_site.web_site_sk\nWHERE date_dim.d_year = 2000\n  AND customer.c_birth_year < 1950\nGROUP BY web_site.web_name",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT web_site.web_name, SUM(web_sales.ws_ext_sales_price) AS total_sales_revenue\nFROM web_sales\nJOIN date_dim ON web_sales.ws_sold_date_sk = date_dim.d_date_sk\nJOIN customer ON web_sales.ws_ship_customer_sk = customer.c_customer_sk\nJOIN web_site ON web_sales.ws_web_site_sk = web_site.web_site_sk\nWHERE date_dim.d_year = 2000\n  AND customer.c_birth_year < 1950\nGROUP BY web_site.web_name",
+   "validated_sha256": "d6cd3cd59a5324309e82f4fee95d841e4146064536aa878eb9b44b95533806fd",
+   "executed_sha256": "d6cd3cd59a5324309e82f4fee95d841e4146064536aa878eb9b44b95533806fd",
+   "extraction": {
+    "equalities": [
+     "customer.c_customer_sk = web_sales.ws_ship_customer_sk",
+     "date_dim.d_date_sk = web_sales.ws_sold_date_sk",
+     "web_sales.ws_web_site_sk = web_site.web_site_sk"
+    ],
+    "tables": [
+     "customer",
+     "date_dim",
+     "web_sales",
+     "web_site"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": "diverged",
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 5,
+    "truncated": false,
+    "rows_sha256": "a9e3e46e889c613ebf1deadf84441f6394378882c87df78a124cd8a82bed67a0",
+    "duration_ms": 1765,
+    "columns": 2
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "link": 1491,
+    "locate": 417,
+    "prompt": 0,
+    "generate": 1969,
+    "validate": 5,
+    "conform": 2,
+    "execute": 1765
+   },
+   "tokens_in": 9755,
+   "tokens_out": 138,
+   "cost_usd": 0.0010445,
+   "score": {
+    "tables": "correct",
+    "path": "correct",
+    "why": "read",
+    "sql_tables": [
+     "customer",
+     "date_dim",
+     "web_sales",
+     "web_site"
+    ],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": [
+     {
+      "edges": [
+       "web_sales.ws_sold_date_sk = date_dim.d_date_sk",
+       "web_sales.ws_ship_customer_sk = customer.c_customer_sk",
+       "web_sales.ws_web_site_sk = web_site.web_site_sk"
+      ],
+      "outcome": "conforms",
+      "findings": []
+     }
+    ]
+   },
+   "recall": {
+    "shown": {
+     "matched": 4,
+     "expected": 4,
+     "count": 4
+    },
+    "tree": {
+     "matched": 4,
+     "expected": 4,
+     "count": 4
+    },
+    "named": {
+     "matched": 4,
+     "expected": 4,
+     "count": 4
+    }
+   },
+   "excluded": null,
+   "declined_at": null,
+   "linking": {
+    "tables": [
+     "web_sales",
+     "date_dim",
+     "customer",
+     "web_site"
+    ],
+    "prompt": {
+     "sha256": "5499bb52f68857d0094aa2f318d89cadd38daa3eeeadbc358895bbdcf060d8b0",
+     "chars": 30829
+    },
+    "attempts": [
+     {
+      "number": 1,
+      "outcome": "accepted",
+      "tables": [
+       "web_sales",
+       "date_dim",
+       "customer",
+       "web_site"
+      ],
+      "fault": null,
+      "requested_model": "gpt-6-luna",
+      "returned_model": "gpt-6-luna",
+      "tokens_in": 7905,
+      "tokens_cached": 0,
+      "tokens_out": 22,
+      "cost_usd": 0.0008015,
+      "duration_ms": 1486,
+      "failure": null
+     }
+    ],
+    "tokens_in": 7905,
+    "tokens_out": 22,
+    "cost_usd": 0.0008015
+   },
+   "expected": {
+    "tables": [
+     "web_sales",
+     "date_dim",
+     "customer",
+     "web_site"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H4",
+   "question": "For web orders sold in 2000 and shipped to customers born before 1950, what was the total sales revenue of each web site, by site name?",
+   "mode": "full_schema",
+   "run": 1,
+   "position": 12,
+   "began": "2026-10-20T11:40:37+00:00",
+   "cap_check": {
+    "spent_usd": 0.0074267,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": null,
+   "prompt": {
+    "sha256": "b12acf4e7a5f616769244f33b78819f66b74aa197782ceeabb50fd4f71103ed5",
+    "chars": 31007,
+    "tables": [
+     "call_center",
+     "catalog_page",
+     "catalog_returns",
+     "catalog_sales",
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "date_dim",
+     "household_demographics",
+     "income_band",
+     "inventory",
+     "item",
+     "promotion",
+     "reason",
+     "ship_mode",
+     "store",
+     "store_returns",
+     "store_sales",
+     "time_dim",
+     "warehouse",
+     "web_page",
+     "web_returns",
+     "web_sales",
+     "web_site"
+    ],
+    "has_join_section": false
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 7886,
+     "tokens_cached": 0,
+     "tokens_out": 116,
+     "cost_usd": 0.0008466,
+     "duration_ms": 1894,
+     "failure": null,
+     "sql": "SELECT web_site.web_name, SUM(web_sales.ws_ext_sales_price) AS total_sales_revenue\nFROM web_sales\nJOIN date_dim ON web_sales.ws_sold_date_sk = date_dim.d_date_sk\nJOIN customer ON web_sales.ws_ship_customer_sk = customer.c_customer_sk\nJOIN web_site ON web_sales.ws_web_site_sk = web_site.web_site_sk\nWHERE date_dim.d_year = 2000\n  AND customer.c_birth_year < 1950\nGROUP BY web_site.web_name",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT web_site.web_name, SUM(web_sales.ws_ext_sales_price) AS total_sales_revenue\nFROM web_sales\nJOIN date_dim ON web_sales.ws_sold_date_sk = date_dim.d_date_sk\nJOIN customer ON web_sales.ws_ship_customer_sk = customer.c_customer_sk\nJOIN web_site ON web_sales.ws_web_site_sk = web_site.web_site_sk\nWHERE date_dim.d_year = 2000\n  AND customer.c_birth_year < 1950\nGROUP BY web_site.web_name",
+   "validated_sha256": "d6cd3cd59a5324309e82f4fee95d841e4146064536aa878eb9b44b95533806fd",
+   "executed_sha256": "d6cd3cd59a5324309e82f4fee95d841e4146064536aa878eb9b44b95533806fd",
+   "extraction": {
+    "equalities": [
+     "customer.c_customer_sk = web_sales.ws_ship_customer_sk",
+     "date_dim.d_date_sk = web_sales.ws_sold_date_sk",
+     "web_sales.ws_web_site_sk = web_site.web_site_sk"
+    ],
+    "tables": [
+     "customer",
+     "date_dim",
+     "web_sales",
+     "web_site"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": null,
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 5,
+    "truncated": false,
+    "rows_sha256": "a9e3e46e889c613ebf1deadf84441f6394378882c87df78a124cd8a82bed67a0",
+    "duration_ms": 413,
+    "columns": 2
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 0,
+    "prompt": 4,
+    "generate": 1899,
+    "validate": 4,
+    "conform": 2,
+    "execute": 414
+   },
+   "tokens_in": 7886,
+   "tokens_out": 116,
+   "cost_usd": 0.0008466,
+   "score": {
+    "tables": "correct",
+    "path": "correct",
+    "why": "read",
+    "sql_tables": [
+     "customer",
+     "date_dim",
+     "web_sales",
+     "web_site"
+    ],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": [
+     {
+      "edges": [
+       "web_sales.ws_sold_date_sk = date_dim.d_date_sk",
+       "web_sales.ws_ship_customer_sk = customer.c_customer_sk",
+       "web_sales.ws_web_site_sk = web_site.web_site_sk"
+      ],
+      "outcome": "conforms",
+      "findings": []
+     }
+    ]
+   },
+   "recall": null,
+   "excluded": null,
+   "declined_at": null,
+   "linking": null,
+   "expected": {
+    "tables": [
+     "web_sales",
+     "date_dim",
+     "customer",
+     "web_site"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H5",
+   "question": "Which return reason, by its description, accounted for the most units returned to stores during 2001?",
+   "mode": "retrieval",
+   "run": 1,
+   "position": 13,
+   "began": "2026-10-20T11:40:39+00:00",
+   "cap_check": {
+    "spent_usd": 0.0082733,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "not_answerable",
+   "code": "question_not_answerable",
+   "message": "This cannot be answered from the tables retrieved: the model, shown those tables, said they do not hold the answer.",
+   "located": {
+    "anchors": [
+     "web_returns",
+     "reason",
+     "store",
+     "store_sales",
+     "item"
+    ],
+    "tree_tables": [
+     "web_returns",
+     "reason",
+     "item",
+     "store_sales",
+     "store"
+    ],
+    "tree_joins": [
+     "store_sales.ss_item_sk = item.i_item_sk",
+     "store_sales.ss_store_sk = store.s_store_sk",
+     "web_returns.wr_item_sk = item.i_item_sk",
+     "web_returns.wr_reason_sk = reason.r_reason_sk"
+    ],
+    "subgraph": [
+     "web_returns",
+     "reason",
+     "item",
+     "store_sales",
+     "store"
+    ],
+    "warnings": [
+     "many_to_many"
+    ],
+    "declined": false,
+    "decline_reason": null
+   },
+   "prompt": {
+    "sha256": "142873c8cfcdc06bea743312fd6a32919dc4a2e3e6c8623a1275437513c35557",
+    "chars": 6877,
+    "tables": [
+     "web_returns",
+     "reason",
+     "item",
+     "store_sales",
+     "store"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "not_answerable",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 1772,
+     "tokens_cached": 0,
+     "tokens_out": 18,
+     "cost_usd": 0.00018620000000000003,
+     "duration_ms": 1708,
+     "failure": null,
+     "sql": null,
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": null,
+   "validated_sha256": null,
+   "executed_sha256": null,
+   "extraction": null,
+   "conformance_to_selected": null,
+   "execution": null,
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 957,
+    "prompt": 0,
+    "generate": 1713
+   },
+   "tokens_in": 1772,
+   "tokens_out": 18,
+   "cost_usd": 0.00018620000000000003,
+   "score": {
+    "tables": "wrong",
+    "path": "wrong",
+    "why": "declined",
+    "sql_tables": [],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": []
+   },
+   "recall": {
+    "shown": {
+     "matched": 1,
+     "expected": 3,
+     "count": 5
+    },
+    "tree": {
+     "matched": 1,
+     "expected": 3,
+     "count": 5
+    }
+   },
+   "excluded": null,
+   "declined_at": "model",
+   "linking": null,
+   "expected": {
+    "tables": [
+     "store_returns",
+     "date_dim",
+     "reason"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H5",
+   "question": "Which return reason, by its description, accounted for the most units returned to stores during 2001?",
+   "mode": "linked",
+   "run": 1,
+   "position": 14,
+   "began": "2026-10-20T11:40:42+00:00",
+   "cap_check": {
+    "spent_usd": 0.0084601,
+    "worst_case_usd": 0.0088966,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": {
+    "anchors": [
+     "store_returns",
+     "reason",
+     "date_dim"
+    ],
+    "tree_tables": [
+     "store_returns",
+     "reason",
+     "date_dim"
+    ],
+    "tree_joins": [
+     "store_returns.sr_reason_sk = reason.r_reason_sk",
+     "store_returns.sr_returned_date_sk = date_dim.d_date_sk"
+    ],
+    "subgraph": [
+     "store_returns",
+     "reason",
+     "date_dim"
+    ],
+    "warnings": [],
+    "declined": false,
+    "decline_reason": null,
+    "linked": [
+     "store_returns",
+     "reason",
+     "date_dim"
+    ]
+   },
+   "prompt": {
+    "sha256": "9989edf1e9caaeda0e8f00fb2157e44bc212494b78638cd10f1cafb98ee4044a",
+    "chars": 3996,
+    "tables": [
+     "store_returns",
+     "reason",
+     "date_dim"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 1056,
+     "tokens_cached": 0,
+     "tokens_out": 90,
+     "cost_usd": 0.00015060000000000003,
+     "duration_ms": 2127,
+     "failure": null,
+     "sql": "SELECT reason.r_reason_desc\nFROM store_returns AS sr\nJOIN reason ON sr.sr_reason_sk = reason.r_reason_sk\nJOIN date_dim AS dd ON sr.sr_returned_date_sk = dd.d_date_sk\nWHERE dd.d_year = 2001\nGROUP BY reason.r_reason_desc\nORDER BY SUM(sr.sr_return_quantity) DESC\nLIMIT 1",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT reason.r_reason_desc\nFROM store_returns AS sr\nJOIN reason ON sr.sr_reason_sk = reason.r_reason_sk\nJOIN date_dim AS dd ON sr.sr_returned_date_sk = dd.d_date_sk\nWHERE dd.d_year = 2001\nGROUP BY reason.r_reason_desc\nORDER BY SUM(sr.sr_return_quantity) DESC\nLIMIT 1",
+   "validated_sha256": "c37db7befde753dd200b74c9aa2eb0c5425b215a35e1b39539fd78fb93426732",
+   "executed_sha256": "c37db7befde753dd200b74c9aa2eb0c5425b215a35e1b39539fd78fb93426732",
+   "extraction": {
+    "equalities": [
+     "date_dim.d_date_sk = store_returns.sr_returned_date_sk",
+     "reason.r_reason_sk = store_returns.sr_reason_sk"
+    ],
+    "tables": [
+     "date_dim",
+     "reason",
+     "store_returns"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": "conforms",
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 1,
+    "truncated": false,
+    "rows_sha256": "d93b8c52744c58ece075fcbb5971f3b14632a5ad77c653d0ebd33a54799d59cd",
+    "duration_ms": 551,
+    "columns": 1
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "link": 1691,
+    "locate": 296,
+    "prompt": 1,
+    "generate": 2136,
+    "validate": 5,
+    "conform": 2,
+    "execute": 551
+   },
+   "tokens_in": 8949,
+   "tokens_out": 109,
+   "cost_usd": 0.0009494000000000002,
+   "score": {
+    "tables": "correct",
+    "path": "correct",
+    "why": "read",
+    "sql_tables": [
+     "date_dim",
+     "reason",
+     "store_returns"
+    ],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": [
+     {
+      "edges": [
+       "store_returns.sr_returned_date_sk = date_dim.d_date_sk",
+       "store_returns.sr_reason_sk = reason.r_reason_sk"
+      ],
+      "outcome": "conforms",
+      "findings": []
+     }
+    ]
+   },
+   "recall": {
+    "shown": {
+     "matched": 3,
+     "expected": 3,
+     "count": 3
+    },
+    "tree": {
+     "matched": 3,
+     "expected": 3,
+     "count": 3
+    },
+    "named": {
+     "matched": 3,
+     "expected": 3,
+     "count": 3
+    }
+   },
+   "excluded": null,
+   "declined_at": null,
+   "linking": {
+    "tables": [
+     "store_returns",
+     "reason",
+     "date_dim"
+    ],
+    "prompt": {
+     "sha256": "974fc158cb62e726262658fca891053e100e38170327bc778036da858e309a5c",
+     "chars": 30795
+    },
+    "attempts": [
+     {
+      "number": 1,
+      "outcome": "accepted",
+      "tables": [
+       "store_returns",
+       "reason",
+       "date_dim"
+      ],
+      "fault": null,
+      "requested_model": "gpt-6-luna",
+      "returned_model": "gpt-6-luna",
+      "tokens_in": 7893,
+      "tokens_cached": 0,
+      "tokens_out": 19,
+      "cost_usd": 0.0007988000000000001,
+      "duration_ms": 1682,
+      "failure": null
+     }
+    ],
+    "tokens_in": 7893,
+    "tokens_out": 19,
+    "cost_usd": 0.0007988000000000001
+   },
+   "expected": {
+    "tables": [
+     "store_returns",
+     "date_dim",
+     "reason"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H5",
+   "question": "Which return reason, by its description, accounted for the most units returned to stores during 2001?",
+   "mode": "full_schema",
+   "run": 1,
+   "position": 15,
+   "began": "2026-10-20T11:40:47+00:00",
+   "cap_check": {
+    "spent_usd": 0.0094095,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": null,
+   "prompt": {
+    "sha256": "6d77128be9a7bc75eef62f329a5536f09dd57c812e533b78f9bb0874f8a0ecc9",
+    "chars": 30973,
+    "tables": [
+     "call_center",
+     "catalog_page",
+     "catalog_returns",
+     "catalog_sales",
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "date_dim",
+     "household_demographics",
+     "income_band",
+     "inventory",
+     "item",
+     "promotion",
+     "reason",
+     "ship_mode",
+     "store",
+     "store_returns",
+     "store_sales",
+     "time_dim",
+     "warehouse",
+     "web_page",
+     "web_returns",
+     "web_sales",
+     "web_site"
+    ],
+    "has_join_section": false
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 7874,
+     "tokens_cached": 0,
+     "tokens_out": 104,
+     "cost_usd": 0.0008394000000000001,
+     "duration_ms": 2322,
+     "failure": null,
+     "sql": "SELECT r.r_reason_desc, SUM(sr.sr_return_quantity) AS units_returned\nFROM store_returns AS sr\nJOIN reason AS r ON sr.sr_reason_sk = r.r_reason_sk\nJOIN date_dim AS d ON sr.sr_returned_date_sk = d.d_date_sk\nWHERE d.d_year = 2001\nGROUP BY r.r_reason_desc\nORDER BY SUM(sr.sr_return_quantity) DESC\nLIMIT 1",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT r.r_reason_desc, SUM(sr.sr_return_quantity) AS units_returned\nFROM store_returns AS sr\nJOIN reason AS r ON sr.sr_reason_sk = r.r_reason_sk\nJOIN date_dim AS d ON sr.sr_returned_date_sk = d.d_date_sk\nWHERE d.d_year = 2001\nGROUP BY r.r_reason_desc\nORDER BY SUM(sr.sr_return_quantity) DESC\nLIMIT 1",
+   "validated_sha256": "8c29b3c548317b428a628b7df959b5f318be30a89c5bb515b123b6ed63647635",
+   "executed_sha256": "8c29b3c548317b428a628b7df959b5f318be30a89c5bb515b123b6ed63647635",
+   "extraction": {
+    "equalities": [
+     "date_dim.d_date_sk = store_returns.sr_returned_date_sk",
+     "reason.r_reason_sk = store_returns.sr_reason_sk"
+    ],
+    "tables": [
+     "date_dim",
+     "reason",
+     "store_returns"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": null,
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 1,
+    "truncated": false,
+    "rows_sha256": "df9910150089de7fa10515132db49cd657c726cd4f531c2e10d79b1467ac4273",
+    "duration_ms": 124,
+    "columns": 2
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 0,
+    "prompt": 3,
+    "generate": 2326,
+    "validate": 4,
+    "conform": 2,
+    "execute": 125
+   },
+   "tokens_in": 7874,
+   "tokens_out": 104,
+   "cost_usd": 0.0008394000000000001,
+   "score": {
+    "tables": "correct",
+    "path": "correct",
+    "why": "read",
+    "sql_tables": [
+     "date_dim",
+     "reason",
+     "store_returns"
+    ],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": [
+     {
+      "edges": [
+       "store_returns.sr_returned_date_sk = date_dim.d_date_sk",
+       "store_returns.sr_reason_sk = reason.r_reason_sk"
+      ],
+      "outcome": "conforms",
+      "findings": []
+     }
+    ]
+   },
+   "recall": null,
+   "excluded": null,
+   "declined_at": null,
+   "linking": null,
+   "expected": {
+    "tables": [
+     "store_returns",
+     "date_dim",
+     "reason"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H6",
+   "question": "Of the catalog sales made in 2001, what was the total return amount on items later returned, broken down by the quarter of 2001 in which they were sold?",
+   "mode": "retrieval",
+   "run": 1,
+   "position": 16,
+   "began": "2026-10-20T11:40:49+00:00",
+   "cap_check": {
+    "spent_usd": 0.0102489,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "not_answerable",
+   "code": "question_not_answerable",
+   "message": "This cannot be answered from the tables retrieved: the model, shown those tables, said they do not hold the answer.",
+   "located": {
+    "anchors": [
+     "catalog_returns",
+     "catalog_sales",
+     "web_returns",
+     "store_returns",
+     "web_sales"
+    ],
+    "tree_tables": [
+     "catalog_returns",
+     "catalog_sales",
+     "web_returns",
+     "customer",
+     "store_returns",
+     "web_sales"
+    ],
+    "tree_joins": [
+     "catalog_returns.cr_item_sk = catalog_sales.cs_item_sk AND catalog_returns.cr_order_number = catalog_sales.cs_order_number",
+     "catalog_sales.cs_bill_customer_sk = customer.c_customer_sk",
+     "store_returns.sr_customer_sk = customer.c_customer_sk",
+     "web_returns.wr_item_sk = web_sales.ws_item_sk AND web_returns.wr_order_number = web_sales.ws_order_number",
+     "web_returns.wr_refunded_customer_sk = customer.c_customer_sk"
+    ],
+    "subgraph": [
+     "catalog_returns",
+     "catalog_sales",
+     "web_returns",
+     "customer",
+     "store_returns",
+     "web_sales",
+     "customer_address",
+     "customer_demographics",
+     "date_dim",
+     "household_demographics"
+    ],
+    "warnings": [
+     "arbitrary_choice",
+     "many_to_many"
+    ],
+    "declined": false,
+    "decline_reason": null
+   },
+   "prompt": {
+    "sha256": "0ea1639ff4b4d11a1140b7b734a542bd4ea5bb526020dd124c99cb418102fa4d",
+    "chars": 13835,
+    "tables": [
+     "catalog_returns",
+     "catalog_sales",
+     "web_returns",
+     "customer",
+     "store_returns",
+     "web_sales",
+     "customer_address",
+     "customer_demographics",
+     "date_dim",
+     "household_demographics"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "not_answerable",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 3549,
+     "tokens_cached": 0,
+     "tokens_out": 18,
+     "cost_usd": 0.0003639,
+     "duration_ms": 1212,
+     "failure": null,
+     "sql": null,
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": null,
+   "validated_sha256": null,
+   "executed_sha256": null,
+   "extraction": null,
+   "conformance_to_selected": null,
+   "execution": null,
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 1471,
+    "prompt": 1,
+    "generate": 1218
+   },
+   "tokens_in": 3549,
+   "tokens_out": 18,
+   "cost_usd": 0.0003639,
+   "score": {
+    "tables": "wrong",
+    "path": "wrong",
+    "why": "declined",
+    "sql_tables": [],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": []
+   },
+   "recall": {
+    "shown": {
+     "matched": 3,
+     "expected": 3,
+     "count": 10
+    },
+    "tree": {
+     "matched": 2,
+     "expected": 3,
+     "count": 6
+    }
+   },
+   "excluded": null,
+   "declined_at": "model",
+   "linking": null,
+   "expected": {
+    "tables": [
+     "catalog_returns",
+     "catalog_sales",
+     "date_dim"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H6",
+   "question": "Of the catalog sales made in 2001, what was the total return amount on items later returned, broken down by the quarter of 2001 in which they were sold?",
+   "mode": "linked",
+   "run": 1,
+   "position": 17,
+   "began": "2026-10-20T11:40:52+00:00",
+   "cap_check": {
+    "spent_usd": 0.01061372,
+    "worst_case_usd": 0.0088966,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": {
+    "anchors": [
+     "catalog_sales",
+     "catalog_returns",
+     "date_dim"
+    ],
+    "tree_tables": [
+     "catalog_returns",
+     "catalog_sales",
+     "date_dim"
+    ],
+    "tree_joins": [
+     "catalog_returns.cr_item_sk = catalog_sales.cs_item_sk AND catalog_returns.cr_order_number = catalog_sales.cs_order_number",
+     "catalog_sales.cs_sold_date_sk = date_dim.d_date_sk"
+    ],
+    "subgraph": [
+     "catalog_returns",
+     "catalog_sales",
+     "date_dim"
+    ],
+    "warnings": [],
+    "declined": false,
+    "decline_reason": null,
+    "linked": [
+     "catalog_sales",
+     "catalog_returns",
+     "date_dim"
+    ]
+   },
+   "prompt": {
+    "sha256": "ad18f9fd915092386e4a5110af3984f2ac3a4aa52527577a9bc96cafe44778d9",
+    "chars": 6424,
+    "tables": [
+     "catalog_returns",
+     "catalog_sales",
+     "date_dim"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 1675,
+     "tokens_cached": 0,
+     "tokens_out": 110,
+     "cost_usd": 0.0002225,
+     "duration_ms": 2254,
+     "failure": null,
+     "sql": "SELECT date_dim.d_qoy, SUM(catalog_returns.cr_return_amount) AS total_return_amount\nFROM catalog_sales\nJOIN date_dim ON catalog_sales.cs_sold_date_sk = date_dim.d_date_sk\nJOIN catalog_returns ON catalog_returns.cr_item_sk = catalog_sales.cs_item_sk AND catalog_returns.cr_order_number = catalog_sales.cs_order_number\nWHERE date_dim.d_year = 2001\nGROUP BY date_dim.d_qoy\nORDER BY date_dim.d_qoy",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT date_dim.d_qoy, SUM(catalog_returns.cr_return_amount) AS total_return_amount\nFROM catalog_sales\nJOIN date_dim ON catalog_sales.cs_sold_date_sk = date_dim.d_date_sk\nJOIN catalog_returns ON catalog_returns.cr_item_sk = catalog_sales.cs_item_sk AND catalog_returns.cr_order_number = catalog_sales.cs_order_number\nWHERE date_dim.d_year = 2001\nGROUP BY date_dim.d_qoy\nORDER BY date_dim.d_qoy",
+   "validated_sha256": "112d7053c0db3077b963dc666fd0fcf999fc94d2c0d793667e9d872b4bbe2f42",
+   "executed_sha256": "112d7053c0db3077b963dc666fd0fcf999fc94d2c0d793667e9d872b4bbe2f42",
+   "extraction": {
+    "equalities": [
+     "catalog_returns.cr_item_sk = catalog_sales.cs_item_sk",
+     "catalog_returns.cr_order_number = catalog_sales.cs_order_number",
+     "catalog_sales.cs_sold_date_sk = date_dim.d_date_sk"
+    ],
+    "tables": [
+     "catalog_returns",
+     "catalog_sales",
+     "date_dim"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": "conforms",
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 4,
+    "truncated": false,
+    "rows_sha256": "8140f8d37d62f1f6572f7c4da187af1122480b80acaff69d29de83c04c9b7ffb",
+    "duration_ms": 400,
+    "columns": 2
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "link": 1748,
+    "locate": 406,
+    "prompt": 0,
+    "generate": 2259,
+    "validate": 4,
+    "conform": 2,
+    "execute": 401
+   },
+   "tokens_in": 9583,
+   "tokens_out": 130,
+   "cost_usd": 0.0010233,
+   "score": {
+    "tables": "correct",
+    "path": "correct",
+    "why": "read",
+    "sql_tables": [
+     "catalog_returns",
+     "catalog_sales",
+     "date_dim"
+    ],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": [
+     {
+      "edges": [
+       "catalog_returns.cr_item_sk = catalog_sales.cs_item_sk AND catalog_returns.cr_order_number = catalog_sales.cs_order_number",
+       "catalog_sales.cs_sold_date_sk = date_dim.d_date_sk"
+      ],
+      "outcome": "conforms",
+      "findings": []
+     }
+    ]
+   },
+   "recall": {
+    "shown": {
+     "matched": 3,
+     "expected": 3,
+     "count": 3
+    },
+    "tree": {
+     "matched": 3,
+     "expected": 3,
+     "count": 3
+    },
+    "named": {
+     "matched": 3,
+     "expected": 3,
+     "count": 3
+    }
+   },
+   "excluded": null,
+   "declined_at": null,
+   "linking": {
+    "tables": [
+     "catalog_sales",
+     "catalog_returns",
+     "date_dim"
+    ],
+    "prompt": {
+     "sha256": "77dcfa11327d4ffbbf3a5fee02be478756982a758ff9ae086f7bc4a44d6ed8b4",
+     "chars": 30846
+    },
+    "attempts": [
+     {
+      "number": 1,
+      "outcome": "accepted",
+      "tables": [
+       "catalog_sales",
+       "catalog_returns",
+       "date_dim"
+      ],
+      "fault": null,
+      "requested_model": "gpt-6-luna",
+      "returned_model": "gpt-6-luna",
+      "tokens_in": 7908,
+      "tokens_cached": 0,
+      "tokens_out": 20,
+      "cost_usd": 0.0008008000000000001,
+      "duration_ms": 1734,
+      "failure": null
+     }
+    ],
+    "tokens_in": 7908,
+    "tokens_out": 20,
+    "cost_usd": 0.0008008000000000001
+   },
+   "expected": {
+    "tables": [
+     "catalog_returns",
+     "catalog_sales",
+     "date_dim"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H6",
+   "question": "Of the catalog sales made in 2001, what was the total return amount on items later returned, broken down by the quarter of 2001 in which they were sold?",
+   "mode": "full_schema",
+   "run": 1,
+   "position": 18,
+   "began": "2026-10-20T11:40:57+00:00",
+   "cap_check": {
+    "spent_usd": 0.01163702,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "answered",
+   "code": null,
+   "message": null,
+   "located": null,
+   "prompt": {
+    "sha256": "7f8142d71c5bea607bf682db945c555fe5a88a94c87aee56c422160023fa0e1f",
+    "chars": 31024,
+    "tables": [
+     "call_center",
+     "catalog_page",
+     "catalog_returns",
+     "catalog_sales",
+     "customer",
+     "customer_address",
+     "customer_demographics",
+     "date_dim",
+     "household_demographics",
+     "income_band",
+     "inventory",
+     "item",
+     "promotion",
+     "reason",
+     "ship_mode",
+     "store",
+     "store_returns",
+     "store_sales",
+     "time_dim",
+     "warehouse",
+     "web_page",
+     "web_returns",
+     "web_sales",
+     "web_site"
+    ],
+    "has_join_section": false
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "accepted",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 7889,
+     "tokens_cached": 0,
+     "tokens_out": 104,
+     "cost_usd": 0.0008409000000000001,
+     "duration_ms": 2640,
+     "failure": null,
+     "sql": "SELECT d.d_quarter_name, SUM(cr.cr_return_amount) AS total_return_amount\nFROM catalog_sales AS cs\nJOIN catalog_returns AS cr\n  ON cr.cr_item_sk = cs.cs_item_sk\n AND cr.cr_order_number = cs.cs_order_number\nJOIN date_dim AS d\n  ON d.d_date_sk = cs.cs_sold_date_sk\nWHERE d.d_year = 2001\nGROUP BY d.d_quarter_name",
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": "SELECT d.d_quarter_name, SUM(cr.cr_return_amount) AS total_return_amount\nFROM catalog_sales AS cs\nJOIN catalog_returns AS cr\n  ON cr.cr_item_sk = cs.cs_item_sk\n AND cr.cr_order_number = cs.cs_order_number\nJOIN date_dim AS d\n  ON d.d_date_sk = cs.cs_sold_date_sk\nWHERE d.d_year = 2001\nGROUP BY d.d_quarter_name",
+   "validated_sha256": "a77e5e8040eea2387f112097a45ad51b8f157982a85d7b99bc92b9c781811093",
+   "executed_sha256": "a77e5e8040eea2387f112097a45ad51b8f157982a85d7b99bc92b9c781811093",
+   "extraction": {
+    "equalities": [
+     "catalog_returns.cr_item_sk = catalog_sales.cs_item_sk",
+     "catalog_returns.cr_order_number = catalog_sales.cs_order_number",
+     "catalog_sales.cs_sold_date_sk = date_dim.d_date_sk"
+    ],
+    "tables": [
+     "catalog_returns",
+     "catalog_sales",
+     "date_dim"
+    ],
+    "unchecked": [],
+    "cross_joins": []
+   },
+   "conformance_to_selected": null,
+   "execution": {
+    "ok": true,
+    "failure": null,
+    "sqlstate": null,
+    "row_count": 4,
+    "truncated": false,
+    "rows_sha256": "d5798bd85dbb741bea0478bf9b0506de11fc15b133ad37877036f314d5483077",
+    "duration_ms": 399,
+    "columns": 2
+   },
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 0,
+    "prompt": 3,
+    "generate": 2645,
+    "validate": 4,
+    "conform": 2,
+    "execute": 399
+   },
+   "tokens_in": 7889,
+   "tokens_out": 104,
+   "cost_usd": 0.0008409000000000001,
+   "score": {
+    "tables": "correct",
+    "path": "correct",
+    "why": "read",
+    "sql_tables": [
+     "catalog_returns",
+     "catalog_sales",
+     "date_dim"
+    ],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": [
+     {
+      "edges": [
+       "catalog_returns.cr_item_sk = catalog_sales.cs_item_sk AND catalog_returns.cr_order_number = catalog_sales.cs_order_number",
+       "catalog_sales.cs_sold_date_sk = date_dim.d_date_sk"
+      ],
+      "outcome": "conforms",
+      "findings": []
+     }
+    ]
+   },
+   "recall": null,
+   "excluded": null,
+   "declined_at": null,
+   "linking": null,
+   "expected": {
+    "tables": [
+     "catalog_returns",
+     "catalog_sales",
+     "date_dim"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H7",
+   "question": "What was the total amount of web returns made in 2002, by the state of the returning customer's address as recorded on the return?",
+   "mode": "retrieval",
+   "run": 1,
+   "position": 19,
+   "began": "2026-10-20T11:41:00+00:00",
+   "cap_check": {
+    "spent_usd": 0.01247792,
+    "worst_case_usd": 0.0048172,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [],
+   "outcome": "not_answerable",
+   "code": "question_not_answerable",
+   "message": "This cannot be answered from the tables retrieved: the model, shown those tables, said they do not hold the answer.",
+   "located": {
+    "anchors": [
+     "web_returns",
+     "customer_address",
+     "catalog_returns",
+     "store_returns",
+     "customer"
+    ],
+    "tree_tables": [
+     "web_returns",
+     "customer_address",
+     "catalog_returns",
+     "store_returns",
+     "customer"
+    ],
+    "tree_joins": [
+     "catalog_returns.cr_refunded_addr_sk = customer_address.ca_address_sk",
+     "catalog_returns.cr_refunded_customer_sk = customer.c_customer_sk",
+     "store_returns.sr_addr_sk = customer_address.ca_address_sk",
+     "web_returns.wr_refunded_addr_sk = customer_address.ca_address_sk"
+    ],
+    "subgraph": [
+     "web_returns",
+     "customer_address",
+     "catalog_returns",
+     "store_returns",
+     "customer"
+    ],
+    "warnings": [
+     "arbitrary_choice",
+     "many_to_many",
+     "multi_anchor"
+    ],
+    "declined": false,
+    "decline_reason": null
+   },
+   "prompt": {
+    "sha256": "5ab363a54ed100a7036a7ea03f62d48c145751f00b0a568a58979c8eb62376a2",
+    "chars": 7523,
+    "tables": [
+     "web_returns",
+     "customer_address",
+     "catalog_returns",
+     "store_returns",
+     "customer"
+    ],
+    "has_join_section": true
+   },
+   "attempts": [
+    {
+     "number": 1,
+     "outcome": "not_answerable",
+     "requested_model": "gpt-6-luna",
+     "returned_model": "gpt-6-luna",
+     "tokens_in": 1887,
+     "tokens_cached": 0,
+     "tokens_out": 18,
+     "cost_usd": 0.0001977,
+     "duration_ms": 2159,
+     "failure": null,
+     "sql": null,
+     "findings": [],
+     "tables_outside_prompt": []
+    }
+   ],
+   "sql": null,
+   "validated_sha256": null,
+   "executed_sha256": null,
+   "extraction": null,
+   "conformance_to_selected": null,
+   "execution": null,
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "locate": 1080,
+    "prompt": 0,
+    "generate": 2164
+   },
+   "tokens_in": 1887,
+   "tokens_out": 18,
+   "cost_usd": 0.0001977,
+   "score": {
+    "tables": "wrong",
+    "path": "wrong",
+    "why": "declined",
+    "sql_tables": [],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": []
+   },
+   "recall": {
+    "shown": {
+     "matched": 2,
+     "expected": 3,
+     "count": 5
+    },
+    "tree": {
+     "matched": 2,
+     "expected": 3,
+     "count": 5
+    }
+   },
+   "excluded": null,
+   "declined_at": "model",
+   "linking": null,
+   "expected": {
+    "tables": [
+     "web_returns",
+     "date_dim",
+     "customer_address"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  },
+  {
+   "set": "dev2",
+   "id": "H7",
+   "question": "What was the total amount of web returns made in 2002, by the state of the returning customer's address as recorded on the return?",
+   "mode": "linked",
+   "run": 1,
+   "position": 20,
+   "began": "2026-10-20T11:41:03+00:00",
+   "cap_check": {
+    "spent_usd": 0.0126764,
+    "worst_case_usd": 0.0088966,
+    "cap_usd": 0.75
+   },
+   "transport_retries": [
+    {
+     "failure": "transport",
+     "message": "the model request did not complete",
+     "waited_s": 5.0
+    },
+    {
+     "failure": "transport",
+     "message": "the model request did not complete",
+     "waited_s": 20.0
+    }
+   ],
+   "outcome": "model_failed",
+   "code": "model_failure",
+   "message": "the model request did not complete",
+   "located": null,
+   "prompt": null,
+   "attempts": [],
+   "sql": null,
+   "validated_sha256": null,
+   "executed_sha256": null,
+   "extraction": null,
+   "conformance_to_selected": null,
+   "execution": null,
+   "uses_current_date": false,
+   "empty_result": false,
+   "timings": {
+    "link": 37043
+   },
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "cost_usd": 0.0,
+   "score": {
+    "tables": "wrong",
+    "path": "wrong",
+    "why": "model_failed",
+    "sql_tables": [],
+    "tables_unresolved": [],
+    "attribute_joins": [],
+    "choices": []
+   },
+   "recall": {
+    "shown": {
+     "matched": 0,
+     "expected": 3,
+     "count": 0
+    },
+    "tree": {
+     "matched": 0,
+     "expected": 3,
+     "count": 0
+    },
+    "named": {
+     "matched": 0,
+     "expected": 3,
+     "count": 0
+    }
+   },
+   "excluded": null,
+   "declined_at": null,
+   "linking": {
+    "tables": null,
+    "prompt": {
+     "sha256": "77b976a33bb7a36589cfd70b2c1a7dedc66c0656ee5d412f5d2ebdb19063d18c",
+     "chars": 30824
+    },
+    "attempts": [
+     {
+      "number": 1,
+      "outcome": "model_failed",
+      "tables": [],
+      "fault": "transport",
+      "requested_model": "gpt-6-luna",
+      "returned_model": null,
+      "tokens_in": 0,
+      "tokens_cached": 0,
+      "tokens_out": 0,
+      "cost_usd": 0.0,
+      "duration_ms": 4003,
+      "failure": "transport"
+     }
+    ],
+    "tokens_in": 0,
+    "tokens_out": 0,
+    "cost_usd": 0.0
+   },
+   "expected": {
+    "tables": [
+     "web_returns",
+     "date_dim",
+     "customer_address"
+    ],
+    "tables_one_of": [],
+    "decline": false
+   }
+  }
+ ]
+}

@@ -487,7 +487,7 @@ def test_a_void_run_is_kept_under_its_own_name_and_replaced_by_the_same_number(t
     assert "three void runs in a row" in str(stopped.value)
 
 
-@pytest.mark.parametrize("name", ["pilot-01.json", "pilot-01-void.json", "report.txt"])
+@pytest.mark.parametrize("name", ["pilot-01.json", "report.txt"])
 def test_the_pilot_stops_before_anything_is_opened_when_a_file_it_writes_exists(tmp_path, monkeypatch, name) -> None:
     import app.run_step10b as runner
     from app.shell import pipeline_session
@@ -595,3 +595,74 @@ def test_the_spend_counts_the_linking_calls(tmp_path) -> None:
     assert [a["outcome"] for a in linked["linking"]["attempts"]] == ["malformed", "accepted"]
     text = runs_report_b([_document(result.records, 1)], [])
     assert "    model calls 5 (3 generation, 2 linking): " in text.split("SPEND", 1)[1]
+
+
+def _drive_pilot(tmp_path, monkeypatch, scripts, link_script):
+    import app.run_step10b as runner
+    from app.shell import pipeline_session
+
+    monkeypatch.setattr(pipeline_session, "open_pipeline", _fake_open_pipeline(tmp_path, scripts, link_script))
+    monkeypatch.setattr(runner, "pilot_sets", lambda: [[Asked("dev2", "H1", Q1.question, ORIGINAL["1"])], [DEV]])
+    monkeypatch.setattr(runner, "RetryingModel", lambda model: RetryingModel(model, sleep=lambda seconds: None))
+    return main(["--pilot", "--out", str(tmp_path / "pilot")])
+
+
+def test_a_void_pilot_is_kept_under_its_own_name_and_replaced_until_three_in_a_row(tmp_path, monkeypatch, capsys) -> None:
+    lost = [_transport()] * 3
+    out = tmp_path / "pilot"
+    assert _drive_pilot(tmp_path, monkeypatch, ANSWERS, lost) == 1
+    assert "replaced by running --pilot again" in capsys.readouterr().out
+    first = (out / "pilot-01-void-1.json").read_text()
+    assert _drive_pilot(tmp_path, monkeypatch, ANSWERS, lost) == 1
+    assert (out / "pilot-01-void-1.json").read_text() == first
+    assert json.loads((out / "pilot-01-void-2.json").read_text())["file"] == "pilot-01-void-2.json"
+    assert _drive_pilot(tmp_path, monkeypatch, ANSWERS, lost) == 1
+    assert "The pilot stops" in capsys.readouterr().out
+    with pytest.raises(SystemExit) as stopped:
+        _drive_pilot(tmp_path, monkeypatch, ANSWERS, LINKS)
+    assert "three void runs in a row" in str(stopped.value)
+
+
+def test_a_pilot_stopped_by_the_step_cap_is_not_run_again(tmp_path, monkeypatch) -> None:
+    out = tmp_path / "pilot"
+    out.mkdir()
+    (out / "pilot-01-void-1.json").write_text(json.dumps({"void": "the step cap: $0.75 spent"}))
+    with pytest.raises(SystemExit) as stopped:
+        _drive_pilot(tmp_path, monkeypatch, ANSWERS, LINKS)
+    assert "stopped by the step cap" in str(stopped.value)
+
+
+def test_a_complete_pilot_after_a_void_one_is_reported_alone_with_the_void_one_named(tmp_path, monkeypatch) -> None:
+    scripts = {m: [reply(Q1_SQL)] * 3 for m in ("retrieval", "linked", "full_schema")}
+    assert _drive_pilot(tmp_path, monkeypatch, scripts, [_transport()] * 3) == 1
+    assert _drive_pilot(tmp_path, monkeypatch, scripts, LINKS * 2) == 0
+    out = tmp_path / "pilot"
+    kept = json.loads((out / "pilot-01.json").read_text())
+    assert kept["file"] == "pilot-01.json" and len(kept["records"]) == 6
+    text = (out / "report.txt").read_text()
+    assert "complete runs 1; void runs 1" in text
+    assert "    void, pilot-01-void-1.json: transport failure after retries" in text
+    # The void pilot's answers are in no count: H1 was answered once in each mode.
+    assert text.count("H1 linked: named") == 1
+    assert "      run 1: 1 of 1" in text and "run 1: 2 of 2" not in text
+    assert text.count("\ndev2 H1 retrieval (position") == 1
+
+
+def test_the_first_void_pilot_under_its_old_name_counts_and_is_left_alone(tmp_path, monkeypatch) -> None:
+    out = tmp_path / "pilot"
+    out.mkdir()
+    (out / "pilot-01-void.json").write_text(json.dumps({"void": "transport failure after retries"}))
+    assert _drive_pilot(tmp_path, monkeypatch, ANSWERS, [_transport()] * 3) == 1
+    assert (out / "pilot-01-void-2.json").exists() and not (out / "pilot-01-void-1.json").exists()
+    assert json.loads((out / "pilot-01-void.json").read_text()) == {"void": "transport failure after retries"}
+    assert _drive_pilot(tmp_path, monkeypatch, ANSWERS, [_transport()] * 3) == 1
+    with pytest.raises(SystemExit) as stopped:
+        _drive_pilot(tmp_path, monkeypatch, ANSWERS, LINKS)
+    assert "three void runs in a row" in str(stopped.value)
+
+
+def test_a_void_pilot_never_takes_a_name_already_used(tmp_path) -> None:
+    from app.run_step10b import pilot_void_name
+
+    (tmp_path / "pilot-01-void-2.json").write_text("{}")
+    assert pilot_void_name(tmp_path) == "pilot-01-void-3.json"

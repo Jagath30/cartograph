@@ -1,0 +1,126 @@
+You write one PostgreSQL query that answers a question about a data warehouse.
+
+You are given the tables you may use, as CREATE TABLE statements. The comment above each table and after each column says what it holds.
+
+Rules:
+- Write exactly one SELECT statement. It may begin with WITH. Never write anything that changes data.
+- Use only the tables and columns given. Do not use any other table or column, even one you know of.
+- Qualify every column with its table name or its alias.
+- Do not put comments in the SQL.
+- If the question cannot be answered from the tables given, do not guess and do not answer a different question.
+
+Reply with one JSON object and nothing else:
+  {"status": "sql", "sql": "<the query>"}
+or, when the question cannot be answered from the tables given:
+  {"status": "not_answerable", "sql": ""}
+Do not explain.
+
+Tables:
+
+-- catalog returns
+CREATE TABLE catalog_returns (
+  cr_returned_date_sk bigint,  -- returned date surrogate key
+  cr_returned_time_sk bigint,  -- returned time surrogate key
+  cr_item_sk bigint,  -- item surrogate key
+  cr_refunded_customer_sk bigint,  -- refunded customer surrogate key
+  cr_refunded_cdemo_sk bigint,  -- refunded customer demographics surrogate key
+  cr_refunded_hdemo_sk bigint,  -- refunded household demographics surrogate key
+  cr_refunded_addr_sk bigint,  -- refunded address surrogate key
+  cr_returning_customer_sk bigint,  -- returning customer surrogate key
+  cr_returning_cdemo_sk bigint,  -- returning customer demographics surrogate key
+  cr_returning_hdemo_sk bigint,  -- returning household demographics surrogate key
+  cr_returning_addr_sk bigint,  -- returning address surrogate key
+  cr_call_center_sk bigint,  -- call center surrogate key
+  cr_catalog_page_sk bigint,  -- catalog page surrogate key
+  cr_ship_mode_sk bigint,  -- ship mode surrogate key
+  cr_warehouse_sk bigint,  -- warehouse surrogate key
+  cr_reason_sk bigint,  -- reason surrogate key
+  cr_order_number bigint,  -- order number
+  cr_return_quantity bigint,  -- return quantity
+  cr_return_amount numeric(7,2),  -- return amount
+  cr_return_tax numeric(7,2),  -- return tax
+  cr_return_amt_inc_tax numeric(7,2),  -- return amount including tax
+  cr_fee numeric(7,2),  -- fee
+  cr_return_ship_cost numeric(7,2),  -- return ship cost
+  cr_refunded_cash numeric(7,2),  -- refunded cash
+  cr_reversed_charge numeric(7,2),  -- reversed charge
+  cr_store_credit numeric(7,2),  -- store credit
+  cr_net_loss numeric(7,2)  -- net loss
+);
+
+-- catalog sales
+CREATE TABLE catalog_sales (
+  cs_sold_date_sk bigint,  -- sold date surrogate key
+  cs_sold_time_sk bigint,  -- sold time surrogate key
+  cs_ship_date_sk bigint,  -- ship date surrogate key
+  cs_bill_customer_sk bigint,  -- bill customer surrogate key
+  cs_bill_cdemo_sk bigint,  -- bill customer demographics surrogate key
+  cs_bill_hdemo_sk bigint,  -- bill household demographics surrogate key
+  cs_bill_addr_sk bigint,  -- bill address surrogate key
+  cs_ship_customer_sk bigint,  -- ship customer surrogate key
+  cs_ship_cdemo_sk bigint,  -- ship customer demographics surrogate key
+  cs_ship_hdemo_sk bigint,  -- ship household demographics surrogate key
+  cs_ship_addr_sk bigint,  -- ship address surrogate key
+  cs_call_center_sk bigint,  -- call center surrogate key
+  cs_catalog_page_sk bigint,  -- catalog page surrogate key
+  cs_ship_mode_sk bigint,  -- ship mode surrogate key
+  cs_warehouse_sk bigint,  -- warehouse surrogate key
+  cs_item_sk bigint,  -- item surrogate key
+  cs_promo_sk bigint,  -- promotion surrogate key
+  cs_order_number bigint,  -- order number
+  cs_quantity bigint,  -- quantity
+  cs_wholesale_cost numeric(7,2),  -- wholesale cost
+  cs_list_price numeric(7,2),  -- list price
+  cs_sales_price numeric(7,2),  -- sales price
+  cs_ext_discount_amt numeric(7,2),  -- extended discount amount
+  cs_ext_sales_price numeric(7,2),  -- extended sales price
+  cs_ext_wholesale_cost numeric(7,2),  -- extended wholesale cost
+  cs_ext_list_price numeric(7,2),  -- extended list price
+  cs_ext_tax numeric(7,2),  -- extended tax
+  cs_coupon_amt numeric(7,2),  -- coupon amount
+  cs_ext_ship_cost numeric(7,2),  -- extended ship cost
+  cs_net_paid numeric(7,2),  -- net paid
+  cs_net_paid_inc_tax numeric(7,2),  -- net paid including tax
+  cs_net_paid_inc_ship numeric(7,2),  -- net paid including ship
+  cs_net_paid_inc_ship_tax numeric(7,2),  -- net paid including ship tax
+  cs_net_profit numeric(7,2)  -- net profit
+);
+
+-- date dimension
+CREATE TABLE date_dim (
+  d_date_sk bigint,  -- date surrogate key
+  d_date_id character varying,  -- date identifier
+  d_date date,  -- date
+  d_month_seq bigint,  -- month sequence
+  d_week_seq bigint,  -- week sequence
+  d_quarter_seq bigint,  -- quarter sequence
+  d_year bigint,  -- year
+  d_dow bigint,  -- day of week
+  d_moy bigint,  -- month of year
+  d_dom bigint,  -- day of month
+  d_qoy bigint,  -- quarter of year
+  d_fy_year bigint,  -- fiscal year
+  d_fy_quarter_seq bigint,  -- fiscal quarter sequence
+  d_fy_week_seq bigint,  -- fiscal week sequence
+  d_day_name character varying,  -- day name
+  d_quarter_name character varying,  -- quarter name
+  d_holiday character varying,  -- holiday
+  d_weekend character varying,  -- weekend
+  d_following_holiday character varying,  -- following holiday
+  d_first_dom bigint,  -- first day of month
+  d_last_dom bigint,  -- last day of month
+  d_same_day_ly bigint,  -- same day last year
+  d_same_day_lq bigint,  -- same day last quarter
+  d_current_day character varying,  -- current day
+  d_current_week character varying,  -- current week
+  d_current_month character varying,  -- current month
+  d_current_quarter character varying,  -- current quarter
+  d_current_year character varying,  -- current year
+  PRIMARY KEY (d_date_sk)
+);
+
+Join conditions. These are the joins selected for this question. Wherever the query joins two of these tables, join them by exactly these conditions; a line with two conditions joined by AND is one join and needs both. Use only the tables the question needs: a table listed above need not appear in the query.
+  catalog_returns.cr_item_sk = catalog_sales.cs_item_sk AND catalog_returns.cr_order_number = catalog_sales.cs_order_number
+  catalog_sales.cs_sold_date_sk = date_dim.d_date_sk
+
+Question: Of the catalog sales made in 2001, what was the total return amount on items later returned, broken down by the quarter of 2001 in which they were sold?

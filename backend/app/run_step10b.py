@@ -71,6 +71,7 @@ from app.core.trace_document import preferences_hash
 from app.orchestrator import NOT_ANSWERABLE, Trace, sha256
 from app.run_step10 import (
     BACKEND,
+    MAX_VOID_IN_A_ROW,
     Asked,
     RunResult,
     _report_refusal,
@@ -310,6 +311,36 @@ def _manifest_differences() -> list[str] | None:
     return check_manifest(BACKEND, tuple(recorded["patterns"]), recorded["files"])
 
 
+def _pilot_voids(out: Path) -> list[Path]:
+    """Every void pilot, under either name: pilot-01-void.json, as the first
+    was kept, or pilot-01-void-N.json."""
+    return sorted(out.glob("pilot-01-void*.json"))
+
+
+def pilot_void_name(out: Path) -> str:
+    """A name no file of this folder has: the next void pilot."""
+    taken = len(_pilot_voids(out))
+    while (out / f"pilot-01-void-{taken + 1}.json").exists():
+        taken += 1
+    return f"pilot-01-void-{taken + 1}.json"
+
+
+def pilot_refusal(out: Path) -> str | None:
+    """Why the pilot may not start in `out`, or None. As a run: a void pilot
+    is replaced by a fresh one, never overwritten, until three in a row or
+    one stopped by the step cap."""
+    taken = [name for name in ("pilot-01.json", "report.txt") if (out / name).exists()]
+    if taken:
+        return f"{out} already holds {', '.join(taken)}; nothing is overwritten"
+    voids = _pilot_voids(out)
+    for void in voids:
+        if (json.loads(void.read_text())["void"] or "").startswith("the step cap"):
+            return f"{void.name} was stopped by the step cap; no pilot starts again"
+    if len(voids) >= MAX_VOID_IN_A_ROW:
+        return f"the pilot has been void {MAX_VOID_IN_A_ROW} times: three void runs in a row stop the step"
+    return None
+
+
 def _execute(label: str, number: int, sets: list[list[Asked]], out: Path, head: str | None,
              differences: list[str] | None, cap: float, purpose: str) -> RunResult:
     """One run, three modes, kept in its own file."""
@@ -349,7 +380,7 @@ def _execute(label: str, number: int, sets: list[list[Asked]], out: Path, head: 
     began = datetime.now(UTC).isoformat(timespec="seconds")
     result = run_once_b(number, sets, pipelines, models, some.ledger, cap, worst, schema, keys, keep_prompt)
     name = (f"{label}-{number:02d}.json" if not result.void else
-            void_name(out, number) if label == "run" else f"{label}-{number:02d}-void.json")  # fmt: skip
+            void_name(out, number) if label == "run" else pilot_void_name(out))  # fmt: skip
     document = {
         "label": label, "run": number, "file": name, "void": result.void, "began": began,
         "ended": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -401,14 +432,15 @@ def main(argv: list[str]) -> int:
     if arguments.pilot:
         out = arguments.out or STEP10B / "pilot"
         # Before anything is opened or paid for: a run never overwrites a run.
-        taken = sorted(path.name for path in out.glob("pilot-*.json")) + (
-            ["report.txt"] if (out / "report.txt").exists() else []
-        )
-        if taken:
-            sys.exit(f"run_step10b: {out} already holds {', '.join(taken)}; nothing is overwritten and nothing was run")
+        refused = pilot_refusal(out)
+        if refused:
+            sys.exit(f"run_step10b: {refused}; nothing was run")
         result = _execute("pilot", 1, pilot_sets(), out, arguments.head, _manifest_differences(), arguments.cap,
                           f"{STEP_PREFIX_B} pilot")  # fmt: skip
         if result.void:
+            again = pilot_refusal(out)
+            print("run_step10b: the pilot is void. " + (f"The pilot stops: {again}." if again else
+                  "It is replaced by running --pilot again."))  # fmt: skip
             return 1
         from app.step10b_report import write_report_b
 

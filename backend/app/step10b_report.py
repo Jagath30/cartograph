@@ -296,25 +296,27 @@ def pilot_report_b(runs: list[dict], void: list[dict]) -> str:
              f"complete runs {len(runs)}; void runs {len(void)}"]  # fmt: skip
     lines += [f"    void, {d['file']}: {d['void']}" for d in void]
     lines += _settings(runs + void)
-    every = runs + void
-    records = [r for d in every for r in d["records"]]
+    # A void pilot's answers are named by its file and counted in the spend,
+    # and in nothing else: the complete pilot replaces it.
+    complete = runs
+    records = [r for d in complete for r in d["records"]]
 
     lines += ["", "LINKED MODE, QUESTION BY QUESTION: the tables linking named, the tables in the tree, the outcome"]
     lines += [linked_line(r) for r in records if r["mode"] == "linked"]
 
     lines += ["", "DEVELOPMENT SET 2 (dev2), scored"]
     lines.append("  linked against full schema, question by question (runs correct)")
-    lines += versus(every, "dev2", "linked", "full_schema")
+    lines += versus(complete, "dev2", "linked", "full_schema")
     lines.append("  linked against retrieval, question by question (runs correct)")
-    lines += versus(every, "dev2", "linked", "retrieval")
+    lines += versus(complete, "dev2", "linked", "retrieval")
     for mode in SHOWN:
-        lines += mode_lines(every, "dev2", mode)
+        lines += mode_lines(complete, "dev2", mode)
     lines.append("  recall and precision of tables, a diagnostic")
-    lines += recall_b(every, "dev2")
+    lines += recall_b(complete, "dev2")
 
     lines += ["", "THE DEVELOPMENT QUESTIONS d1 to d8, not scored"]
     for mode in SHOWN:
-        dev = _counted(every, "dev", mode)
+        dev = _counted(complete, "dev", mode)
         lines.append(f"  {mode}: outcomes {_count([r['outcome'] for r in dev])}")
         lines += declines(dev)
         lines += tokens_b(dev, mode)
