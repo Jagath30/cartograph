@@ -10,6 +10,9 @@ produces none.
     link        shell + core   question -> the tables it needs  (step 10b;
                                only when a linker is given)
     locate      shell + core   question -> anchors, the tree, warnings
+    choose      shell + core   the alphabet's choices -> routes named,
+                               the tree rebuilt  (v2.1; only when a
+                               chooser is given)
     prompt      core           the tree's subgraph and joins -> text
     generate    shell          text -> the model's reply      (up to 3 times)
     validate    core           the reply's SQL -> ValidatedSql, or findings
@@ -48,6 +51,18 @@ linking spends, generation does not get. A cut-off reply is not retried.
 Linking's tokens and cost are the question's. A linked answer is not kept:
 the stored document does not change until the owner rules to adopt v2.
 
+CHOOSING (step 10b, v2.1, the owner's rulings at stop A2). Given a chooser
+as well, once linking's tables are located: if the tree holds a choice the
+alphabet made, one call is shown the question and those choices, and
+names for each the alternative the question means, or none. A named route
+decides that choice for this question alone and the tree is rebuilt with
+it; from the rebuilt tree on, nothing changes. No call when there is no
+such choice. Linking, choosing and generation share the budget of two
+retries. A choosing call that fails -- cut off, malformed past the budget,
+or failed at the model -- is not retried and ends nothing: every choice is
+left open, the fault is recorded, and the question goes on with the tree
+linking located (option i).
+
 IF THAT WRITE FAILS (the owner's ruling 5). The answer is not returned:
 `TraceNotPersisted` is raised, and the API answers 500. An answer whose
 trace was lost is what NFR-13 forbids. There is no retry. One log entry
@@ -67,6 +82,8 @@ from datetime import UTC, datetime
 from typing import Literal, Protocol
 from uuid import UUID, uuid4
 
+from app.core.choosing import CHOOSE_REPLY_NAME, OpenChoice, Settled, choices_of, choose_reply_schema, named_routes
+from app.core.choosing import parse_choose_reply, settle
 from app.core.conformance import Conformance, Edge, Equality, compare, edges_of, extract_joins
 from app.core.linking import link_retry_message, parse_link_reply
 from app.core.prompt_builder import REPLY_NAME, REPLY_SCHEMA, Prompt, build_prompt, parse_reply, retry_message
@@ -159,6 +176,51 @@ class Linker:
     locate: Callable[[str, tuple[str, ...]], object]
 
 
+ChooseOutcome = Literal["accepted", "malformed", "cut_off", "model_failed"]
+
+
+@dataclass(frozen=True)
+class ChooseAttempt:
+    number: int
+    messages: tuple[Message, ...]
+    reply: ModelReply
+    outcome: ChooseOutcome
+    # The letter named per choice, when the reply was of the form asked for.
+    named: tuple[str | None, ...] = ()
+    fault: str | None = None
+
+
+@dataclass(frozen=True)
+class Choosing:
+    """How the alphabet's choices were put to the model, when a chooser was
+    given and the question was located."""
+
+    # The tree as linking located it, before anything was chosen.
+    first: object
+    # The choices asked about; () when the tree held none and no call was made.
+    choices: tuple[OpenChoice, ...]
+    prompt: Prompt | None
+    attempts: tuple[ChooseAttempt, ...]
+    # The letter named per choice; None when no reply of the form asked for
+    # came back, and every choice was left open.
+    named: tuple[str | None, ...] | None
+    settled: tuple[Settled, ...]
+    # Alphabetical choices of the rebuilt tree that were never asked about.
+    arose: tuple[OpenChoice, ...]
+    # Why every choice was left open, when the call failed.
+    fault: str | None
+
+
+@dataclass(frozen=True)
+class Chooser:
+    """What the choose stage needs. `relocate` locates the linked tables
+    again with the routes named (locate_linked's `chosen`, in the pipeline)."""
+
+    prompt: Callable[[str, tuple[OpenChoice, ...]], Prompt]
+    model: ModelClient
+    relocate: Callable[[str, tuple[str, ...], frozenset[str]], object]
+
+
 @dataclass(frozen=True)
 class Trace:
     trace_version: int
@@ -198,6 +260,9 @@ class Trace:
     sql_tables: tuple[str, ...] = ()
     # Step 10b: how the tables were found, when a linker found them.
     linking: Linking | None = None
+    # Step 10b, v2.1: the alphabet's choices put to the model, when a
+    # chooser was given.
+    choosing: Choosing | None = None
 
     @property
     def sql(self) -> str | None:
@@ -259,12 +324,15 @@ class Orchestrator:
         keep: Keep | None = None,
         build: Callable[[str, SchemaSnapshot, tuple, tuple | None], Prompt] = build_prompt,
         linker: Linker | None = None,
+        chooser: Chooser | None = None,
     ) -> None:
         """`build` makes the prompt from the question, the snapshot, and the
         located tree's subgraph and joins. It is the frozen PromptBuilder's,
         except in step 10's full-schema mode (app.core.full_schema)."""
         if not 0 <= max_retries <= MAX_RETRIES:
             raise ValueError(f"retries are capped at {MAX_RETRIES} per question (NFR-15)")
+        if chooser is not None and linker is None:
+            raise ValueError("a chooser needs a linker: it rebuilds the tree from the tables linking named")
         self._snapshot = snapshot
         self._schema = schema_of(snapshot)
         self._schema_ref = schema_ref
@@ -275,6 +343,7 @@ class Orchestrator:
         self._keep = keep
         self._build = build
         self._linker = linker
+        self._chooser = chooser
 
     def answer_and_keep(self, question: str) -> Kept:
         """`answer`, then the one write. Raises TraceNotPersisted when the
@@ -308,13 +377,64 @@ class Orchestrator:
         )  # fmt: skip
         return Kept(trace, document)
 
+    def _choose(self, question, named_tables, located, retries_left, choose_attempts, stage, state):
+        """The choose stage. Returns the located question to go on with, and
+        the retries left. Never ends the question."""
+        chooser = self._chooser
+        choices = choices_of(located.tree, question)
+
+        def record(prompt, named, settled=(), arose=(), fault=None):
+            state["choosing"] = Choosing(located, choices, prompt, tuple(choose_attempts), named, settled, arose, fault)
+
+        if not choices:
+            record(None, None)
+            return located, retries_left
+        prompt = chooser.prompt(question, choices)
+        shape = ReplyShape(CHOOSE_REPLY_NAME, choose_reply_schema(choices))
+        messages: tuple[Message, ...] = (Message("system", prompt.system), Message("user", prompt.user))
+        left_open = tuple(Settled(c.number, c.anchor, None, "left_open") for c in choices)
+        for number in range(1, retries_left + 2):
+            began = time.monotonic()
+            reply = chooser.model.complete(messages, shape)
+            stage("choose", began, reply.failure or "replied")
+            if not reply.ok:
+                kind: ChooseOutcome = "cut_off" if reply.failure == "cut_off" else "model_failed"
+                choose_attempts.append(ChooseAttempt(number, messages, reply, kind, fault=reply.failure))
+                record(prompt, None, left_open, fault=reply.failure)
+                return located, retries_left
+            read = parse_choose_reply(reply.text, choices)
+            if read.kind == "malformed":
+                choose_attempts.append(ChooseAttempt(number, messages, reply, "malformed", fault=read.fault))
+                if retries_left == 0:
+                    fault = f"the model's reply was not in the form asked for: {read.fault}"
+                    record(prompt, None, left_open, fault=fault)
+                    return located, retries_left
+                retries_left -= 1
+                messages += (
+                    Message("assistant", reply.text),
+                    Message("user", link_retry_message(f"The reply was not accepted: {read.fault}.")),
+                )
+                continue
+            choose_attempts.append(ChooseAttempt(number, messages, reply, "accepted", read.named))
+            break
+        chosen = named_routes(choices, read.named)
+        rebuilt = located
+        if chosen:
+            began = time.monotonic()
+            rebuilt = chooser.relocate(question, named_tables, chosen)
+            stage("choose", began, "rebuilt")
+        settled, arose = settle(choices, read.named, rebuilt.tree)
+        record(prompt, read.named, settled, arose)
+        return rebuilt, retries_left
+
     def answer(self, question: str) -> Trace:
         timings: dict[str, int] = {}
         attempts: list[Attempt] = []
         state: dict = {"located": None, "prompt": None, "validation": None, "conformance": None,
                        "execution": None, "selected": (), "validated": None, "extraction": None,
-                       "linking": None}  # fmt: skip
+                       "linking": None, "choosing": None}  # fmt: skip
         link_attempts: list[LinkAttempt] = []
+        choose_attempts: list[ChooseAttempt] = []
         question_id = sha256(question)[:12]
 
         def stage(name: str, began: float, outcome: str) -> None:
@@ -350,11 +470,12 @@ class Orchestrator:
                 validated_sha256=sha256(validated.text) if validated else None,
                 executed_sha256=sha256(execution.executed) if execution else None,
                 timings=dict(timings),
-                tokens_in=sum(a.reply.tokens_in for a in attempts) + sum(a.reply.tokens_in for a in link_attempts),
-                tokens_out=sum(a.reply.tokens_out for a in attempts) + sum(a.reply.tokens_out for a in link_attempts),
-                cost_usd=sum(a.reply.cost_usd for a in attempts) + sum(a.reply.cost_usd for a in link_attempts),
+                tokens_in=sum(a.reply.tokens_in for a in (*attempts, *link_attempts, *choose_attempts)),
+                tokens_out=sum(a.reply.tokens_out for a in (*attempts, *link_attempts, *choose_attempts)),
+                cost_usd=sum(a.reply.cost_usd for a in (*attempts, *link_attempts, *choose_attempts)),
                 sql_tables=state["extraction"].tables if state["extraction"] else (),
                 linking=state["linking"],
+                choosing=state["choosing"],
             )
 
         def linking_so_far(tables: tuple[str, ...] | None) -> None:
@@ -408,6 +529,11 @@ class Orchestrator:
             stage("locate", began, reason)
             return finish("not_answerable", NOT_ANSWERABLE[reason])
         stage("locate", began, "located")
+
+        # ---- choose: only with a chooser, and only when the alphabet chose
+        if self._chooser is not None:
+            located, retries_left = self._choose(question, named, located, retries_left, choose_attempts, stage, state)
+            state["located"], tree = located, located.tree
 
         # ---- prompt ------------------------------------------------------
         began = time.monotonic()

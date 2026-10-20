@@ -19,6 +19,14 @@ and from there it is `retrieval`. The linking call is the same model at
 its own output cap, on the same ledger. `wrap_model` wraps each model the
 pipeline makes, generation's first.
 
+Step 10b, v2.1, adds `chosen`: `linked`, then, when the tree holds a
+choice the alphabet made, the choosing call (app.core.choosing), the same
+model at its own output cap on the same ledger; a route it names is
+located again by `locate_linked` with the question's same scoring.
+`wrap_linking`, when given, wraps the linking model once more, after
+`wrap_model`: step 10b's runner shares one linking call per question
+between `linked` and `chosen`.
+
 Given a store (step 8), the orchestrator is also told how to keep a
 trace: where, whose, and the facts its own trace does not hold -- the
 graph for readable names, the hash of the preferences in force, the
@@ -32,6 +40,7 @@ from typing import Literal
 import networkx as nx
 from app.config import get_settings
 from app.core.full_schema import build_full_prompt, full_schema_located
+from app.core.choosing import CHOOSE_MAX_OUTPUT_TOKENS, build_choose_prompt
 from app.core.linking import LINK_MAX_OUTPUT_TOKENS, LINK_REPLY_NAME, build_link_prompt, link_reply_schema, locate_linked
 from app.core.graph_builder import build_graph
 from app.core.join_tree import DEFAULT_SUBGRAPH_BOUND
@@ -40,7 +49,7 @@ from app.core.path_finder import DEFAULT_MAX_JOINS
 from app.core.prompt_builder import build_prompt
 from app.core.snapshot import SchemaSnapshot
 from app.core.trace_document import Context, preferences_hash
-from app.orchestrator import Keep, Linker, Orchestrator
+from app.orchestrator import Chooser, Keep, Linker, Orchestrator
 from app.shell.model_client import LEDGER, LedgeredModel, ModelClient, ReplyShape, SpendLedger, make_model
 from app.shell.query_executor import QueryExecutor
 from app.shell.retrieval_session import Opened, open_retrieval
@@ -50,7 +59,7 @@ from app.shell.schema_ingestor import SchemaIngestor
 CEILING_USD = 0.50
 
 
-Mode = Literal["retrieval", "full_schema", "linked"]
+Mode = Literal["retrieval", "full_schema", "linked", "chosen"]
 
 
 @dataclass(frozen=True)
@@ -73,6 +82,7 @@ def open_pipeline(
     store=None,
     mode: Mode = "retrieval",
     wrap_model: Callable[[ModelClient], ModelClient] | None = None,
+    wrap_linking: Callable[[ModelClient], ModelClient] | None = None,
 ) -> Pipeline:
     """`name` begins every message; `purpose` is written beside each model
     call in the ledger. `store` is a TraceStore, or None to keep nothing.
@@ -100,21 +110,23 @@ def open_pipeline(
     def build_whole(question, snapshot, tables, joins):
         return build_full_prompt(question, snapshot, graph)
 
-    if mode not in ("retrieval", "full_schema", "linked"):
+    if mode not in ("retrieval", "full_schema", "linked", "chosen"):
         raise ValueError(f"no such mode: {mode!r}")
     find, build = (whole_schema, build_whole) if mode == "full_schema" else (retrieve, build_prompt)
 
-    linker = None
-    if mode == "linked":
+    linker = chooser = None
+    if mode in ("linked", "chosen"):
         link_model: ModelClient = LedgeredModel(
             make_model(settings, max_output_tokens=LINK_MAX_OUTPUT_TOKENS), ledger, purpose, CEILING_USD
         )
         if wrap_model is not None:
             link_model = wrap_model(link_model)
+        if wrap_linking is not None:
+            link_model = wrap_linking(link_model)
 
-        def locate_named(question: str, tables: tuple[str, ...]):
+        def locate_named(question: str, tables: tuple[str, ...], chosen: frozenset[str] = frozenset()):
             scored = opened.index.score_question(question)
-            return locate_linked(question, tables, scored.scores, scored.terms, graph, opened.settings)
+            return locate_linked(question, tables, scored.scores, scored.terms, graph, opened.settings, chosen=chosen)
 
         linker = Linker(
             prompt=lambda question: build_link_prompt(question, snapshot, graph),
@@ -122,6 +134,17 @@ def open_pipeline(
             known=frozenset(table.name for table in snapshot.tables),
             model=link_model,
             locate=locate_named,
+        )
+    if mode == "chosen":
+        choose_model: ModelClient = LedgeredModel(
+            make_model(settings, max_output_tokens=CHOOSE_MAX_OUTPUT_TOKENS), ledger, purpose, CEILING_USD
+        )
+        if wrap_model is not None:
+            choose_model = wrap_model(choose_model)
+        chooser = Chooser(
+            prompt=lambda question, choices: build_choose_prompt(question, choices, graph),
+            model=choose_model,
+            relocate=locate_named,
         )
 
     keep = None
@@ -133,6 +156,6 @@ def open_pipeline(
         keep = Keep(store, context, store.local_user_id())
     orchestrator = Orchestrator(
         snapshot, (opened.stored.id, opened.stored.hash), find, model, QueryExecutor(settings.warehouse_database_url),
-        keep=keep, build=build, linker=linker,
+        keep=keep, build=build, linker=linker, chooser=chooser,
     )  # fmt: skip
     return Pipeline(orchestrator, opened, ledger, settings.sql_model, snapshot, graph, mode)
