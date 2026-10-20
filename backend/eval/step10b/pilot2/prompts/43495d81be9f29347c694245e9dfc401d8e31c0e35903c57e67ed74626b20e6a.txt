@@ -1,0 +1,79 @@
+You write one PostgreSQL query that answers a question about a data warehouse.
+
+You are given the tables you may use, as CREATE TABLE statements. The comment above each table and after each column says what it holds.
+
+Rules:
+- Write exactly one SELECT statement. It may begin with WITH. Never write anything that changes data.
+- Use only the tables and columns given. Do not use any other table or column, even one you know of.
+- Qualify every column with its table name or its alias.
+- Do not put comments in the SQL.
+- If the question cannot be answered from the tables given, do not guess and do not answer a different question.
+
+Reply with one JSON object and nothing else:
+  {"status": "sql", "sql": "<the query>"}
+or, when the question cannot be answered from the tables given:
+  {"status": "not_answerable", "sql": ""}
+Do not explain.
+
+Tables:
+
+-- customer
+CREATE TABLE customer (
+  c_customer_sk bigint,  -- customer surrogate key
+  c_customer_id character varying,  -- customer identifier
+  c_current_cdemo_sk bigint,  -- current customer demographics surrogate key
+  c_current_hdemo_sk bigint,  -- current household demographics surrogate key
+  c_current_addr_sk bigint,  -- current address surrogate key
+  c_first_shipto_date_sk bigint,  -- first ship-to date surrogate key
+  c_first_sales_date_sk bigint,  -- first sales date surrogate key
+  c_salutation character varying,  -- salutation
+  c_first_name character varying,  -- first name
+  c_last_name character varying,  -- last name
+  c_preferred_cust_flag character varying,  -- preferred customer flag
+  c_birth_day bigint,  -- birth day
+  c_birth_month bigint,  -- birth month
+  c_birth_year bigint,  -- birth year
+  c_birth_country character varying,  -- birth country
+  c_login character varying,  -- login
+  c_email_address character varying,  -- email address
+  c_last_review_date_sk integer,  -- last review date surrogate key
+  PRIMARY KEY (c_customer_sk)
+);
+
+-- date dimension
+CREATE TABLE date_dim (
+  d_date_sk bigint,  -- date surrogate key
+  d_date_id character varying,  -- date identifier
+  d_date date,  -- date
+  d_month_seq bigint,  -- month sequence
+  d_week_seq bigint,  -- week sequence
+  d_quarter_seq bigint,  -- quarter sequence
+  d_year bigint,  -- year
+  d_dow bigint,  -- day of week
+  d_moy bigint,  -- month of year
+  d_dom bigint,  -- day of month
+  d_qoy bigint,  -- quarter of year
+  d_fy_year bigint,  -- fiscal year
+  d_fy_quarter_seq bigint,  -- fiscal quarter sequence
+  d_fy_week_seq bigint,  -- fiscal week sequence
+  d_day_name character varying,  -- day name
+  d_quarter_name character varying,  -- quarter name
+  d_holiday character varying,  -- holiday
+  d_weekend character varying,  -- weekend
+  d_following_holiday character varying,  -- following holiday
+  d_first_dom bigint,  -- first day of month
+  d_last_dom bigint,  -- last day of month
+  d_same_day_ly bigint,  -- same day last year
+  d_same_day_lq bigint,  -- same day last quarter
+  d_current_day character varying,  -- current day
+  d_current_week character varying,  -- current week
+  d_current_month character varying,  -- current month
+  d_current_quarter character varying,  -- current quarter
+  d_current_year character varying,  -- current year
+  PRIMARY KEY (d_date_sk)
+);
+
+Join conditions. These are the joins selected for this question. Wherever the query joins two of these tables, join them by exactly these conditions; a line with two conditions joined by AND is one join and needs both. Use only the tables the question needs: a table listed above need not appear in the query.
+  customer.c_first_sales_date_sk = date_dim.d_date_sk
+
+Question: In which year did the most customers make their first purchase?

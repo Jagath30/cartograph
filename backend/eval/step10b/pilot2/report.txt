@@ -1,0 +1,977 @@
+STEP 10B: THE PILOT
+
+dev2 and the eight development questions, four modes, once. dev2 is scored, as a development set; d1 to d8 carry no expectations and are not scored.
+complete runs 1; void runs 0
+model gpt-6-luna, effort none, temperature 0.0; linking's output cap 400 tokens; retrieval alpha 0.5, cut 0.5, cap 5, margin 0.10705139708498754; schema 4e674c8f1628, preferences 59022985a4452cb3ff99b618dd7a2cf90663df78be9e6c5bb78198a9474d1c26
+
+LINKED MODE, QUESTION BY QUESTION: the tables linking named, the tables in the tree, the outcome
+H1 linked: named warehouse | tree warehouse | answered | expected warehouse; tables correct, path correct
+H2 linked: named store_sales, date_dim, store, time_dim | tree store_sales, store, time_dim, date_dim | answered | expected store_sales, date_dim, time_dim, store; tables correct, path correct
+H3 linked: named catalog_sales, date_dim, ship_mode | tree catalog_sales, ship_mode, date_dim | answered | expected catalog_sales, date_dim, ship_mode; tables correct, path correct
+H4 linked: named web_sales, date_dim, customer, web_site | tree web_sales, web_site, customer, date_dim | answered | expected web_sales, date_dim, customer, web_site; tables correct, path correct
+H5 linked: named store_returns, reason, date_dim | tree store_returns, reason, date_dim | answered | expected store_returns, date_dim, reason; tables correct, path correct
+H6 linked: named catalog_sales, catalog_returns, date_dim | tree catalog_returns, catalog_sales, date_dim | answered | expected catalog_returns, catalog_sales, date_dim; tables correct, path correct
+H7 linked: named web_returns, customer_address, date_dim | tree web_returns, customer_address, date_dim | not_answerable (at model) | expected web_returns, date_dim, customer_address; tables wrong, path wrong
+H8 linked: named catalog_sales, customer, customer_address, date_dim | tree catalog_sales, customer, customer_address, date_dim | answered | expected catalog_sales, date_dim, customer, customer_address; tables correct, path wrong
+H9 linked: named inventory, date_dim, item, warehouse | tree warehouse, inventory, item, date_dim | answered | expected inventory, date_dim, item, warehouse; tables correct, path correct
+H10 linked: named web_sales, date_dim, promotion | tree web_sales, promotion, date_dim | answered | expected web_sales, date_dim, promotion; tables correct, path correct
+H11 linked: named store_sales, date_dim, household_demographics, income_band | tree store_sales, household_demographics, income_band, date_dim | answered | expected store_sales, date_dim, household_demographics, income_band; tables correct, path correct
+H12 linked: named none | tree none | not_answerable (at linking) | expected a decline; tables correct, path correct
+d1 linked: named customer | tree customer | answered
+d2 linked: named customer, date_dim | tree customer, date_dim | answered
+d3 linked: named catalog_sales, catalog_page | tree catalog_page, catalog_sales | answered
+d4 linked: named web_sales, customer_demographics | tree customer_demographics, web_sales | answered
+d5 linked: named web_sales, web_returns | tree web_returns, web_sales | answered
+d6 linked: named store_sales, store, time_dim | tree store, store_sales, time_dim | answered
+d7 linked: named catalog_sales, customer_demographics, date_dim | tree catalog_sales, customer_demographics, date_dim | answered
+d8 linked: named none | tree none | not_answerable (at linking)
+
+CHOSEN MODE, CHOICE BY CHOICE: each choice the alphabet made, its alternatives as listed, what the model named and how the rebuilt tree took it; then the outcome, beside linked's
+H1 chosen: no choice the alphabet made; no call
+H1 chosen: answered; tables correct, path correct | linked: answered; tables correct, path correct
+H2 chosen: no choice the alphabet made; no call
+H2 chosen: answered; tables correct, path correct | linked: answered; tables correct, path correct
+H3 chosen: no choice the alphabet made; no call
+H3 chosen: answered; tables correct, path correct | linked: answered; tables correct, path correct
+H4 choice 1: date_dim, which the alphabet attached to customer; A. customer.c_first_shipto_date_sk=date_dim.d_date_sk; B. web_site.web_close_date_sk=date_dim.d_date_sk; C. customer.c_last_review_date_sk=date_dim.d_date_sk; D. customer.c_first_sales_date_sk=date_dim.d_date_sk; E. web_sales.ws_sold_date_sk=date_dim.d_date_sk; F. web_site.web_open_date_sk=date_dim.d_date_sk; the alphabet's D; named E (web_sales.ws_sold_date_sk=date_dim.d_date_sk): applied
+H4 chosen: answered; tables correct, path correct | linked: answered; tables correct, path correct
+H5 chosen: no choice the alphabet made; no call
+H5 chosen: answered; tables correct, path correct | linked: answered; tables correct, path correct
+H6 chosen: no choice the alphabet made; no call
+H6 chosen: answered; tables correct, path correct | linked: answered; tables correct, path correct
+H7 choice 1: customer_address, which the alphabet attached to web_returns; A. web_returns.wr_returning_addr_sk=customer_address.ca_address_sk; B. web_returns.wr_refunded_addr_sk=customer_address.ca_address_sk; the alphabet's B; named A (web_returns.wr_returning_addr_sk=customer_address.ca_address_sk): applied
+H7 chosen: answered; tables correct, path correct | linked: not_answerable (at model); tables wrong, path wrong
+H8 choice 1: date_dim, which the alphabet attached to catalog_sales; A. catalog_sales.cs_sold_date_sk=date_dim.d_date_sk; B. customer.c_first_shipto_date_sk=date_dim.d_date_sk; C. customer.c_last_review_date_sk=date_dim.d_date_sk; D. customer.c_first_sales_date_sk=date_dim.d_date_sk; the alphabet's A; named A (catalog_sales.cs_sold_date_sk=date_dim.d_date_sk): applied
+H8 chosen: answered; tables correct, path wrong | linked: answered; tables correct, path wrong
+H9 chosen: no choice the alphabet made; no call
+H9 chosen: answered; tables correct, path correct | linked: answered; tables correct, path correct
+H10 chosen: no choice the alphabet made; no call
+H10 chosen: answered; tables correct, path correct | linked: answered; tables correct, path correct
+H11 chosen: no choice the alphabet made; no call
+H11 chosen: answered; tables correct, path correct | linked: answered; tables correct, path correct
+H12 chosen: nothing located, nothing to choose
+H12 chosen: not_answerable (at linking); tables correct, path correct | linked: not_answerable (at linking); tables correct, path correct
+d1 chosen: no choice the alphabet made; no call
+d1 chosen: answered | linked: answered
+d2 choice 1: date_dim, which the alphabet attached to customer; A. customer.c_last_review_date_sk=date_dim.d_date_sk; B. customer.c_first_sales_date_sk=date_dim.d_date_sk; C. customer.c_first_shipto_date_sk=date_dim.d_date_sk; the alphabet's B; named B (customer.c_first_sales_date_sk=date_dim.d_date_sk): applied
+d2 chosen: answered | linked: answered
+d3 chosen: no choice the alphabet made; no call
+d3 chosen: answered | linked: answered
+d4 choice 1: web_sales, which the alphabet attached to customer_demographics; A. web_sales.ws_ship_cdemo_sk=customer_demographics.cd_demo_sk; B. web_sales.ws_bill_cdemo_sk=customer_demographics.cd_demo_sk; the alphabet's B; named B (web_sales.ws_bill_cdemo_sk=customer_demographics.cd_demo_sk): applied
+d4 chosen: answered | linked: answered
+d5 chosen: no choice the alphabet made; no call
+d5 chosen: answered | linked: answered
+d6 chosen: no choice the alphabet made; no call
+d6 chosen: answered | linked: answered
+d7 choice 1: customer_demographics, which the alphabet attached to catalog_sales; A. catalog_sales.cs_ship_cdemo_sk=customer_demographics.cd_demo_sk; B. catalog_sales.cs_bill_cdemo_sk=customer_demographics.cd_demo_sk; the alphabet's B; named none: left_open
+d7 chosen: answered | linked: answered
+d8 chosen: nothing located, nothing to choose
+d8 chosen: not_answerable (at linking) | linked: not_answerable (at linking)
+
+DEVELOPMENT SET 2 (dev2), scored
+  chosen against full schema, question by question (runs correct)
+    tables: chosen better on 0 (none); full schema better on 0 (none); the same on 12
+    path: chosen better on 0 (none); full schema better on 1 (H8); the same on 11
+  linked against full schema, question by question (runs correct)
+    tables: linked better on 0 (none); full schema better on 1 (H7); the same on 11
+    path: linked better on 0 (none); full schema better on 2 (H7, H8); the same on 10
+  chosen against linked, question by question (runs correct)
+    tables: chosen better on 1 (H7); linked better on 0 (none); the same on 11
+    path: chosen better on 1 (H7); linked better on 0 (none); the same on 11
+  chosen
+    tables correctness: mean 100.0%, range 100.0% to 100.0%, over 1 runs
+      run 1: 12 of 12
+    path correctness: mean 91.7%, range 91.7% to 91.7%, over 1 runs
+      run 1: 11 of 12
+    declines by stage: at linking 1; at locate 0; by the model 0
+    path not measured, by the instrument's reason: none
+    tables not measured, by reason: none
+    decided before any SQL was read: declined as expected 1
+    execution outcomes, beside the score: not executed 1, ok 11
+    attribute joins, beside the score: 0
+    SQL taking today's date (item 60): 0
+    empty results (item 60, outside the score): 0
+    tokens of generation, every answer: 14825 in, 1115 out, over 12 answers; mean per answer 1235.4 in, 92.9 out
+    linking, apart: 94768 in, 234 out, over 12 calls in 12 answers; mean per answer 7897.3 in, 19.5 out
+    choosing, apart: 1160 in, 42 out, over 3 calls in 12 answers; mean per answer 96.7 in, 3.5 out
+    choosing: 3 of 11 answers asked; 3 choices asked: 3 named (applied 3, not met 0), 0 left open; 0 arose after the rebuild; 0 calls failed
+    named the alphabet's own pick 1 of 3; named the first-listed alternative 2 of 3
+    named the route the expectation lists 3 of 3, a diagnostic
+  linked
+    tables correctness: mean 91.7%, range 91.7% to 91.7%, over 1 runs
+      run 1: 11 of 12
+    path correctness: mean 83.3%, range 83.3% to 83.3%, over 1 runs
+      run 1: 10 of 12
+    declines by stage: at linking 1; at locate 0; by the model 1
+    path not measured, by the instrument's reason: none
+    tables not measured, by reason: none
+    decided before any SQL was read: declined 1, declined as expected 1
+    execution outcomes, beside the score: not executed 2, ok 10
+    attribute joins, beside the score: 0
+    SQL taking today's date (item 60): 0
+    empty results (item 60, outside the score): 0
+    tokens of generation, every answer: 14824 in, 1028 out, over 12 answers; mean per answer 1235.3 in, 85.7 out
+    linking, apart: 94768 in, 234 out, over 12 calls in 12 answers; mean per answer 7897.3 in, 19.5 out
+  full_schema
+    tables correctness: mean 100.0%, range 100.0% to 100.0%, over 1 runs
+      run 1: 12 of 12
+    path correctness: mean 100.0%, range 100.0% to 100.0%, over 1 runs
+      run 1: 12 of 12
+    declines by stage: at linking 0; at locate 0; by the model 1
+    path not measured, by the instrument's reason: none
+    tables not measured, by reason: none
+    decided before any SQL was read: declined as expected 1
+    execution outcomes, beside the score: not executed 1, ok 11
+    attribute joins, beside the score: 0
+    SQL taking today's date (item 60): 0
+    empty results (item 60, outside the score): 0
+    tokens of generation, every answer: 94540 in, 1108 out, over 12 answers; mean per answer 7878.3 in, 92.3 out
+  retrieval
+    tables correctness: mean 25.0%, range 25.0% to 25.0%, over 1 runs
+      run 1: 3 of 12
+    path correctness: mean 25.0%, range 25.0% to 25.0%, over 1 runs
+      run 1: 3 of 12
+    declines by stage: at linking 0; at locate 0; by the model 10
+    path not measured, by the instrument's reason: none
+    tables not measured, by reason: none
+    decided before any SQL was read: declined 9, declined as expected 1
+    execution outcomes, beside the score: not executed 10, ok 2
+    attribute joins, beside the score: 0
+    SQL taking today's date (item 60): 0
+    empty results (item 60, outside the score): 0
+    tokens of generation, every answer: 25532 in, 338 out, over 12 answers; mean per answer 2127.7 in, 28.2 out
+  recall and precision of tables, a diagnostic
+    tables named by linking: recall 36 of 36 (100.0%), precision 36 of 36 (100.0%), over 1 runs
+    linked, tables in the selected tree: recall 36 of 36 (100.0%), precision 36 of 36 (100.0%), over 1 runs
+    linked, tables shown to the model: recall 36 of 36 (100.0%), precision 36 of 36 (100.0%), over 1 runs
+    chosen, tables in the selected tree: recall 36 of 36 (100.0%), precision 36 of 36 (100.0%), over 1 runs
+    chosen, tables shown to the model: recall 36 of 36 (100.0%), precision 36 of 36 (100.0%), over 1 runs
+    retrieval, tables in the selected tree: recall 25 of 36 (69.4%), precision 25 of 54 (46.3%), over 1 runs
+    retrieval, tables shown to the model: recall 26 of 36 (72.2%), precision 26 of 64 (40.6%), over 1 runs
+
+THE DEVELOPMENT QUESTIONS d1 to d8, not scored
+  chosen: outcomes answered 7, not_answerable 1
+    declines by stage: at linking 1; at locate 0; by the model 0
+    tokens of generation, every answer: 7201 in, 512 out, over 8 answers; mean per answer 900.1 in, 64.0 out
+    linking, apart: 63069 in, 133 out, over 8 calls in 8 answers; mean per answer 7883.6 in, 16.6 out
+    choosing, apart: 936 in, 42 out, over 3 calls in 8 answers; mean per answer 117.0 in, 5.2 out
+  linked: outcomes answered 7, not_answerable 1
+    declines by stage: at linking 1; at locate 0; by the model 0
+    tokens of generation, every answer: 7201 in, 521 out, over 8 answers; mean per answer 900.1 in, 65.1 out
+    linking, apart: 63069 in, 133 out, over 8 calls in 8 answers; mean per answer 7883.6 in, 16.6 out
+  full_schema: outcomes answered 6, execution_failed 1, not_answerable 1
+    declines by stage: at linking 0; at locate 0; by the model 1
+    tokens of generation, every answer: 62917 in, 540 out, over 8 answers; mean per answer 7864.6 in, 67.5 out
+  retrieval: outcomes answered 4, not_answerable 4
+    declines by stage: at linking 0; at locate 0; by the model 4
+    tokens of generation, every answer: 14862 in, 395 out, over 8 answers; mean per answer 1857.8 in, 49.4 out
+
+EACH ANSWER
+
+dev2 H1 retrieval (position 1): answered
+    question     What is the total floor space, in square feet, of the warehouses in each state?
+    tree         warehouse, call_center, catalog_returns, store, date_dim; joins call_center.cc_closed_date_sk = date_dim.d_date_sk; catalog_returns.cr_call_center_sk = call_center.cc_call_center_sk; catalog_returns.cr_warehouse_sk = warehouse.w_warehouse_sk; store.s_closed_date_sk = date_dim.d_date_sk; warnings arbitrary_choice, many_to_many, multi_anchor
+    prompt       6 tables, 10136 characters, sha256 980e583b1b38; join section True
+    attempt 1    accepted; 2614 in (0 cached), 44 out, 3581 ms; returned model gpt-6-luna
+    SQL tables   warehouse
+    SQL joins    none
+    against the joins selected: incomplete
+    score        tables correct, path correct (read)
+    executed     ok; 1 rows, 26 ms; rows sha256 c46cb5377137; today's date used False
+
+dev2 H1 linked (position 2): answered
+    question     What is the total floor space, in square feet, of the warehouses in each state?
+    linking      named warehouse; prompt 30773 characters, sha256 362fa8094843
+    link 1       accepted; 7890 in (0 cached), 13 out, 1468 ms; returned model gpt-6-luna
+    tree         warehouse; joins none; warnings none
+    prompt       1 tables, 1688 characters, sha256 f9b8fd0a5e4d; join section False
+    attempt 1    accepted; 448 in (0 cached), 44 out, 2042 ms; returned model gpt-6-luna
+    SQL tables   warehouse
+    SQL joins    none
+    against the joins selected: conforms
+    score        tables correct, path correct (read)
+    executed     ok; 1 rows, 19 ms; rows sha256 c46cb5377137; today's date used False
+
+dev2 H1 chosen (position 3): answered
+    question     What is the total floor space, in square feet, of the warehouses in each state?
+    linking      named warehouse; prompt 30773 characters, sha256 362fa8094843
+    link 1       accepted; 7890 in (0 cached), 13 out, 1468 ms; returned model gpt-6-luna
+    tree         warehouse; joins none; warnings none
+    prompt       1 tables, 1688 characters, sha256 f9b8fd0a5e4d; join section False
+    attempt 1    accepted; 448 in (0 cached), 44 out, 1461 ms; returned model gpt-6-luna
+    SQL tables   warehouse
+    SQL joins    none
+    against the joins selected: conforms
+    score        tables correct, path correct (read)
+    executed     ok; 1 rows, 21 ms; rows sha256 c46cb5377137; today's date used False
+
+dev2 H1 full_schema (position 4): answered
+    question     What is the total floor space, in square feet, of the warehouses in each state?
+    prompt       24 tables, 30951 characters, sha256 58632e96f920; join section False
+    attempt 1    accepted; 7871 in (0 cached), 44 out, 2068 ms; returned model gpt-6-luna
+    SQL tables   warehouse
+    SQL joins    none
+    score        tables correct, path correct (read)
+    executed     ok; 1 rows, 26 ms; rows sha256 c46cb5377137; today's date used False
+
+dev2 H2 retrieval (position 5): not_answerable, declined at model
+    question     In 2001, how much revenue did stores located in Tennessee take from in-store sales made before noon?
+    tree         store_sales, store_returns, store, web_sales, date_dim; joins store.s_closed_date_sk = date_dim.d_date_sk; store_returns.sr_item_sk = store_sales.ss_item_sk AND store_returns.sr_ticket_number = store_sales.ss_ticket_number; store_sales.ss_store_sk = store.s_store_sk; web_sales.ws_ship_date_sk = date_dim.d_date_sk; warnings arbitrary_choice, many_to_many, multi_anchor
+    prompt       10 tables, 12316 characters, sha256 b64debb163df; join section True
+    attempt 1    not_answerable; 3180 in (0 cached), 18 out, 1621 ms; returned model gpt-6-luna
+    score        tables wrong, path wrong (declined)
+
+dev2 H2 linked (position 6): answered
+    question     In 2001, how much revenue did stores located in Tennessee take from in-store sales made before noon?
+    linking      named store_sales, date_dim, store, time_dim; prompt 30794 characters, sha256 af71ba5024f4
+    link 1       accepted; 7894 in (0 cached), 22 out, 1780 ms; returned model gpt-6-luna
+    tree         store_sales, store, time_dim, date_dim; joins store_sales.ss_sold_date_sk = date_dim.d_date_sk; store_sales.ss_sold_time_sk = time_dim.t_time_sk; store_sales.ss_store_sk = store.s_store_sk; warnings none
+    prompt       4 tables, 5869 characters, sha256 a13e0d159e7f; join section True
+    attempt 1    accepted; 1561 in (0 cached), 109 out, 2124 ms; returned model gpt-6-luna
+    SQL tables   date_dim, store, store_sales, time_dim
+    SQL joins    date_dim.d_date_sk = store_sales.ss_sold_date_sk; store.s_store_sk = store_sales.ss_store_sk; store_sales.ss_sold_time_sk = time_dim.t_time_sk
+    against the joins selected: conforms
+    score        tables correct, path correct (read)
+    executed     ok; 1 rows, 6307 ms; rows sha256 dcf69a06609c; today's date used False
+
+dev2 H2 chosen (position 7): answered
+    question     In 2001, how much revenue did stores located in Tennessee take from in-store sales made before noon?
+    linking      named store_sales, date_dim, store, time_dim; prompt 30794 characters, sha256 af71ba5024f4
+    link 1       accepted; 7894 in (0 cached), 22 out, 1780 ms; returned model gpt-6-luna
+    tree         store_sales, store, time_dim, date_dim; joins store_sales.ss_sold_date_sk = date_dim.d_date_sk; store_sales.ss_sold_time_sk = time_dim.t_time_sk; store_sales.ss_store_sk = store.s_store_sk; warnings none
+    prompt       4 tables, 5869 characters, sha256 a13e0d159e7f; join section True
+    attempt 1    accepted; 1561 in (1558 cached), 109 out, 1841 ms; returned model gpt-6-luna
+    SQL tables   date_dim, store, store_sales, time_dim
+    SQL joins    date_dim.d_date_sk = store_sales.ss_sold_date_sk; store.s_store_sk = store_sales.ss_store_sk; store_sales.ss_sold_time_sk = time_dim.t_time_sk
+    against the joins selected: conforms
+    score        tables correct, path correct (read)
+    executed     ok; 1 rows, 986 ms; rows sha256 dcf69a06609c; today's date used False
+
+dev2 H2 full_schema (position 8): answered
+    question     In 2001, how much revenue did stores located in Tennessee take from in-store sales made before noon?
+    prompt       24 tables, 30972 characters, sha256 b3ff04ab3310; join section False
+    attempt 1    accepted; 7875 in (0 cached), 109 out, 1954 ms; returned model gpt-6-luna
+    SQL tables   date_dim, store, store_sales, time_dim
+    SQL joins    date_dim.d_date_sk = store_sales.ss_sold_date_sk; store.s_store_sk = store_sales.ss_store_sk; store_sales.ss_sold_time_sk = time_dim.t_time_sk
+    score        tables correct, path correct (read)
+    executed     ok; 1 rows, 910 ms; rows sha256 dcf69a06609c; today's date used False
+
+dev2 H3 retrieval (position 9): not_answerable, declined at model
+    question     How many catalog orders were shipped in March 2002 by each shipping carrier?
+    tree         catalog_sales, ship_mode, web_sales, web_returns, catalog_page; joins catalog_sales.cs_catalog_page_sk = catalog_page.cp_catalog_page_sk; catalog_sales.cs_ship_mode_sk = ship_mode.sm_ship_mode_sk; web_returns.wr_item_sk = web_sales.ws_item_sk AND web_returns.wr_order_number = web_sales.ws_order_number; web_sales.ws_ship_mode_sk = ship_mode.sm_ship_mode_sk; warnings many_to_many
+    prompt       5 tables, 7827 characters, sha256 6356cb4e5fc1; join section True
+    attempt 1    not_answerable; 2028 in (0 cached), 18 out, 1270 ms; returned model gpt-6-luna
+    score        tables wrong, path wrong (declined)
+
+dev2 H3 linked (position 10): answered
+    question     How many catalog orders were shipped in March 2002 by each shipping carrier?
+    linking      named catalog_sales, date_dim, ship_mode; prompt 30770 characters, sha256 6872fb005811
+    link 1       accepted; 7888 in (0 cached), 20 out, 1806 ms; returned model gpt-6-luna
+    tree         catalog_sales, ship_mode, date_dim; joins catalog_sales.cs_ship_date_sk = date_dim.d_date_sk; catalog_sales.cs_ship_mode_sk = ship_mode.sm_ship_mode_sk; warnings none
+    prompt       3 tables, 5003 characters, sha256 8393fd5d0d34; join section True
+    attempt 1    accepted; 1322 in (0 cached), 104 out, 2223 ms; returned model gpt-6-luna
+    SQL tables   catalog_sales, date_dim, ship_mode
+    SQL joins    catalog_sales.cs_ship_date_sk = date_dim.d_date_sk; catalog_sales.cs_ship_mode_sk = ship_mode.sm_ship_mode_sk
+    against the joins selected: conforms
+    score        tables correct, path correct (read)
+    executed     ok; 20 rows, 3448 ms; rows sha256 bd70aaaa1a2c; today's date used False
+
+dev2 H3 chosen (position 11): answered
+    question     How many catalog orders were shipped in March 2002 by each shipping carrier?
+    linking      named catalog_sales, date_dim, ship_mode; prompt 30770 characters, sha256 6872fb005811
+    link 1       accepted; 7888 in (0 cached), 20 out, 1806 ms; returned model gpt-6-luna
+    tree         catalog_sales, ship_mode, date_dim; joins catalog_sales.cs_ship_date_sk = date_dim.d_date_sk; catalog_sales.cs_ship_mode_sk = ship_mode.sm_ship_mode_sk; warnings none
+    prompt       3 tables, 5003 characters, sha256 8393fd5d0d34; join section True
+    attempt 1    accepted; 1322 in (1319 cached), 104 out, 2409 ms; returned model gpt-6-luna
+    SQL tables   catalog_sales, date_dim, ship_mode
+    SQL joins    catalog_sales.cs_ship_date_sk = date_dim.d_date_sk; catalog_sales.cs_ship_mode_sk = ship_mode.sm_ship_mode_sk
+    against the joins selected: conforms
+    score        tables correct, path correct (read)
+    executed     ok; 20 rows, 200 ms; rows sha256 bd70aaaa1a2c; today's date used False
+
+dev2 H3 full_schema (position 12): answered
+    question     How many catalog orders were shipped in March 2002 by each shipping carrier?
+    prompt       24 tables, 30948 characters, sha256 e61e339ccb52; join section False
+    attempt 1    accepted; 7869 in (0 cached), 101 out, 2033 ms; returned model gpt-6-luna
+    SQL tables   catalog_sales, date_dim, ship_mode
+    SQL joins    catalog_sales.cs_ship_date_sk = date_dim.d_date_sk; catalog_sales.cs_ship_mode_sk = ship_mode.sm_ship_mode_sk
+    score        tables correct, path correct (read)
+    executed     ok; 20 rows, 221 ms; rows sha256 bd70aaaa1a2c; today's date used False
+
+dev2 H4 retrieval (position 13): not_answerable, declined at model
+    question     For web orders sold in 2000 and shipped to customers born before 1950, what was the total sales revenue of each web site, by site name?
+    tree         web_sales, web_site, web_page, customer, store_sales; joins store_sales.ss_customer_sk = customer.c_customer_sk; web_sales.ws_ship_customer_sk = customer.c_customer_sk; web_sales.ws_web_page_sk = web_page.wp_web_page_sk; web_sales.ws_web_site_sk = web_site.web_site_sk; warnings many_to_many
+    prompt       5 tables, 7883 characters, sha256 66d5a76dcf8f; join section True
+    attempt 1    not_answerable; 2039 in (0 cached), 18 out, 1187 ms; returned model gpt-6-luna
+    score        tables wrong, path wrong (declined)
+
+dev2 H4 linked (position 14): answered
+    question     For web orders sold in 2000 and shipped to customers born before 1950, what was the total sales revenue of each web site, by site name?
+    linking      named web_sales, date_dim, customer, web_site; prompt 30829 characters, sha256 5499bb52f688
+    link 1       accepted; 7905 in (0 cached), 22 out, 1826 ms; returned model gpt-6-luna
+    tree         web_sales, web_site, customer, date_dim; joins customer.c_first_sales_date_sk = date_dim.d_date_sk; web_sales.ws_ship_customer_sk = customer.c_customer_sk; web_sales.ws_web_site_sk = web_site.web_site_sk; warnings arbitrary_choice, multi_anchor
+    prompt       4 tables, 7147 characters, sha256 7fc9857e5ee7; join section True
+    attempt 1    accepted; 1850 in (0 cached), 125 out, 1972 ms; returned model gpt-6-luna
+    SQL tables   customer, date_dim, web_sales, web_site
+    SQL joins    customer.c_customer_sk = web_sales.ws_ship_customer_sk; date_dim.d_date_sk = web_sales.ws_sold_date_sk; web_sales.ws_web_site_sk = web_site.web_site_sk
+    against the joins selected: diverged
+    score        tables correct, path correct (read)
+    executed     ok; 20 rows, 712 ms; rows sha256 dae0b2f7551e; today's date used False
+
+dev2 H4 chosen (position 15): answered
+    question     For web orders sold in 2000 and shipped to customers born before 1950, what was the total sales revenue of each web site, by site name?
+    linking      named web_sales, date_dim, customer, web_site; prompt 30829 characters, sha256 5499bb52f688
+    link 1       accepted; 7905 in (0 cached), 22 out, 1826 ms; returned model gpt-6-luna
+    choose 1     accepted; named E; 466 in (0 cached), 14 out, 1482 ms
+    tree         web_sales, web_site, customer, date_dim; joins web_sales.ws_ship_customer_sk = customer.c_customer_sk; web_sales.ws_sold_date_sk = date_dim.d_date_sk; web_sales.ws_web_site_sk = web_site.web_site_sk; warnings none
+    prompt       4 tables, 7142 characters, sha256 638b4d7e33ab; join section True
+    attempt 1    accepted; 1851 in (0 cached), 116 out, 1898 ms; returned model gpt-6-luna
+    SQL tables   customer, date_dim, web_sales, web_site
+    SQL joins    customer.c_customer_sk = web_sales.ws_ship_customer_sk; date_dim.d_date_sk = web_sales.ws_sold_date_sk; web_sales.ws_web_site_sk = web_site.web_site_sk
+    against the joins selected: conforms
+    score        tables correct, path correct (read)
+    executed     ok; 5 rows, 311 ms; rows sha256 a9e3e46e889c; today's date used False
+
+dev2 H4 full_schema (position 16): answered
+    question     For web orders sold in 2000 and shipped to customers born before 1950, what was the total sales revenue of each web site, by site name?
+    prompt       24 tables, 31007 characters, sha256 b12acf4e7a5f; join section False
+    attempt 1    accepted; 7886 in (0 cached), 116 out, 2098 ms; returned model gpt-6-luna
+    SQL tables   customer, date_dim, web_sales, web_site
+    SQL joins    customer.c_customer_sk = web_sales.ws_ship_customer_sk; date_dim.d_date_sk = web_sales.ws_sold_date_sk; web_sales.ws_web_site_sk = web_site.web_site_sk
+    score        tables correct, path correct (read)
+    executed     ok; 5 rows, 297 ms; rows sha256 a9e3e46e889c; today's date used False
+
+dev2 H5 retrieval (position 17): not_answerable, declined at model
+    question     Which return reason, by its description, accounted for the most units returned to stores during 2001?
+    tree         web_returns, reason, item, store_sales, store; joins store_sales.ss_item_sk = item.i_item_sk; store_sales.ss_store_sk = store.s_store_sk; web_returns.wr_item_sk = item.i_item_sk; web_returns.wr_reason_sk = reason.r_reason_sk; warnings many_to_many
+    prompt       5 tables, 6877 characters, sha256 142873c8cfcd; join section True
+    attempt 1    not_answerable; 1772 in (0 cached), 18 out, 1592 ms; returned model gpt-6-luna
+    score        tables wrong, path wrong (declined)
+
+dev2 H5 linked (position 18): answered
+    question     Which return reason, by its description, accounted for the most units returned to stores during 2001?
+    linking      named store_returns, reason, date_dim; prompt 30795 characters, sha256 974fc158cb62
+    link 1       accepted; 7893 in (0 cached), 19 out, 1632 ms; returned model gpt-6-luna
+    tree         store_returns, reason, date_dim; joins store_returns.sr_reason_sk = reason.r_reason_sk; store_returns.sr_returned_date_sk = date_dim.d_date_sk; warnings none
+    prompt       3 tables, 3996 characters, sha256 9989edf1e9ca; join section True
+    attempt 1    accepted; 1056 in (0 cached), 91 out, 1940 ms; returned model gpt-6-luna
+    SQL tables   date_dim, reason, store_returns
+    SQL joins    date_dim.d_date_sk = store_returns.sr_returned_date_sk; reason.r_reason_sk = store_returns.sr_reason_sk
+    against the joins selected: conforms
+    score        tables correct, path correct (read)
+    executed     ok; 1 rows, 491 ms; rows sha256 d93b8c52744c; today's date used False
+
+dev2 H5 chosen (position 19): answered
+    question     Which return reason, by its description, accounted for the most units returned to stores during 2001?
+    linking      named store_returns, reason, date_dim; prompt 30795 characters, sha256 974fc158cb62
+    link 1       accepted; 7893 in (0 cached), 19 out, 1632 ms; returned model gpt-6-luna
+    tree         store_returns, reason, date_dim; joins store_returns.sr_reason_sk = reason.r_reason_sk; store_returns.sr_returned_date_sk = date_dim.d_date_sk; warnings none
+    prompt       3 tables, 3996 characters, sha256 9989edf1e9ca; join section True
+    attempt 1    accepted; 1056 in (1053 cached), 90 out, 1817 ms; returned model gpt-6-luna
+    SQL tables   date_dim, reason, store_returns
+    SQL joins    date_dim.d_date_sk = store_returns.sr_returned_date_sk; reason.r_reason_sk = store_returns.sr_reason_sk
+    against the joins selected: conforms
+    score        tables correct, path correct (read)
+    executed     ok; 1 rows, 106 ms; rows sha256 d93b8c52744c; today's date used False
+
+dev2 H5 full_schema (position 20): answered
+    question     Which return reason, by its description, accounted for the most units returned to stores during 2001?
+    prompt       24 tables, 30973 characters, sha256 6d77128be9a7; join section False
+    attempt 1    accepted; 7874 in (0 cached), 102 out, 2134 ms; returned model gpt-6-luna
+    SQL tables   date_dim, reason, store_returns
+    SQL joins    date_dim.d_date_sk = store_returns.sr_returned_date_sk; reason.r_reason_sk = store_returns.sr_reason_sk
+    score        tables correct, path correct (read)
+    executed     ok; 1 rows, 132 ms; rows sha256 df9910150089; today's date used False
+
+dev2 H6 retrieval (position 21): answered
+    question     Of the catalog sales made in 2001, what was the total return amount on items later returned, broken down by the quarter of 2001 in which they were sold?
+    tree         catalog_returns, catalog_sales, web_returns, customer, store_returns, web_sales; joins catalog_returns.cr_item_sk = catalog_sales.cs_item_sk AND catalog_returns.cr_order_number = catalog_sales.cs_order_number; catalog_sales.cs_bill_customer_sk = customer.c_customer_sk; store_returns.sr_customer_sk = customer.c_customer_sk; web_returns.wr_item_sk = web_sales.ws_item_sk AND web_returns.wr_order_number = web_sales.ws_order_number; web_returns.wr_refunded_customer_sk = customer.c_customer_sk; warnings arbitrary_choice, many_to_many
+    prompt       10 tables, 13835 characters, sha256 0ea1639ff4b4; join section True
+    attempt 1    accepted; 3549 in (0 cached), 114 out, 2119 ms; returned model gpt-6-luna
+    SQL tables   catalog_returns, catalog_sales, date_dim
+    SQL joins    catalog_returns.cr_item_sk = catalog_sales.cs_item_sk; catalog_returns.cr_order_number = catalog_sales.cs_order_number; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk
+    against the joins selected: diverged
+    score        tables correct, path correct (read)
+    executed     ok; 4 rows, 696 ms; rows sha256 8140f8d37d62; today's date used False
+
+dev2 H6 linked (position 22): answered
+    question     Of the catalog sales made in 2001, what was the total return amount on items later returned, broken down by the quarter of 2001 in which they were sold?
+    linking      named catalog_sales, catalog_returns, date_dim; prompt 30846 characters, sha256 77dcfa11327d
+    link 1       accepted; 7908 in (0 cached), 20 out, 1767 ms; returned model gpt-6-luna
+    tree         catalog_returns, catalog_sales, date_dim; joins catalog_returns.cr_item_sk = catalog_sales.cs_item_sk AND catalog_returns.cr_order_number = catalog_sales.cs_order_number; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk; warnings none
+    prompt       3 tables, 6424 characters, sha256 ad18f9fd9150; join section True
+    attempt 1    accepted; 1675 in (0 cached), 110 out, 2002 ms; returned model gpt-6-luna
+    SQL tables   catalog_returns, catalog_sales, date_dim
+    SQL joins    catalog_returns.cr_item_sk = catalog_sales.cs_item_sk; catalog_returns.cr_order_number = catalog_sales.cs_order_number; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk
+    against the joins selected: conforms
+    score        tables correct, path correct (read)
+    executed     ok; 4 rows, 370 ms; rows sha256 8140f8d37d62; today's date used False
+
+dev2 H6 chosen (position 23): answered
+    question     Of the catalog sales made in 2001, what was the total return amount on items later returned, broken down by the quarter of 2001 in which they were sold?
+    linking      named catalog_sales, catalog_returns, date_dim; prompt 30846 characters, sha256 77dcfa11327d
+    link 1       accepted; 7908 in (0 cached), 20 out, 1767 ms; returned model gpt-6-luna
+    tree         catalog_returns, catalog_sales, date_dim; joins catalog_returns.cr_item_sk = catalog_sales.cs_item_sk AND catalog_returns.cr_order_number = catalog_sales.cs_order_number; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk; warnings none
+    prompt       3 tables, 6424 characters, sha256 ad18f9fd9150; join section True
+    attempt 1    accepted; 1675 in (1672 cached), 110 out, 1893 ms; returned model gpt-6-luna
+    SQL tables   catalog_returns, catalog_sales, date_dim
+    SQL joins    catalog_returns.cr_item_sk = catalog_sales.cs_item_sk; catalog_returns.cr_order_number = catalog_sales.cs_order_number; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk
+    against the joins selected: conforms
+    score        tables correct, path correct (read)
+    executed     ok; 4 rows, 370 ms; rows sha256 8140f8d37d62; today's date used False
+
+dev2 H6 full_schema (position 24): answered
+    question     Of the catalog sales made in 2001, what was the total return amount on items later returned, broken down by the quarter of 2001 in which they were sold?
+    prompt       24 tables, 31024 characters, sha256 7f8142d71c5b; join section False
+    attempt 1    accepted; 7889 in (0 cached), 104 out, 2085 ms; returned model gpt-6-luna
+    SQL tables   catalog_returns, catalog_sales, date_dim
+    SQL joins    catalog_returns.cr_item_sk = catalog_sales.cs_item_sk; catalog_returns.cr_order_number = catalog_sales.cs_order_number; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk
+    score        tables correct, path correct (read)
+    executed     ok; 4 rows, 308 ms; rows sha256 d5798bd85dbb; today's date used False
+
+dev2 H7 retrieval (position 25): not_answerable, declined at model
+    question     What was the total amount of web returns made in 2002, by the state of the returning customer's address as recorded on the return?
+    tree         web_returns, customer_address, catalog_returns, store_returns, customer; joins catalog_returns.cr_refunded_addr_sk = customer_address.ca_address_sk; catalog_returns.cr_refunded_customer_sk = customer.c_customer_sk; store_returns.sr_addr_sk = customer_address.ca_address_sk; web_returns.wr_refunded_addr_sk = customer_address.ca_address_sk; warnings arbitrary_choice, many_to_many, multi_anchor
+    prompt       5 tables, 7523 characters, sha256 5ab363a54ed1; join section True
+    attempt 1    not_answerable; 1887 in (0 cached), 18 out, 1386 ms; returned model gpt-6-luna
+    score        tables wrong, path wrong (declined)
+
+dev2 H7 linked (position 26): not_answerable, declined at model
+    question     What was the total amount of web returns made in 2002, by the state of the returning customer's address as recorded on the return?
+    linking      named web_returns, customer_address, date_dim; prompt 30824 characters, sha256 77b976a33bb7
+    link 1       accepted; 7900 in (0 cached), 20 out, 1619 ms; returned model gpt-6-luna
+    tree         web_returns, customer_address, date_dim; joins web_returns.wr_refunded_addr_sk = customer_address.ca_address_sk; web_returns.wr_returned_date_sk = date_dim.d_date_sk; warnings arbitrary_choice
+    prompt       3 tables, 4909 characters, sha256 e510a8b23909; join section True
+    attempt 1    not_answerable; 1265 in (0 cached), 18 out, 1199 ms; returned model gpt-6-luna
+    score        tables wrong, path wrong (declined)
+
+dev2 H7 chosen (position 27): answered
+    question     What was the total amount of web returns made in 2002, by the state of the returning customer's address as recorded on the return?
+    linking      named web_returns, customer_address, date_dim; prompt 30824 characters, sha256 77b976a33bb7
+    link 1       accepted; 7900 in (0 cached), 20 out, 1619 ms; returned model gpt-6-luna
+    choose 1     accepted; named A; 310 in (0 cached), 14 out, 1508 ms
+    tree         web_returns, customer_address, date_dim; joins web_returns.wr_returned_date_sk = date_dim.d_date_sk; web_returns.wr_returning_addr_sk = customer_address.ca_address_sk; warnings none
+    prompt       3 tables, 4910 characters, sha256 b97da6d730c0; join section True
+    attempt 1    accepted; 1265 in (0 cached), 92 out, 1772 ms; returned model gpt-6-luna
+    SQL tables   customer_address, date_dim, web_returns
+    SQL joins    customer_address.ca_address_sk = web_returns.wr_returning_addr_sk; date_dim.d_date_sk = web_returns.wr_returned_date_sk
+    against the joins selected: conforms
+    score        tables correct, path correct (read)
+    executed     ok; 52 rows, 529 ms; rows sha256 c7def9913c6f; today's date used False
+
+dev2 H7 full_schema (position 28): answered
+    question     What was the total amount of web returns made in 2002, by the state of the returning customer's address as recorded on the return?
+    prompt       24 tables, 31002 characters, sha256 b1cd1511435d; join section False
+    attempt 1    accepted; 7881 in (0 cached), 92 out, 1712 ms; returned model gpt-6-luna
+    SQL tables   customer_address, date_dim, web_returns
+    SQL joins    customer_address.ca_address_sk = web_returns.wr_returning_addr_sk; date_dim.d_date_sk = web_returns.wr_returned_date_sk
+    score        tables correct, path correct (read)
+    executed     ok; 52 rows, 94 ms; rows sha256 c7def9913c6f; today's date used False
+
+dev2 H8 retrieval (position 29): not_answerable, declined at model
+    question     How many different customers whose current address is in California were billed for catalog purchases made in 2002?
+    tree         catalog_sales, customer, customer_address, catalog_returns, customer_demographics; joins catalog_returns.cr_item_sk = catalog_sales.cs_item_sk AND catalog_returns.cr_order_number = catalog_sales.cs_order_number; catalog_sales.cs_bill_addr_sk = customer_address.ca_address_sk; catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk; catalog_sales.cs_bill_customer_sk = customer.c_customer_sk; warnings multi_anchor
+    prompt       5 tables, 7571 characters, sha256 d64de03f4e9c; join section True
+    attempt 1    not_answerable; 1885 in (0 cached), 18 out, 1133 ms; returned model gpt-6-luna
+    score        tables wrong, path wrong (declined)
+
+dev2 H8 linked (position 30): answered
+    question     How many different customers whose current address is in California were billed for catalog purchases made in 2002?
+    linking      named catalog_sales, customer, customer_address, date_dim; prompt 30809 characters, sha256 cce18f6e147c
+    link 1       accepted; 7893 in (0 cached), 22 out, 1540 ms; returned model gpt-6-luna
+    tree         catalog_sales, customer, customer_address, date_dim; joins catalog_sales.cs_bill_addr_sk = customer_address.ca_address_sk; catalog_sales.cs_bill_customer_sk = customer.c_customer_sk; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk; warnings multi_anchor
+    prompt       4 tables, 6542 characters, sha256 e3c804d370bc; join section True
+    attempt 1    accepted; 1679 in (0 cached), 113 out, 2112 ms; returned model gpt-6-luna
+    SQL tables   catalog_sales, customer, customer_address, date_dim
+    SQL joins    catalog_sales.cs_bill_addr_sk = customer_address.ca_address_sk; catalog_sales.cs_bill_customer_sk = customer.c_customer_sk; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk; customer.c_current_addr_sk = customer_address.ca_address_sk
+    unchecked    self_join: ca and current_ca
+    against the joins selected: diverged
+    score        tables correct, path wrong (read)
+    executed     ok; 1 rows, 868 ms; rows sha256 0742a1d7ddcf; today's date used False
+
+dev2 H8 chosen (position 31): answered
+    question     How many different customers whose current address is in California were billed for catalog purchases made in 2002?
+    linking      named catalog_sales, customer, customer_address, date_dim; prompt 30809 characters, sha256 cce18f6e147c
+    link 1       accepted; 7893 in (0 cached), 22 out, 1540 ms; returned model gpt-6-luna
+    choose 1     accepted; named A; 384 in (0 cached), 14 out, 1962 ms
+    tree         catalog_sales, customer, customer_address, date_dim; joins catalog_sales.cs_bill_addr_sk = customer_address.ca_address_sk; catalog_sales.cs_bill_customer_sk = customer.c_customer_sk; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk; warnings none
+    prompt       4 tables, 6542 characters, sha256 e3c804d370bc; join section True
+    attempt 1    accepted; 1679 in (1676 cached), 125 out, 1928 ms; returned model gpt-6-luna
+    SQL tables   catalog_sales, customer, customer_address, date_dim
+    SQL joins    catalog_sales.cs_bill_addr_sk = customer_address.ca_address_sk; catalog_sales.cs_bill_customer_sk = customer.c_customer_sk; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk; customer.c_current_addr_sk = customer_address.ca_address_sk
+    unchecked    self_join: ca and current_ca
+    against the joins selected: diverged
+    score        tables correct, path wrong (read)
+    executed     ok; 1 rows, 795 ms; rows sha256 0742a1d7ddcf; today's date used False
+
+dev2 H8 full_schema (position 32): answered
+    question     How many different customers whose current address is in California were billed for catalog purchases made in 2002?
+    prompt       24 tables, 30987 characters, sha256 6a7ab8318c2f; join section False
+    attempt 1    accepted; 7874 in (0 cached), 104 out, 1979 ms; returned model gpt-6-luna
+    SQL tables   catalog_sales, customer, customer_address, date_dim
+    SQL joins    catalog_sales.cs_bill_customer_sk = customer.c_customer_sk; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk; customer.c_current_addr_sk = customer_address.ca_address_sk
+    score        tables correct, path correct (read)
+    executed     ok; 1 rows, 1013 ms; rows sha256 0742a1d7ddcf; today's date used False
+
+dev2 H9 retrieval (position 33): not_answerable, declined at model
+    question     In January 2001, what was the average quantity on hand of items in the Books category at each warehouse, by warehouse name?
+    tree         warehouse, inventory, item; joins inventory.inv_item_sk = item.i_item_sk; inventory.inv_warehouse_sk = warehouse.w_warehouse_sk; warnings none
+    prompt       3 tables, 3445 characters, sha256 b3a0c046a696; join section True
+    attempt 1    not_answerable; 869 in (0 cached), 18 out, 1097 ms; returned model gpt-6-luna
+    score        tables wrong, path wrong (declined)
+
+dev2 H9 linked (position 34): answered
+    question     In January 2001, what was the average quantity on hand of items in the Books category at each warehouse, by warehouse name?
+    linking      named inventory, date_dim, item, warehouse; prompt 30817 characters, sha256 218425573ad7
+    link 1       accepted; 7899 in (0 cached), 20 out, 2087 ms; returned model gpt-6-luna
+    tree         warehouse, inventory, item, date_dim; joins inventory.inv_date_sk = date_dim.d_date_sk; inventory.inv_item_sk = item.i_item_sk; inventory.inv_warehouse_sk = warehouse.w_warehouse_sk; warnings none
+    prompt       4 tables, 4809 characters, sha256 677bfba69b67; join section True
+    attempt 1    accepted; 1241 in (0 cached), 120 out, 2137 ms; returned model gpt-6-luna
+    SQL tables   date_dim, inventory, item, warehouse
+    SQL joins    date_dim.d_date_sk = inventory.inv_date_sk; inventory.inv_item_sk = item.i_item_sk; inventory.inv_warehouse_sk = warehouse.w_warehouse_sk
+    against the joins selected: conforms
+    score        tables correct, path correct (read)
+    executed     ok; 5 rows, 11217 ms; rows sha256 28be6209390f; today's date used False
+
+dev2 H9 chosen (position 35): answered
+    question     In January 2001, what was the average quantity on hand of items in the Books category at each warehouse, by warehouse name?
+    linking      named inventory, date_dim, item, warehouse; prompt 30817 characters, sha256 218425573ad7
+    link 1       accepted; 7899 in (0 cached), 20 out, 2087 ms; returned model gpt-6-luna
+    tree         warehouse, inventory, item, date_dim; joins inventory.inv_date_sk = date_dim.d_date_sk; inventory.inv_item_sk = item.i_item_sk; inventory.inv_warehouse_sk = warehouse.w_warehouse_sk; warnings none
+    prompt       4 tables, 4809 characters, sha256 677bfba69b67; join section True
+    attempt 1    accepted; 1241 in (1238 cached), 120 out, 1842 ms; returned model gpt-6-luna
+    SQL tables   date_dim, inventory, item, warehouse
+    SQL joins    date_dim.d_date_sk = inventory.inv_date_sk; inventory.inv_item_sk = item.i_item_sk; inventory.inv_warehouse_sk = warehouse.w_warehouse_sk
+    against the joins selected: conforms
+    score        tables correct, path correct (read)
+    executed     ok; 5 rows, 1430 ms; rows sha256 28be6209390f; today's date used False
+
+dev2 H9 full_schema (position 36): answered
+    question     In January 2001, what was the average quantity on hand of items in the Books category at each warehouse, by warehouse name?
+    prompt       24 tables, 30995 characters, sha256 e21d5dd64f6e; join section False
+    attempt 1    accepted; 7880 in (0 cached), 120 out, 1923 ms; returned model gpt-6-luna
+    SQL tables   date_dim, inventory, item, warehouse
+    SQL joins    date_dim.d_date_sk = inventory.inv_date_sk; inventory.inv_item_sk = item.i_item_sk; inventory.inv_warehouse_sk = warehouse.w_warehouse_sk
+    score        tables correct, path correct (read)
+    executed     ok; 5 rows, 1298 ms; rows sha256 28be6209390f; today's date used False
+
+dev2 H10 retrieval (position 37): not_answerable, declined at model
+    question     In 2000, how many units were sold on the web through sales made under a promotion that was advertised on television?
+    tree         web_sales, promotion, web_page, store_sales, web_returns; joins store_sales.ss_promo_sk = promotion.p_promo_sk; web_returns.wr_item_sk = web_sales.ws_item_sk AND web_returns.wr_order_number = web_sales.ws_order_number; web_sales.ws_promo_sk = promotion.p_promo_sk; web_sales.ws_web_page_sk = web_page.wp_web_page_sk; warnings many_to_many
+    prompt       5 tables, 8017 characters, sha256 a352ba98f780; join section True
+    attempt 1    not_answerable; 2082 in (0 cached), 18 out, 1176 ms; returned model gpt-6-luna
+    score        tables wrong, path wrong (declined)
+
+dev2 H10 linked (position 38): answered
+    question     In 2000, how many units were sold on the web through sales made under a promotion that was advertised on television?
+    linking      named web_sales, date_dim, promotion; prompt 30810 characters, sha256 d08ba677f7da
+    link 1       accepted; 7897 in (0 cached), 19 out, 8600 ms; returned model gpt-6-luna
+    tree         web_sales, promotion, date_dim; joins web_sales.ws_promo_sk = promotion.p_promo_sk; web_sales.ws_sold_date_sk = date_dim.d_date_sk; warnings none
+    prompt       3 tables, 5717 characters, sha256 078dba68b0d1; join section True
+    attempt 1    accepted; 1496 in (0 cached), 85 out, 2028 ms; returned model gpt-6-luna
+    SQL tables   date_dim, promotion, web_sales
+    SQL joins    date_dim.d_date_sk = web_sales.ws_sold_date_sk; promotion.p_promo_sk = web_sales.ws_promo_sk
+    against the joins selected: conforms
+    score        tables correct, path correct (read)
+    executed     ok; 1 rows, 36 ms; rows sha256 1d8fc6ceb1f9; today's date used False
+
+dev2 H10 chosen (position 39): answered
+    question     In 2000, how many units were sold on the web through sales made under a promotion that was advertised on television?
+    linking      named web_sales, date_dim, promotion; prompt 30810 characters, sha256 d08ba677f7da
+    link 1       accepted; 7897 in (0 cached), 19 out, 8600 ms; returned model gpt-6-luna
+    tree         web_sales, promotion, date_dim; joins web_sales.ws_promo_sk = promotion.p_promo_sk; web_sales.ws_sold_date_sk = date_dim.d_date_sk; warnings none
+    prompt       3 tables, 5717 characters, sha256 078dba68b0d1; join section True
+    attempt 1    accepted; 1496 in (1493 cached), 93 out, 1669 ms; returned model gpt-6-luna
+    SQL tables   date_dim, promotion, web_sales
+    SQL joins    date_dim.d_date_sk = web_sales.ws_sold_date_sk; promotion.p_promo_sk = web_sales.ws_promo_sk
+    against the joins selected: conforms
+    score        tables correct, path correct (read)
+    executed     ok; 1 rows, 162 ms; rows sha256 2ef65bce02e4; today's date used False
+
+dev2 H10 full_schema (position 40): answered
+    question     In 2000, how many units were sold on the web through sales made under a promotion that was advertised on television?
+    prompt       24 tables, 30988 characters, sha256 85795700e31b; join section False
+    attempt 1    accepted; 7878 in (0 cached), 86 out, 2568 ms; returned model gpt-6-luna
+    SQL tables   date_dim, promotion, web_sales
+    SQL joins    date_dim.d_date_sk = web_sales.ws_sold_date_sk; promotion.p_promo_sk = web_sales.ws_promo_sk
+    score        tables correct, path correct (read)
+    executed     ok; 1 rows, 45 ms; rows sha256 1d8fc6ceb1f9; today's date used False
+
+dev2 H11 retrieval (position 41): not_answerable, declined at model
+    question     What was the total revenue of in-store sales made in 1999 where the shopper's household, as recorded on the sale itself, was in an income band starting at 100,000 or more?
+    tree         store_sales, household_demographics, store, store_returns, income_band; joins household_demographics.hd_income_band_sk = income_band.ib_income_band_sk; store_returns.sr_hdemo_sk = household_demographics.hd_demo_sk; store_sales.ss_hdemo_sk = household_demographics.hd_demo_sk; store_sales.ss_store_sk = store.s_store_sk; warnings many_to_many, multi_anchor
+    prompt       5 tables, 5905 characters, sha256 27dc26a3058e; join section True
+    attempt 1    not_answerable; 1539 in (0 cached), 18 out, 1333 ms; returned model gpt-6-luna
+    score        tables wrong, path wrong (declined)
+
+dev2 H11 linked (position 42): answered
+    question     What was the total revenue of in-store sales made in 1999 where the shopper's household, as recorded on the sale itself, was in an income band starting at 100,000 or more?
+    linking      named store_sales, date_dim, household_demographics, income_band; prompt 30865 characters, sha256 3c4183956c94
+    link 1       accepted; 7913 in (0 cached), 25 out, 3663 ms; returned model gpt-6-luna
+    tree         store_sales, household_demographics, income_band, date_dim; joins household_demographics.hd_income_band_sk = income_band.ib_income_band_sk; store_sales.ss_hdemo_sk = household_demographics.hd_demo_sk; store_sales.ss_sold_date_sk = date_dim.d_date_sk; warnings none
+    prompt       4 tables, 4646 characters, sha256 58fe84f7a638; join section True
+    attempt 1    accepted; 1231 in (0 cached), 109 out, 1831 ms; returned model gpt-6-luna
+    SQL tables   date_dim, household_demographics, income_band, store_sales
+    SQL joins    date_dim.d_date_sk = store_sales.ss_sold_date_sk; household_demographics.hd_demo_sk = store_sales.ss_hdemo_sk; household_demographics.hd_income_band_sk = income_band.ib_income_band_sk
+    against the joins selected: conforms
+    score        tables correct, path correct (read)
+    executed     ok; 1 rows, 589 ms; rows sha256 5d93f16fb76d; today's date used False
+
+dev2 H11 chosen (position 43): answered
+    question     What was the total revenue of in-store sales made in 1999 where the shopper's household, as recorded on the sale itself, was in an income band starting at 100,000 or more?
+    linking      named store_sales, date_dim, household_demographics, income_band; prompt 30865 characters, sha256 3c4183956c94
+    link 1       accepted; 7913 in (0 cached), 25 out, 3663 ms; returned model gpt-6-luna
+    tree         store_sales, household_demographics, income_band, date_dim; joins household_demographics.hd_income_band_sk = income_band.ib_income_band_sk; store_sales.ss_hdemo_sk = household_demographics.hd_demo_sk; store_sales.ss_sold_date_sk = date_dim.d_date_sk; warnings none
+    prompt       4 tables, 4646 characters, sha256 58fe84f7a638; join section True
+    attempt 1    accepted; 1231 in (1228 cached), 112 out, 1790 ms; returned model gpt-6-luna
+    SQL tables   date_dim, household_demographics, income_band, store_sales
+    SQL joins    date_dim.d_date_sk = store_sales.ss_sold_date_sk; household_demographics.hd_demo_sk = store_sales.ss_hdemo_sk; household_demographics.hd_income_band_sk = income_band.ib_income_band_sk
+    against the joins selected: conforms
+    score        tables correct, path correct (read)
+    executed     ok; 1 rows, 417 ms; rows sha256 5d93f16fb76d; today's date used False
+
+dev2 H11 full_schema (position 44): answered
+    question     What was the total revenue of in-store sales made in 1999 where the shopper's household, as recorded on the sale itself, was in an income band starting at 100,000 or more?
+    prompt       24 tables, 31043 characters, sha256 e24d6c5b3557; join section False
+    attempt 1    accepted; 7894 in (0 cached), 112 out, 1896 ms; returned model gpt-6-luna
+    SQL tables   date_dim, household_demographics, income_band, store_sales
+    SQL joins    date_dim.d_date_sk = store_sales.ss_sold_date_sk; household_demographics.hd_demo_sk = store_sales.ss_hdemo_sk; household_demographics.hd_income_band_sk = income_band.ib_income_band_sk
+    score        tables correct, path correct (read)
+    executed     ok; 1 rows, 380 ms; rows sha256 5d93f16fb76d; today's date used False
+
+dev2 H12 retrieval (position 45): not_answerable, declined at model
+    question     What was the average customer satisfaction score of each call center in 2001?
+    tree         call_center, catalog_sales, catalog_returns, customer_demographics, customer; joins catalog_returns.cr_call_center_sk = call_center.cc_call_center_sk; catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk; catalog_sales.cs_bill_customer_sk = customer.c_customer_sk; catalog_sales.cs_call_center_sk = call_center.cc_call_center_sk; warnings arbitrary_choice, many_to_many, multi_anchor
+    prompt       5 tables, 8308 characters, sha256 734f7ddc246b; join section True
+    attempt 1    not_answerable; 2088 in (0 cached), 18 out, 1269 ms; returned model gpt-6-luna
+    score        tables correct, path correct (declined as expected)
+
+dev2 H12 linked (position 46): not_answerable, declined at linking
+    question     What was the average customer satisfaction score of each call center in 2001?
+    linking      named none; prompt 30771 characters, sha256 c44d76ed3e61
+    link 1       none; 7888 in (0 cached), 12 out, 1579 ms; returned model gpt-6-luna
+    score        tables correct, path correct (declined as expected)
+
+dev2 H12 chosen (position 47): not_answerable, declined at linking
+    question     What was the average customer satisfaction score of each call center in 2001?
+    linking      named none; prompt 30771 characters, sha256 c44d76ed3e61
+    link 1       none; 7888 in (0 cached), 12 out, 1579 ms; returned model gpt-6-luna
+    score        tables correct, path correct (declined as expected)
+
+dev2 H12 full_schema (position 48): not_answerable, declined at model
+    question     What was the average customer satisfaction score of each call center in 2001?
+    prompt       24 tables, 30949 characters, sha256 99ab1f272cfc; join section False
+    attempt 1    not_answerable; 7869 in (0 cached), 18 out, 1274 ms; returned model gpt-6-luna
+    score        tables correct, path correct (declined as expected)
+
+dev d1 retrieval (position 49): answered
+    question     How many customers were born in each country?
+    tree         customer, customer_address, customer_demographics, web_returns, catalog_returns; joins catalog_returns.cr_refunded_customer_sk = customer.c_customer_sk; customer.c_current_addr_sk = customer_address.ca_address_sk; customer.c_current_cdemo_sk = customer_demographics.cd_demo_sk; web_returns.wr_refunded_customer_sk = customer.c_customer_sk; warnings arbitrary_choice, many_to_many, multi_anchor
+    prompt       5 tables, 6930 characters, sha256 7c9fb5f692df; join section True
+    attempt 1    accepted; 1706 in (0 cached), 34 out, 1291 ms; returned model gpt-6-luna
+    SQL tables   customer
+    SQL joins    none
+    against the joins selected: incomplete
+    executed     ok; 212 rows, 97 ms; rows sha256 f36985a47b2c; today's date used False
+
+dev d1 linked (position 50): answered
+    question     How many customers were born in each country?
+    linking      named customer; prompt 30739 characters, sha256 dfe2b45ae397
+    link 1       accepted; 7881 in (0 cached), 13 out, 1754 ms; returned model gpt-6-luna
+    tree         customer; joins none; warnings none
+    prompt       1 tables, 1988 characters, sha256 6031a2582303; join section False
+    attempt 1    accepted; 506 in (0 cached), 36 out, 1781 ms; returned model gpt-6-luna
+    SQL tables   customer
+    SQL joins    none
+    against the joins selected: conforms
+    executed     ok; 212 rows, 132 ms; rows sha256 f36985a47b2c; today's date used False
+
+dev d1 chosen (position 51): answered
+    question     How many customers were born in each country?
+    linking      named customer; prompt 30739 characters, sha256 dfe2b45ae397
+    link 1       accepted; 7881 in (0 cached), 13 out, 1754 ms; returned model gpt-6-luna
+    tree         customer; joins none; warnings none
+    prompt       1 tables, 1988 characters, sha256 6031a2582303; join section False
+    attempt 1    accepted; 506 in (0 cached), 36 out, 1184 ms; returned model gpt-6-luna
+    SQL tables   customer
+    SQL joins    none
+    against the joins selected: conforms
+    executed     ok; 212 rows, 113 ms; rows sha256 f36985a47b2c; today's date used False
+
+dev d1 full_schema (position 52): answered
+    question     How many customers were born in each country?
+    prompt       24 tables, 30917 characters, sha256 572b27ce8571; join section False
+    attempt 1    accepted; 7862 in (0 cached), 36 out, 1565 ms; returned model gpt-6-luna
+    SQL tables   customer
+    SQL joins    none
+    executed     ok; 212 rows, 73 ms; rows sha256 f36985a47b2c; today's date used False
+
+dev d2 retrieval (position 53): not_answerable, declined at model
+    question     In which year did the most customers make their first purchase?
+    tree         customer, customer_demographics, web_sales, store_sales; joins customer.c_current_cdemo_sk = customer_demographics.cd_demo_sk; store_sales.ss_customer_sk = customer.c_customer_sk; web_sales.ws_bill_customer_sk = customer.c_customer_sk; warnings arbitrary_choice, many_to_many, multi_anchor
+    prompt       4 tables, 6241 characters, sha256 5593306814b2; join section True
+    attempt 1    not_answerable; 1609 in (0 cached), 18 out, 1090 ms; returned model gpt-6-luna
+
+dev d2 linked (position 54): answered
+    question     In which year did the most customers make their first purchase?
+    linking      named customer, date_dim; prompt 30757 characters, sha256 c2a2c1b22262
+    link 1       accepted; 7884 in (0 cached), 16 out, 1523 ms; returned model gpt-6-luna
+    tree         customer, date_dim; joins customer.c_first_sales_date_sk = date_dim.d_date_sk; warnings arbitrary_choice
+    prompt       2 tables, 3690 characters, sha256 43495d81be9f; join section True
+    attempt 1    accepted; 945 in (0 cached), 64 out, 1474 ms; returned model gpt-6-luna
+    SQL tables   customer, date_dim
+    SQL joins    customer.c_first_sales_date_sk = date_dim.d_date_sk
+    against the joins selected: conforms
+    executed     ok; 1 rows, 262 ms; rows sha256 9413991f84a3; today's date used False
+
+dev d2 chosen (position 55): answered
+    question     In which year did the most customers make their first purchase?
+    linking      named customer, date_dim; prompt 30757 characters, sha256 c2a2c1b22262
+    link 1       accepted; 7884 in (0 cached), 16 out, 1523 ms; returned model gpt-6-luna
+    choose 1     accepted; named B; 339 in (0 cached), 14 out, 1471 ms
+    tree         customer, date_dim; joins customer.c_first_sales_date_sk = date_dim.d_date_sk; warnings none
+    prompt       2 tables, 3690 characters, sha256 43495d81be9f; join section True
+    attempt 1    accepted; 945 in (0 cached), 59 out, 1823 ms; returned model gpt-6-luna
+    SQL tables   customer, date_dim
+    SQL joins    customer.c_first_sales_date_sk = date_dim.d_date_sk
+    against the joins selected: conforms
+    executed     ok; 1 rows, 220 ms; rows sha256 9413991f84a3; today's date used False
+
+dev d2 full_schema (position 56): answered
+    question     In which year did the most customers make their first purchase?
+    prompt       24 tables, 30935 characters, sha256 0fdd5627c6e7; join section False
+    attempt 1    accepted; 7865 in (0 cached), 64 out, 1403 ms; returned model gpt-6-luna
+    SQL tables   customer, date_dim
+    SQL joins    customer.c_first_sales_date_sk = date_dim.d_date_sk
+    executed     ok; 1 rows, 203 ms; rows sha256 9413991f84a3; today's date used False
+
+dev d3 retrieval (position 57): not_answerable, declined at model
+    question     Which catalog pages brought in the most orders?
+    tree         catalog_page, web_sales, date_dim, web_returns, promotion; joins catalog_page.cp_end_date_sk = date_dim.d_date_sk; web_returns.wr_item_sk = web_sales.ws_item_sk AND web_returns.wr_order_number = web_sales.ws_order_number; web_sales.ws_promo_sk = promotion.p_promo_sk; web_sales.ws_ship_date_sk = date_dim.d_date_sk; warnings arbitrary_choice, many_to_many
+    prompt       5 tables, 7826 characters, sha256 623638a94e40; join section True
+    attempt 1    not_answerable; 2018 in (0 cached), 18 out, 1654 ms; returned model gpt-6-luna
+
+dev d3 linked (position 58): answered
+    question     Which catalog pages brought in the most orders?
+    linking      named catalog_sales, catalog_page; prompt 30741 characters, sha256 df14555a3ded
+    link 1       accepted; 7881 in (0 cached), 17 out, 1407 ms; returned model gpt-6-luna
+    tree         catalog_page, catalog_sales; joins catalog_sales.cs_catalog_page_sk = catalog_page.cp_catalog_page_sk; warnings none
+    prompt       2 tables, 3818 characters, sha256 750b4cd5cac4; join section True
+    attempt 1    accepted; 982 in (0 cached), 87 out, 1866 ms; returned model gpt-6-luna
+    SQL tables   catalog_page, catalog_sales
+    SQL joins    catalog_page.cp_catalog_page_sk = catalog_sales.cs_catalog_page_sk
+    against the joins selected: conforms
+    executed     ok; 1000 rows (truncated), 4405 ms; rows sha256 f20a7af33505; today's date used False
+
+dev d3 chosen (position 59): answered
+    question     Which catalog pages brought in the most orders?
+    linking      named catalog_sales, catalog_page; prompt 30741 characters, sha256 df14555a3ded
+    link 1       accepted; 7881 in (0 cached), 17 out, 1407 ms; returned model gpt-6-luna
+    tree         catalog_page, catalog_sales; joins catalog_sales.cs_catalog_page_sk = catalog_page.cp_catalog_page_sk; warnings none
+    prompt       2 tables, 3818 characters, sha256 750b4cd5cac4; join section True
+    attempt 1    accepted; 982 in (0 cached), 87 out, 1632 ms; returned model gpt-6-luna
+    SQL tables   catalog_page, catalog_sales
+    SQL joins    catalog_page.cp_catalog_page_sk = catalog_sales.cs_catalog_page_sk
+    against the joins selected: conforms
+    executed     ok; 1000 rows (truncated), 3556 ms; rows sha256 f20a7af33505; today's date used False
+
+dev d3 full_schema (position 60): answered
+    question     Which catalog pages brought in the most orders?
+    prompt       24 tables, 30919 characters, sha256 2baddc5e60cc; join section False
+    attempt 1    accepted; 7862 in (0 cached), 97 out, 1801 ms; returned model gpt-6-luna
+    SQL tables   catalog_page, catalog_sales
+    SQL joins    catalog_page.cp_catalog_page_sk = catalog_sales.cs_catalog_page_sk
+    executed     ok; 1000 rows (truncated), 1323 ms; rows sha256 b2bf4d835ce5; today's date used False
+
+dev d4 retrieval (position 61): answered
+    question     How do purchases on the web split by the buyer's level of education?
+    tree         customer_demographics, web_sales, web_site, web_page; joins web_sales.ws_bill_cdemo_sk = customer_demographics.cd_demo_sk; web_sales.ws_web_page_sk = web_page.wp_web_page_sk; web_sales.ws_web_site_sk = web_site.web_site_sk; warnings arbitrary_choice
+    prompt       4 tables, 6028 characters, sha256 285ac8c838c6; join section True
+    attempt 1    accepted; 1544 in (0 cached), 76 out, 1756 ms; returned model gpt-6-luna
+    SQL tables   customer_demographics, web_sales
+    SQL joins    customer_demographics.cd_demo_sk = web_sales.ws_bill_cdemo_sk
+    against the joins selected: incomplete
+    executed     ok; 7 rows, 1797 ms; rows sha256 ef85122a3d82; today's date used False
+
+dev d4 linked (position 62): answered
+    question     How do purchases on the web split by the buyer's level of education?
+    linking      named web_sales, customer_demographics; prompt 30762 characters, sha256 19bc62d0cea0
+    link 1       accepted; 7887 in (0 cached), 18 out, 1497 ms; returned model gpt-6-luna
+    tree         customer_demographics, web_sales; joins web_sales.ws_bill_cdemo_sk = customer_demographics.cd_demo_sk; warnings arbitrary_choice
+    prompt       2 tables, 3821 characters, sha256 11917b6fd1f3; join section True
+    attempt 1    accepted; 990 in (0 cached), 76 out, 1480 ms; returned model gpt-6-luna
+    SQL tables   customer_demographics, web_sales
+    SQL joins    customer_demographics.cd_demo_sk = web_sales.ws_bill_cdemo_sk
+    against the joins selected: conforms
+    executed     ok; 7 rows, 844 ms; rows sha256 ef85122a3d82; today's date used False
+
+dev d4 chosen (position 63): answered
+    question     How do purchases on the web split by the buyer's level of education?
+    linking      named web_sales, customer_demographics; prompt 30762 characters, sha256 19bc62d0cea0
+    link 1       accepted; 7887 in (0 cached), 18 out, 1497 ms; returned model gpt-6-luna
+    choose 1     accepted; named B; 297 in (0 cached), 14 out, 1412 ms
+    tree         customer_demographics, web_sales; joins web_sales.ws_bill_cdemo_sk = customer_demographics.cd_demo_sk; warnings none
+    prompt       2 tables, 3821 characters, sha256 11917b6fd1f3; join section True
+    attempt 1    accepted; 990 in (0 cached), 76 out, 1616 ms; returned model gpt-6-luna
+    SQL tables   customer_demographics, web_sales
+    SQL joins    customer_demographics.cd_demo_sk = web_sales.ws_bill_cdemo_sk
+    against the joins selected: conforms
+    executed     ok; 7 rows, 760 ms; rows sha256 ef85122a3d82; today's date used False
+
+dev d4 full_schema (position 64): answered
+    question     How do purchases on the web split by the buyer's level of education?
+    prompt       24 tables, 30940 characters, sha256 60e9c5b1267a; join section False
+    attempt 1    accepted; 7868 in (0 cached), 76 out, 1902 ms; returned model gpt-6-luna
+    SQL tables   customer_demographics, web_sales
+    SQL joins    customer_demographics.cd_demo_sk = web_sales.ws_bill_cdemo_sk
+    executed     ok; 7 rows, 790 ms; rows sha256 c10ac0917490; today's date used False
+
+dev d5 retrieval (position 65): answered
+    question     What share of the money taken on the web was later refunded?
+    tree         web_returns, web_sales, web_page, store_returns, customer; joins store_returns.sr_customer_sk = customer.c_customer_sk; web_returns.wr_item_sk = web_sales.ws_item_sk AND web_returns.wr_order_number = web_sales.ws_order_number; web_sales.ws_bill_customer_sk = customer.c_customer_sk; web_sales.ws_web_page_sk = web_page.wp_web_page_sk; warnings arbitrary_choice, many_to_many
+    prompt       10 tables, 11838 characters, sha256 2711f7b45881; join section True
+    attempt 1    accepted; 3028 in (0 cached), 119 out, 2008 ms; returned model gpt-6-luna
+    SQL tables   web_returns, web_sales
+    SQL joins    none
+    against the joins selected: incomplete
+    executed     ok; 1 rows, 277 ms; rows sha256 3b21d0f99883; today's date used False
+
+dev d5 linked (position 66): answered
+    question     What share of the money taken on the web was later refunded?
+    linking      named web_sales, web_returns; prompt 30754 characters, sha256 62b3f6f1c64c
+    link 1       accepted; 7885 in (0 cached), 17 out, 2407 ms; returned model gpt-6-luna
+    tree         web_returns, web_sales; joins web_returns.wr_item_sk = web_sales.ws_item_sk AND web_returns.wr_order_number = web_sales.ws_order_number; warnings none
+    prompt       2 tables, 4741 characters, sha256 01fd480ed695; join section True
+    attempt 1    accepted; 1238 in (0 cached), 74 out, 1816 ms; returned model gpt-6-luna
+    SQL tables   web_returns, web_sales
+    SQL joins    web_returns.wr_item_sk = web_sales.ws_item_sk; web_returns.wr_order_number = web_sales.ws_order_number
+    against the joins selected: conforms
+    executed     ok; 1 rows, 295 ms; rows sha256 db39ba9fd115; today's date used False
+
+dev d5 chosen (position 67): answered
+    question     What share of the money taken on the web was later refunded?
+    linking      named web_sales, web_returns; prompt 30754 characters, sha256 62b3f6f1c64c
+    link 1       accepted; 7885 in (0 cached), 17 out, 2407 ms; returned model gpt-6-luna
+    tree         web_returns, web_sales; joins web_returns.wr_item_sk = web_sales.ws_item_sk AND web_returns.wr_order_number = web_sales.ws_order_number; warnings none
+    prompt       2 tables, 4741 characters, sha256 01fd480ed695; join section True
+    attempt 1    accepted; 1238 in (1235 cached), 74 out, 1488 ms; returned model gpt-6-luna
+    SQL tables   web_returns, web_sales
+    SQL joins    web_returns.wr_item_sk = web_sales.ws_item_sk; web_returns.wr_order_number = web_sales.ws_order_number
+    against the joins selected: conforms
+    executed     ok; 1 rows, 232 ms; rows sha256 db39ba9fd115; today's date used False
+
+dev d5 full_schema (position 68): execution_failed
+    question     What share of the money taken on the web was later refunded?
+    prompt       24 tables, 30932 characters, sha256 8e358c7ba684; join section False
+    attempt 1    accepted; 7866 in (0 cached), 49 out, 1750 ms; returned model gpt-6-luna
+    SQL tables   web_returns, web_sales
+    SQL joins    none
+    cross join   web_sales | web_returns
+    executed     timeout; 0 rows, 30043 ms; rows sha256 ; today's date used False
+
+dev d6 retrieval (position 69): not_answerable, declined at model
+    question     Which store managers take the most money in the evening?
+    tree         store, store_sales, store_returns, call_center, date_dim; joins call_center.cc_closed_date_sk = date_dim.d_date_sk; store.s_closed_date_sk = date_dim.d_date_sk; store_returns.sr_store_sk = store.s_store_sk; store_sales.ss_store_sk = store.s_store_sk; warnings arbitrary_choice, many_to_many, multi_anchor
+    prompt       5 tables, 8030 characters, sha256 522157dc8134; join section True
+    attempt 1    not_answerable; 2113 in (0 cached), 18 out, 1214 ms; returned model gpt-6-luna
+
+dev d6 linked (position 70): answered
+    question     Which store managers take the most money in the evening?
+    linking      named store_sales, store, time_dim; prompt 30750 characters, sha256 1eb775a01a3b
+    link 1       accepted; 7883 in (0 cached), 19 out, 1850 ms; returned model gpt-6-luna
+    tree         store, store_sales, time_dim; joins store_sales.ss_sold_time_sk = time_dim.t_time_sk; store_sales.ss_store_sk = store.s_store_sk; warnings none
+    prompt       3 tables, 4455 characters, sha256 c80cb4e27605; join section True
+    attempt 1    accepted; 1175 in (0 cached), 85 out, 2220 ms; returned model gpt-6-luna
+    SQL tables   store, store_sales, time_dim
+    SQL joins    store.s_store_sk = store_sales.ss_store_sk; store_sales.ss_sold_time_sk = time_dim.t_time_sk
+    against the joins selected: conforms
+    executed     ok; 0 rows, 110 ms; rows sha256 e3b0c44298fc; today's date used False
+
+dev d6 chosen (position 71): answered
+    question     Which store managers take the most money in the evening?
+    linking      named store_sales, store, time_dim; prompt 30750 characters, sha256 1eb775a01a3b
+    link 1       accepted; 7883 in (0 cached), 19 out, 1850 ms; returned model gpt-6-luna
+    tree         store, store_sales, time_dim; joins store_sales.ss_sold_time_sk = time_dim.t_time_sk; store_sales.ss_store_sk = store.s_store_sk; warnings none
+    prompt       3 tables, 4455 characters, sha256 c80cb4e27605; join section True
+    attempt 1    accepted; 1175 in (1172 cached), 85 out, 2025 ms; returned model gpt-6-luna
+    SQL tables   store, store_sales, time_dim
+    SQL joins    store.s_store_sk = store_sales.ss_store_sk; store_sales.ss_sold_time_sk = time_dim.t_time_sk
+    against the joins selected: conforms
+    executed     ok; 6 rows, 1056 ms; rows sha256 909b699c2c11; today's date used False
+
+dev d6 full_schema (position 72): answered
+    question     Which store managers take the most money in the evening?
+    prompt       24 tables, 30928 characters, sha256 0f585ccb85e7; join section False
+    attempt 1    accepted; 7864 in (0 cached), 95 out, 2195 ms; returned model gpt-6-luna
+    SQL tables   store, store_sales, time_dim
+    SQL joins    store.s_store_sk = store_sales.ss_store_sk; store_sales.ss_sold_time_sk = time_dim.t_time_sk
+    executed     ok; 1 rows, 887 ms; rows sha256 858a9b7f1889; today's date used False
+
+dev d7 retrieval (position 73): answered
+    question     On which days of the week do married customers order most from the catalog?
+    tree         catalog_sales, catalog_returns, customer_demographics, customer, date_dim; joins catalog_returns.cr_item_sk = catalog_sales.cs_item_sk AND catalog_returns.cr_order_number = catalog_sales.cs_order_number; catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk; catalog_sales.cs_bill_customer_sk = customer.c_customer_sk; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk; warnings arbitrary_choice, multi_anchor
+    prompt       5 tables, 8129 characters, sha256 74f8d7c1ff38; join section True
+    attempt 1    accepted; 2068 in (0 cached), 94 out, 2224 ms; returned model gpt-6-luna
+    SQL tables   catalog_sales, customer_demographics, date_dim
+    SQL joins    catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk
+    against the joins selected: incomplete
+    executed     ok; 1 rows, 724 ms; rows sha256 4ebb9f198ec6; today's date used False
+
+dev d7 linked (position 74): answered
+    question     On which days of the week do married customers order most from the catalog?
+    linking      named catalog_sales, customer_demographics, date_dim; prompt 30769 characters, sha256 2e5d7c961415
+    link 1       accepted; 7887 in (0 cached), 21 out, 2438 ms; returned model gpt-6-luna
+    tree         catalog_sales, customer_demographics, date_dim; joins catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk; warnings arbitrary_choice
+    prompt       3 tables, 5226 characters, sha256 a8ea67c6a678; join section True
+    attempt 1    accepted; 1365 in (0 cached), 99 out, 2011 ms; returned model gpt-6-luna
+    SQL tables   catalog_sales, customer_demographics, date_dim
+    SQL joins    catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk
+    against the joins selected: conforms
+    executed     ok; 1 rows, 551 ms; rows sha256 4ebb9f198ec6; today's date used False
+
+dev d7 chosen (position 75): answered
+    question     On which days of the week do married customers order most from the catalog?
+    linking      named catalog_sales, customer_demographics, date_dim; prompt 30769 characters, sha256 2e5d7c961415
+    link 1       accepted; 7887 in (0 cached), 21 out, 2438 ms; returned model gpt-6-luna
+    choose 1     accepted; named none; 300 in (0 cached), 14 out, 1447 ms
+    tree         catalog_sales, customer_demographics, date_dim; joins catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk; warnings arbitrary_choice
+    prompt       3 tables, 5226 characters, sha256 a8ea67c6a678; join section True
+    attempt 1    accepted; 1365 in (1362 cached), 95 out, 1938 ms; returned model gpt-6-luna
+    SQL tables   catalog_sales, customer_demographics, date_dim
+    SQL joins    catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk
+    against the joins selected: conforms
+    executed     ok; 7 rows, 531 ms; rows sha256 d3db72ac0808; today's date used False
+
+dev d7 full_schema (position 76): answered
+    question     On which days of the week do married customers order most from the catalog?
+    prompt       24 tables, 30947 characters, sha256 c6e21f0930bc; join section False
+    attempt 1    accepted; 7868 in (0 cached), 105 out, 1802 ms; returned model gpt-6-luna
+    SQL tables   catalog_sales, customer_demographics, date_dim
+    SQL joins    catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk; catalog_sales.cs_sold_date_sk = date_dim.d_date_sk
+    executed     ok; 1 rows, 501 ms; rows sha256 e34bf063a4ec; today's date used False
+
+dev d8 retrieval (position 77): not_answerable, declined at model
+    question     Which of our suppliers deliver late most often?
+    tree         web_sales; joins none; warnings none
+    prompt       1 tables, 2853 characters, sha256 05076c24b0b0; join section False
+    attempt 1    not_answerable; 776 in (0 cached), 18 out, 1276 ms; returned model gpt-6-luna
+
+dev d8 linked (position 78): not_answerable, declined at linking
+    question     Which of our suppliers deliver late most often?
+    linking      named none; prompt 30741 characters, sha256 7af734c61295
+    link 1       none; 7881 in (0 cached), 12 out, 1342 ms; returned model gpt-6-luna
+
+dev d8 chosen (position 79): not_answerable, declined at linking
+    question     Which of our suppliers deliver late most often?
+    linking      named none; prompt 30741 characters, sha256 7af734c61295
+    link 1       none; 7881 in (0 cached), 12 out, 1342 ms; returned model gpt-6-luna
+
+dev d8 full_schema (position 80): not_answerable, declined at model
+    question     Which of our suppliers deliver late most often?
+    prompt       24 tables, 30919 characters, sha256 502734186fbf; join section False
+    attempt 1    not_answerable; 7862 in (0 cached), 18 out, 1166 ms; returned model gpt-6-luna
+
+SPEND
+    model calls 102 (76 generation, 20 linking, 6 choosing; 20 linking calls shared, counted once): 401835 tokens in (15006 cached), 6008 out, $0.041837
+    the ledger on step10b purposes after the last run: $0.083472 of a cap of $1.00
+    pilot-01.json: the cap checked before each of 80 answers; the most spent before one $0.082677, the largest worst case $0.012994
