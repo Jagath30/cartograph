@@ -9155,6 +9155,36 @@ The order of work: `join_tree` and the Explainer; `choosing.py`; stop C1
 H8's rebuild); then the orchestrator stage, the client's failure class,
 the runner and report, the second pilot (stop C2), the protocol (stop D).
 
+### Stop C1: H8 rebuilt, and the owner's rulings — 20 October 2026
+
+Steps 1 and 2 of v2.1: `b81385c` (`chosen` in the tree and the Explainer;
+byte-identity held to `tree_golden.json`, 1902 trees written from
+join_tree before `chosen` existed) and `d91fa74` (`choosing.py`).
+
+**H8, rebuilt offline** (no key, so no vector could be paid for; the
+tree, joins and warnings exactly as the pilot recorded). Stop A2's
+correction was wrong. H8's lost join was decided by the wording rule:
+`customer_address` attached by `question_evidence`, the bill address
+0.983 against the current address 0.847, past the 0.107 margin. "Billed"
+pulled the bill address with the billed customer. v2.1 does not address
+it; it is reported as the wording rule's error, as first ruled. H8's one
+alphabetical choice is the date (the sold date, which the route
+preference left at catalog_sales, against the customer's three date
+keys); it is asked about like any other.
+
+The owner's rulings: dev2 H7's choosing prompt and reply schema approved
+as sent. **The ledger fault**, a fault of mine at step 4:
+`tests/test_pipeline_linked.py` opened the linked pipeline on the real
+spend ledger, so every suite run wrote its fake model's calls there.
+Fixed: that test has a ledger of its own, and an autouse fixture fails any
+test that changes the real ledger file (it caught exactly those two tests
+and nothing else). **The real ledger holds 82 lines of purpose "test
+linked", all at $0**: 76 before the ruling, 4 from the run that showed
+the guard failing, 2 from the mutation that removed the fix. They stay;
+the ledger is never rewritten. From now on purpose "test linked" is left
+out of every count of calls (`NOT_CALLS` in `model_client.py`); dollar
+totals are unaffected.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:

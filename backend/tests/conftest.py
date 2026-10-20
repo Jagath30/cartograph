@@ -15,6 +15,20 @@ import psycopg
 import pytest
 from alembic import command
 from appdb import alembic_config
+from ledger_guard import ledger_fingerprint
+
+from app.shell.model_client import LEDGER
+
+
+@pytest.fixture(autouse=True)
+def the_real_ledger_is_never_written():
+    """The spend ledger records what was paid for. No test may change it:
+    a test that opens a pipeline gives it a ledger of its own (step 10b,
+    the owner's ruling at stop C1)."""
+    before = ledger_fingerprint(LEDGER)
+    yield
+    if ledger_fingerprint(LEDGER) != before:
+        pytest.fail(f"this test changed the real spend ledger, {LEDGER}")
 
 
 @pytest.fixture(scope="session")

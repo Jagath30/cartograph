@@ -2,6 +2,7 @@
 databases, with scripted models and an embedder that fails if called:
 nothing is paid. d4's vectors come from the cache."""
 
+import json
 import os
 
 import pytest
@@ -22,7 +23,7 @@ class _NeverCalled:
 
 
 @pytest.fixture
-def opened(monkeypatch):
+def opened(monkeypatch, tmp_path):
     if not (os.environ.get("APP_DATABASE_URL") and os.environ.get("WAREHOUSE_DATABASE_URL")):
         pytest.skip("needs the application database and the warehouse")
     import json
@@ -38,6 +39,8 @@ def opened(monkeypatch):
         return model
 
     monkeypatch.setattr(pipeline_session, "make_model", make_model)
+    # A ledger of its own: never the real one (the owner's ruling at stop C1).
+    monkeypatch.setattr(pipeline_session, "LEDGER", tmp_path / "model_calls.jsonl")
     monkeypatch.setattr(retrieval_session, "make_embedder", lambda settings: _NeverCalled())
     wrapped: list[object] = []
     pipeline = pipeline_session.open_pipeline(
@@ -77,3 +80,7 @@ def test_the_linking_call_has_its_own_cap_prompt_and_shape(opened) -> None:
     # Both models are wrapped, each on the ledger, generation's first, so a
     # harness sees both.
     assert [model._inner for model in wrapped] == [made[0][1], made[1][1]]
+    # On a ledger of the test's own.
+    assert pipeline.ledger.path.parent.name != ".spend"
+    lines = [json.loads(line) for line in pipeline.ledger.path.read_text().splitlines()]
+    assert [line["purpose"] for line in lines] == ["test linked", "test linked"]

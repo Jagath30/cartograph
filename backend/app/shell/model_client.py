@@ -264,6 +264,11 @@ LEDGER = Path(__file__).resolve().parents[2] / "eval" / ".spend" / "model_calls.
 
 LedgerKind = Literal["model", "embedding"]
 
+# Purposes whose lines are no paid call: written to the real ledger by a
+# test before the suite's guard existed, at $0, and kept as written (the
+# owner's ruling at stop C1 of step 10b). Left out of every count of calls.
+NOT_CALLS = ("test linked",)
+
 
 class SpendLedger:
     """Every paid call a run made, model and embedding alike, one JSON line
@@ -289,7 +294,9 @@ class SpendLedger:
         )
 
     def calls(self, kind: LedgerKind = "model") -> int:
-        return sum(1 for line in self._lines() if line.get("kind", "model") == kind)
+        return sum(
+            1 for line in self._lines() if line.get("kind", "model") == kind and line["purpose"] not in NOT_CALLS
+        )
 
     def _write(self, line: dict) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)

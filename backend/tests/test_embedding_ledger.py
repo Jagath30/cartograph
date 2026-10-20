@@ -164,3 +164,23 @@ def test_the_total_can_be_taken_over_purposes_that_begin_alike(tmp_path) -> None
     assert ledger.total("step10 run") == pytest.approx(0.25)
     assert ledger.total() == pytest.approx(0.875)
     assert ledger.total("nothing") == 0.0
+
+
+def test_lines_the_suite_wrote_are_left_out_of_every_count_of_calls_and_cost_nothing(tmp_path) -> None:
+    """82 lines of purpose "test linked" reached the real ledger from a test,
+    at $0, before the guard existed (the owner's ruling at stop C1). They
+    stay, and are no call."""
+    import json
+
+    from app.shell.model_client import NOT_CALLS
+
+    assert NOT_CALLS == ("test linked",)
+    path = tmp_path / "model_calls.jsonl"
+    path.write_text(
+        json.dumps({"kind": "model", "purpose": "test linked", "cost_usd": 0.0}) + "\n"
+        + json.dumps({"kind": "model", "purpose": "step10b pilot", "cost_usd": 0.25}) + "\n"
+        + json.dumps({"kind": "model", "purpose": "test linked extra", "cost_usd": 0.0}) + "\n"
+    )  # fmt: skip
+    ledger = SpendLedger(path)
+    assert ledger.calls() == 2
+    assert ledger.total() == pytest.approx(0.25)
