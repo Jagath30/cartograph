@@ -100,7 +100,7 @@ def test_a_question_returns_its_id_its_status_its_rows_and_its_trace() -> None:
     assert (body["status"], body["code"], body["message"]) == ("answered", None, None)
     assert (body["columns"], body["rows"], body["row_count"], body["truncated"]) == (["a"], [[0], [1]], 2, False)
     trace = body["trace"]
-    assert trace["query_id"] == body["query_id"] and trace["trace_version"] == 2
+    assert trace["query_id"] == body["query_id"] and trace["trace_version"] == 3
     assert trace["question"] == "Where are catalogue buyers billed?"
     assert trace["execution"]["sql"] == BILL and trace["validation"]["conformance"] == "conforms"
     assert set(trace["narrative"]) == {"found", "route", "not_taken", "sql", "result"}

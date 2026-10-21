@@ -9292,6 +9292,52 @@ after, exit 0, 1532 passed, 94 skipped, 0 failed. The suite in the
 container: exit 0, 1624 pass, 2 skip. Three mutations, each removing the
 patch from one helper, all caught under CI's command. Item 107.
 
+### Stop F1: the adoption planned, and the owner's rulings — 21 October 2026
+
+**Step 10's manifest, checked at its tag.** It records the code step 10's
+runs used, so it is checked at `checkpoint-10-eval` (`41f4ffa`), not on
+main: for each of its 71 files, git's copy at the tag hashed (`git show`
+into `sha256sum`, no checkout): 71 match, 0 differ. On main it differs
+from `554d90f` onward, in the nine files step 10b changed; step 10b's
+runs are covered by step 10b's own manifest, which matches.
+
+**The owner's rulings at stop F1**, the plan approved with these:
+1. The ceiling: $0.50 counts every entry the spend ledger gains from the
+   start of F3 to its end, model calls and embeddings alike, at uncached
+   prices, inside step 10b's $1.00 cap; the F2 report gives the ledger's
+   step 10b total and the headroom it leaves.
+2. Trace version 3: the linking system message whole; the linking user
+   message by its sha256, with the hash of the snapshot it was built
+   from, and a test that rebuilds it; choosing's prompt whole; stored
+   version 1 and 2 traces readable as they are.
+3. The wording, with the owner's texts for the Intro's lead and second
+   step and the scores line; the narrative's count of tables from the
+   snapshot (the Intro's 24 stays); the `not_taken` fix recorded as a
+   fault with the commit where it entered.
+4. At F3, an example whose reply differs from what it is there to show is
+   replaced by the original set's Q3, "Where are our catalog customers
+   located?", never asked again for a different reply.
+5. The tag is `checkpoint-10b-v2.1`, on the closing commit at F4; the
+   owner pushes it.
+6. Steps 1 and 2, then stop F2. No model call of any kind before F3.
+
+**Step 1: trace version 3** (this commit). The document gains `linking`,
+`choosing` and each attachment's `decided_by`, each left out when absent
+(`exclude_if`), so a version 1 or 2 answer is served byte for byte as the
+build before version 3 served it. Two answers pin that, made offline for
+the original set's Q3 by each version's own code (version 1 by
+`checkpoint-08-trace`'s, version 2 by the build before this one), in
+`backend/tests/stored_traces/` with how that build served each; no
+stored row of the application store was from the original set, held-out
+1 or dev2, so none was used. Six earlier tests pinned version 2 and now
+pin 3.
+
+**Step 10b's manifest from here on.** Adoption changes the code that
+answers, so from this commit step 10b's manifest differs on main (first
+in `app/core/trace_document.py`), as step 10's did from `554d90f`. It
+records the code step 10b's runs used, and is checked at the commits
+those runs ran on (`a6a6aac` to `587cd61`), not on main.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
@@ -9323,6 +9369,12 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     at build time by `next build`. Vercel needs it as a build variable.
 11. GitHub Actions raises Node 20 deprecation annotations for
     `checkout@v4`, `setup-python@v5` and `setup-node@v4`. Bump the majors.
+    **Open for step 12** (21 October 2026): CI's run on `47196fa`
+    (39598076433) passed with two warnings, not failures:
+    `actions/checkout@v4` and `actions/setup-node@v4` run on Node.js 20,
+    which GitHub is retiring, and the `ubuntu-latest` runner is moving to
+    Ubuntu 26. The `setup-python@v5` warning still stands. Nothing changes
+    in CI now.
 12. **Every** `docker compose` command needs `.env`, not only `up` — the
     `${VAR:?}` guards apply to `down`, `ps` and `config` too. So
     `bootstrap.sh` runs before any compose command.

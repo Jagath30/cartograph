@@ -82,3 +82,36 @@ def trace_of(script, *anchors, executor=None, question="A question?", where: Loc
 
 def document(script, *anchors, **arguments) -> TraceDocument:
     return assemble(trace_of(script, *anchors, **arguments), CONTEXT, QUERY_ID, USER_ID, WHEN)
+
+
+def linked_trace(link_script, generation_script, question="A question?", choose_script=None, executor=None,
+                 schema_ref=SCHEMA_REF):
+    """Step 10b: a question through the link stage, and the choose stage
+    when `choose_script` is given, over scripted models. The tree is the
+    real JoinTree's over the tables the linking reply names."""
+    from app.core.choosing import build_choose_prompt
+    from app.core.linking import LINK_REPLY_NAME, build_link_prompt, link_reply_schema
+    from app.orchestrator import Chooser, Linker
+    from app.shell.model_client import ReplyShape
+
+    linker = Linker(
+        prompt=lambda asked: build_link_prompt(asked, SNAPSHOT, GRAPH),
+        shape=ReplyShape(LINK_REPLY_NAME, link_reply_schema(SNAPSHOT)),
+        known=frozenset(table.name for table in SNAPSHOT.tables),
+        model=FakeModel(link_script),
+        locate=lambda asked, named: located(*named),
+    )
+    chooser = None
+    if choose_script is not None:
+        chooser = Chooser(
+            prompt=lambda asked, choices: build_choose_prompt(asked, choices, GRAPH),
+            model=FakeModel(choose_script),
+            relocate=lambda asked, named, chosen: located(*named, chosen=chosen),
+        )
+    orchestrator = Orchestrator(SNAPSHOT, schema_ref, None, FakeModel(generation_script), executor or Runs(),
+                                linker=linker, chooser=chooser)  # fmt: skip
+    return orchestrator.answer(question)
+
+
+def linked_document(*arguments, **keywords) -> TraceDocument:
+    return assemble(linked_trace(*arguments, **keywords), CONTEXT, QUERY_ID, USER_ID, WHEN)

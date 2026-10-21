@@ -61,7 +61,7 @@ def test_the_five_extracted_columns_are_lifted_at_write_time(scratch_database) -
         ).fetchone()
     assert row == (
         written.user_id, written.question, written.created_at, "answered", True, "conforms",
-        Decimal("0.000254"), 4321, 2,
+        Decimal("0.000254"), 4321, 3,
     )  # fmt: skip
 
 
@@ -134,8 +134,8 @@ def test_a_body_of_another_version_is_not_read_as_this_one(scratch_database) -> 
     written = made(user=store.local_user_id())
     store.save(written)
     with psycopg.connect(scratch_database) as connection:
-        connection.execute("update traces set trace_version = 3")
-    with pytest.raises(ValueError, match="reads trace_version 1 and 2 and the stored trace is trace_version 3"):
+        connection.execute("update traces set trace_version = 4")
+    with pytest.raises(ValueError, match="reads trace_version 1 and 2 and 3 and the stored trace is trace_version 4"):
         store.load(written.query_id)
 
 

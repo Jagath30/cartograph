@@ -33,6 +33,27 @@ and changes nothing else:
   execution     the row count, never the rows (DR-15).
   narrative     five labelled strings (ruling 8). See app.core.narrative.
 
+trace_version 3 (step 10b; v2.1 adopted by the owner's ruling at stop E,
+the shape ruled at stop F1). Adds, and changes nothing else:
+
+  linking       how the tables were found: the system message whole; the
+                user message by its sha256, with the hash of the snapshot
+                it was built from (it is the full-schema prompt, rebuilt
+                from that snapshot and the question); the tables named;
+                every attempt.
+  choosing      the choices the rules left open, put to the model: the
+                prompt whole; each choice with its alternatives as
+                listed, the alphabet's pick, what was named and how the
+                rebuilt tree took it; what arose after; every attempt;
+                the fault. Empty when there was nothing to ask.
+  paths.attachments[].decided_by
+                who decided each choice: a rule, a declared default, the
+                model reading the question, or the alphabet. A choice the
+                model made is never reported as a rule's.
+
+Each is left out of the document when it is absent, so a version 1 or 2
+answer is served exactly as before.
+
 Every section but question, outcome and timings is optional, and the
 document says what is absent by leaving it out: a question that could not
 be located has no generation, validation or execution.
@@ -50,19 +71,21 @@ from typing import Literal
 from uuid import UUID
 
 import networkx as nx
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.choosing import label
 from app.core.conformance import Edge, edges_of
 from app.core.explainer import describe_path
 from app.core.narrative import Narrative, narrate, plain_warnings
 from app.core.snapshot import SchemaSnapshot
 from app.core.warning_marks import Ran, had_ambiguity, mark_warnings
 
-TRACE_VERSION = 2
+TRACE_VERSION = 3
 # What this build can read. Version 1 is version 2 without `plain` on its
-# warnings: a trace written then still renders (DD-07), and is never
+# warnings; version 2 is version 3 without linking, choosing and
+# decided_by. A trace written then still renders (DD-07), and is never
 # rewritten (DD-06).
-READABLE_VERSIONS = (1, 2)
+READABLE_VERSIONS = (1, 2, 3)
 # How many scored elements are kept, best first. Every table's score is
 # kept whatever this is.
 CANDIDATES_KEPT = 50
@@ -71,6 +94,21 @@ Outcome = Literal["answered", "not_answerable", "validation_failed", "model_fail
 ConformanceOutcome = Literal["conforms", "diverged", "incomplete", "not_checked"]
 WarningState = Literal["followed", "other_route_taken", "not_used", "unknown", "not_applicable"]
 EdgeUse = Literal["present", "partial", "missing"]
+DecidedBy = Literal["only_path", "shortest", "wording", "declared_default", "model_reading", "alphabet"]
+
+# The rule an attachment was decided by -> who decided it (version 3).
+DECIDED_BY: dict[str, DecidedBy] = {
+    "only_path": "only_path",
+    "shortest": "shortest",
+    "question_evidence": "wording",
+    "preference": "declared_default",
+    "model_choice": "model_reading",
+    "alphabetical": "alphabet",
+}
+
+
+def _absent(value) -> bool:
+    return value is None
 
 
 class Section(BaseModel):
@@ -232,6 +270,9 @@ class Attachment(Section):
     discovered: int
     selected: Route | None
     alternatives: list[Alternative]
+    # trace_version 3. Who decided this choice; None for the seed, and in
+    # every trace written before version 3.
+    decided_by: DecidedBy | None = Field(default=None, exclude_if=_absent)
 
 
 class SelectedEdge(SchemaEdge):
@@ -329,6 +370,98 @@ class Generation(Section):
     attempts: list[Attempt]
 
 
+class LinkAttempt(Section):
+    number: int
+    outcome: str
+    # As for generation: what this attempt sent beyond the one before.
+    messages_added: list[Message]
+    reply: str | None
+    tables: list[str]
+    fault: str | None
+    requested_model: str
+    returned_model: str | None
+    fingerprint: str | None
+    tokens_in: int
+    tokens_cached: int
+    tokens_out: int
+    cost_usd: float
+    duration_ms: int
+    failure: str | None
+    failure_class: str | None
+
+
+class Linking(Section):
+    """trace_version 3: how the tables were found."""
+
+    prompt_system: str
+    # The user message is the full-schema prompt: rebuilt from the snapshot
+    # whose hash is here, and the question (the owner's ruling at stop F1).
+    prompt_user_sha256: str
+    snapshot_hash: str
+    # The tables named; [] for the decline at linking; None when no reply
+    # of the form asked for came back.
+    tables: list[str] | None
+    attempts: list[LinkAttempt]
+
+
+class ChoiceOffered(Section):
+    letter: str
+    route_id: str
+    description: str
+
+
+class ChoiceAsked(Section):
+    number: int
+    anchor: str
+    # Where the alphabet attached it.
+    attached_to: str
+    alternatives: list[ChoiceOffered]
+    # The route the alphabet took.
+    alphabet: str
+    # The letter named, and its route; None when none was.
+    named: str | None
+    named_route: str | None
+    outcome: Literal["applied", "left_open", "not_met"]
+
+
+class ChoiceArose(Section):
+    anchor: str
+    attached_to: str
+    alternatives: list[str]
+
+
+class ChooseAttempt(Section):
+    number: int
+    outcome: str
+    messages_added: list[Message]
+    reply: str | None
+    named: list[str | None]
+    fault: str | None
+    requested_model: str
+    returned_model: str | None
+    fingerprint: str | None
+    tokens_in: int
+    tokens_cached: int
+    tokens_out: int
+    cost_usd: float
+    duration_ms: int
+    failure: str | None
+    failure_class: str | None
+
+
+class Choosing(Section):
+    """trace_version 3: the choices the rules left open, put to the model."""
+
+    # None when there was nothing to ask, and no call.
+    prompt_system: str | None
+    prompt_user: str | None
+    choices: list[ChoiceAsked]
+    arose: list[ChoiceArose]
+    attempts: list[ChooseAttempt]
+    # Why every choice was left open, when the call failed.
+    fault: str | None
+
+
 class Validation(Section):
     syntax: str
     read_only: str
@@ -381,6 +514,10 @@ class TraceDocument(Section):
     had_ambiguity: bool
     duration_ms: int
     narrative: Narrative
+    # trace_version 3. Left out when absent, so that an earlier version is
+    # served as it was.
+    linking: Linking | None = Field(default=None, exclude_if=_absent)
+    choosing: Choosing | None = Field(default=None, exclude_if=_absent)
 
     @property
     def conformance_result(self) -> str | None:
@@ -506,6 +643,8 @@ def assemble(trace, context: Context, query_id: UUID, user_id: int, created_at: 
         had_ambiguity=had_ambiguity(marks),
         duration_ms=sum(trace.timings.values()),
         narrative=narrative,
+        linking=_linking(trace),
+        choosing=_choosing(trace, graph),
     )
 
 
@@ -635,6 +774,7 @@ def _paths(trace, marks, table, graph) -> Paths:
                 discovered=raw.discovered,
                 selected=Route(**_route(told.path)) if told.path is not None else None,
                 alternatives=alternatives,
+                decided_by=DECIDED_BY[raw.rule] if raw.rule is not None else None,
             )
         )
 
@@ -709,6 +849,76 @@ def _generation(trace) -> Generation:
         tables_shown=list(trace.prompt.tables),
         attempts=attempts,
     )
+
+
+def _reply_fields(reply) -> dict:
+    return {
+        "reply": reply.text, "requested_model": reply.requested_model, "returned_model": reply.returned_model,
+        "fingerprint": reply.fingerprint, "tokens_in": reply.tokens_in, "tokens_cached": reply.tokens_cached,
+        "tokens_out": reply.tokens_out, "cost_usd": _dollars(reply.cost_usd), "duration_ms": reply.duration_ms,
+        "failure": reply.failure, "failure_class": reply.failure_class,
+    }  # fmt: skip
+
+
+def _added(attempts):
+    """Per attempt, what it sent beyond the attempt before."""
+    sent = 2
+    for attempt in attempts:
+        yield attempt, [Message(role=m.role, content=m.content) for m in attempt.messages[sent:]]
+        sent = len(attempt.messages)
+
+
+def _linking(trace) -> Linking | None:
+    linking = getattr(trace, "linking", None)
+    if linking is None:
+        return None
+    return Linking(
+        prompt_system=linking.prompt.system,
+        prompt_user_sha256=hashlib.sha256(linking.prompt.user.encode()).hexdigest(),
+        snapshot_hash=trace.schema_ref[1],
+        tables=None if linking.tables is None else list(linking.tables),
+        attempts=[
+            LinkAttempt(number=a.number, outcome=a.outcome, messages_added=added, tables=list(a.tables),
+                        fault=a.fault, **_reply_fields(a.reply))
+            for a, added in _added(linking.attempts)
+        ],  # fmt: skip
+    )
+
+
+def _choosing(trace, graph) -> Choosing | None:
+    choosing = getattr(trace, "choosing", None)
+    if choosing is None:
+        return None
+    named = choosing.named or (None,) * len(choosing.choices)
+    settled = {s.number: s for s in choosing.settled}
+    choices = []
+    for choice, letter in zip(choosing.choices, named):
+        done = settled.get(choice.number)
+        choices.append(
+            ChoiceAsked(
+                number=choice.number, anchor=choice.anchor, attached_to=choice.attached_to,
+                alternatives=[
+                    ChoiceOffered(letter=label(i), route_id=path.id, description=describe_path(path, graph).description)
+                    for i, path in enumerate(choice.alternatives)
+                ],
+                alphabet=choice.alphabet, named=letter, named_route=done.route if done else None,
+                outcome=done.outcome if done else "left_open",
+            )
+        )  # fmt: skip
+    prompt = choosing.prompt
+    return Choosing(
+        prompt_system=prompt.system if prompt else None,
+        prompt_user=prompt.user if prompt else None,
+        choices=choices,
+        arose=[ChoiceArose(anchor=c.anchor, attached_to=c.attached_to, alternatives=[p.id for p in c.alternatives])
+               for c in choosing.arose],
+        attempts=[
+            ChooseAttempt(number=a.number, outcome=a.outcome, messages_added=added, named=list(a.named),
+                          fault=a.fault, **_reply_fields(a.reply))
+            for a, added in _added(choosing.attempts)
+        ],
+        fault=choosing.fault,
+    )  # fmt: skip
 
 
 def _validation(trace) -> Validation | None:

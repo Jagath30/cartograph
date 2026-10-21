@@ -80,7 +80,7 @@ def ask(script, *anchors, executor=None, question=QUESTION, retries=MAX_RETRIES)
 def test_a_question_is_answered_and_the_trace_holds_every_section() -> None:
     trace, model, executor = ask([reply(GOOD)])
 
-    assert trace.outcome == "answered" and trace.code is None and trace.trace_version == 2
+    assert trace.outcome == "answered" and trace.code is None and trace.trace_version == 3
     assert trace.question == QUESTION and trace.schema_ref == (7, "abc123")
     assert trace.located.tree.tables == ("store_sales", "store")
     assert trace.prompt.tables == ("store_sales", "store") and trace.prompt.has_join_section

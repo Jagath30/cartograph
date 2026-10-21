@@ -365,9 +365,9 @@ def _names() -> dict:
 # ---- G: the version, and what it does not change ----------------------------
 
 
-def test_the_trace_is_version_2_and_a_warning_holds_plain() -> None:
+def test_the_trace_is_version_3_and_a_warning_holds_plain() -> None:
     made = document([reply(BILL)], *ADDRESS)
-    assert TRACE_VERSION == 2 and made.trace_version == 2
+    assert TRACE_VERSION == 3 and made.trace_version == 3
     assert "plain" in made.model_dump(mode="json")["paths"]["warnings"][0]
 
 
