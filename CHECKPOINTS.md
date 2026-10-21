@@ -9200,6 +9200,40 @@ the same command that printed the counts, and guessed them. Corrected
 here, history not rewritten. From then on the counts are read in a
 command of their own before any message names them.
 
+### The owner's rulings at stop C2 and stop D — 20 and 21 October 2026
+
+**At stop C2**, the second pilot read by the owner: dev2, one run, tables
+and path, chosen 12 and 11, linked 11 and 10, full schema 12 and 12,
+retrieval 3 and 3; choosing asked three times on dev2, naming the
+expected route each time, and making nothing worse.
+1. The three harness fixes of `0490262` approved. The second pilot's run
+   file (`eval/step10b/pilot2/pilot-01.json`) stays as written: its
+   `this_purpose_usd`, $0.08347241, holds both pilots, which spent under
+   one purpose; the second pilot's own spend was $0.04183696.
+2. All the wording quoted at stop C2 approved as written.
+3. The wrong counts in `c4b3c94`'s message: corrected forward, as
+   recorded above.
+
+**At stop D**, the draft protocol (sha256 `bf1ab243...5ad58`, the copy in
+the owner's folder `stop-d`) approved with three corrections, word for
+word, and nothing else changed:
+1. Section 3, heldout2: it was drafted outside the project by a drafter
+   who had seen no evaluation result (dev2 is that drafter's first set);
+   the planning chat and every building session have never seen it;
+   before the first run it was read only by code, at its freeze, by a
+   check that printed nothing of it but counts and "ok". (The draft said
+   it was never read by anything; the freeze check read it.)
+2. Section 13's opening: the predictions were written before any
+   question of heldout2 had been seen by the building session or the
+   planning chat, or put to a model.
+3. Prediction 2's reason: linked and chosen differ only where the
+   alphabet chose, and by the variation between two generation calls on
+   the same prompt.
+
+Then the freeze: the protocol and `eval/step10b/frozen_code.json`
+committed alone; runs 1 to 5, each its own command and commit; the
+report; stop E.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
