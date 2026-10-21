@@ -85,7 +85,7 @@ def document(script, *anchors, **arguments) -> TraceDocument:
 
 
 def linked_trace(link_script, generation_script, question="A question?", choose_script=None, executor=None,
-                 schema_ref=SCHEMA_REF):
+                 schema_ref=SCHEMA_REF, **tree_arguments):
     """Step 10b: a question through the link stage, and the choose stage
     when `choose_script` is given, over scripted models. The tree is the
     real JoinTree's over the tables the linking reply names."""
@@ -99,14 +99,14 @@ def linked_trace(link_script, generation_script, question="A question?", choose_
         shape=ReplyShape(LINK_REPLY_NAME, link_reply_schema(SNAPSHOT)),
         known=frozenset(table.name for table in SNAPSHOT.tables),
         model=FakeModel(link_script),
-        locate=lambda asked, named: located(*named),
+        locate=lambda asked, named: located(*named, **tree_arguments),
     )
     chooser = None
     if choose_script is not None:
         chooser = Chooser(
             prompt=lambda asked, choices: build_choose_prompt(asked, choices, GRAPH),
             model=FakeModel(choose_script),
-            relocate=lambda asked, named, chosen: located(*named, chosen=chosen),
+            relocate=lambda asked, named, chosen: located(*named, chosen=chosen, **tree_arguments),
         )
     orchestrator = Orchestrator(SNAPSHOT, schema_ref, None, FakeModel(generation_script), executor or Runs(),
                                 linker=linker, chooser=chooser)  # fmt: skip

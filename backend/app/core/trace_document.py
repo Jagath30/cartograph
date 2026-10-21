@@ -568,7 +568,8 @@ def assemble(trace, context: Context, query_id: UUID, user_id: int, created_at: 
     """`trace` is app.orchestrator.Trace. Nothing is decided here: every
     value was decided by a stage, and is read off."""
     located = trace.located
-    tree = located.tree
+    # None when nothing was located: declined at linking, or linking failed.
+    tree = located.tree if located is not None else None
     graph = context.graph
 
     def table(name: str) -> str:
@@ -582,11 +583,11 @@ def assemble(trace, context: Context, query_id: UUID, user_id: int, created_at: 
     ran = None
     if answered and trace.conformance is not None:
         ran = Ran(trace.actual_edges, trace.actual_classes, bool(trace.conformance.unchecked))
-    marks = mark_warnings(tree, located.explanation.warnings, ran)
+    marks = mark_warnings(tree, located.explanation.warnings, ran) if located is not None else []
 
-    retrieval = _retrieval(located)
-    subgraph = _subgraph(tree, context.snapshot, table) if tree.subgraph else None
-    paths = _paths(trace, marks, table, graph)
+    retrieval = _retrieval(located) if located is not None else None
+    subgraph = _subgraph(tree, context.snapshot, table) if tree is not None and tree.subgraph else None
+    paths = _paths(trace, marks, table, graph) if located is not None else None
     generation = _generation(trace) if trace.prompt is not None else None
     validation = _validation(trace)
     execution = _execution(trace)
@@ -595,19 +596,22 @@ def assemble(trace, context: Context, query_id: UUID, user_id: int, created_at: 
         "tables": {entry.name: table(entry.name) for entry in context.snapshot.tables},
         "columns": {f"{c.table}.{c.name}": column(c.table, c.name) for c in context.snapshot.columns},
     }
+    linking = _linking(trace)
     sections = {
         "outcome": trace.outcome, "message": trace.message, "retrieval": retrieval, "subgraph": subgraph,
         "generation": generation, "validation": validation, "execution": execution, "names": names,
+        "linking": linking,
     }  # fmt: skip
     # Each loud warning gains its plain sentence, composed once like the
     # narrative and stored with it (DD-06).
-    plain = plain_warnings(paths=paths, **sections)
-    paths = paths.model_copy(
-        update={"warnings": [w.model_copy(update={"plain": said}) for w, said in zip(paths.warnings, plain)]}
-    )
+    if paths is not None:
+        plain = plain_warnings(paths=paths, **sections)
+        paths = paths.model_copy(
+            update={"warnings": [w.model_copy(update={"plain": said}) for w, said in zip(paths.warnings, plain)]}
+        )
     narrative = narrate(paths=paths, **sections)
 
-    settings = located.retrieval.settings if located.retrieval is not None else None
+    settings = located.retrieval.settings if located is not None and located.retrieval is not None else None
     return TraceDocument(
         trace_version=TRACE_VERSION,
         query_id=query_id,
@@ -643,7 +647,7 @@ def assemble(trace, context: Context, query_id: UUID, user_id: int, created_at: 
         had_ambiguity=had_ambiguity(marks),
         duration_ms=sum(trace.timings.values()),
         narrative=narrative,
-        linking=_linking(trace),
+        linking=linking,
         choosing=_choosing(trace, graph),
     )
 

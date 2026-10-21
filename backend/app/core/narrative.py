@@ -83,6 +83,17 @@ Only what the choice was TIED with is offered as equal: what a declared
 preference set aside is in `not_taken` and not in the alarm. The five
 strings do not read `plain` and are what they were.
 
+TRACE_VERSION 3 (step 10b, v2.1 adopted; the wording approved at stop
+F1). Given the trace's `linking`, `found` tells what a language model,
+shown every table of the snapshot (counted from it, never a fixed
+number), named for the question, and what the tree added to link them. A
+choice the model made says so in `route` ("By the rules, ... equally
+possible; a language model, reading your question, chose this one.") and
+has its own sentence in `not_taken`; it is never a rule's, a declared
+default's or the alphabet's. A choice left open is told as before. The
+decline at linking, and a linking call that failed, are told in every
+part. Without `linking`, every sentence is what it was.
+
 Nothing here decides anything about the answer. Every sentence is derived
 from a fact in the trace; nothing is narrated by a model (DD-14).
 """
@@ -114,18 +125,21 @@ class Narrative(BaseModel):
     result: str
 
 
-def narrate(*, outcome, message, retrieval, subgraph, paths, generation, validation, execution, names) -> Narrative:
+def narrate(*, outcome, message, retrieval, subgraph, paths, generation, validation, execution, names,
+            linking=None) -> Narrative:  # fmt: skip
     """`names` maps every table, and every `table.column`, to its readable
-    name. The other arguments are the sections of the trace document."""
-    tell = _Teller(outcome, message, retrieval, subgraph, paths, generation, validation, execution, names)
+    name. The other arguments are the sections of the trace document;
+    `linking` is trace_version 3's, None before it."""
+    tell = _Teller(outcome, message, retrieval, subgraph, paths, generation, validation, execution, names, linking)
     return Narrative(found=tell.found(), route=tell.route(), not_taken=tell.not_taken(), sql=tell.sql(), result=tell.result())
 
 
-def plain_warnings(*, outcome, message, retrieval, subgraph, paths, generation, validation, execution, names) -> list[str | None]:
+def plain_warnings(*, outcome, message, retrieval, subgraph, paths, generation, validation, execution, names,
+                   linking=None) -> list[str | None]:  # fmt: skip
     """One for each warning of `paths`, in their order: a plain sentence
     for a loud one, None for a quiet one. The arguments are `narrate`'s."""
-    tell = _Teller(outcome, message, retrieval, subgraph, paths, generation, validation, execution, names)
-    return [tell.alarm(warning) for warning in paths.warnings]
+    tell = _Teller(outcome, message, retrieval, subgraph, paths, generation, validation, execution, names, linking)
+    return [tell.alarm(warning) for warning in paths.warnings] if paths is not None else []
 
 
 def _role_alone(mine: tuple, theirs: list[tuple]) -> str | None:
@@ -181,7 +195,8 @@ def _sentence(text: str) -> str:
 
 
 class _Teller:
-    def __init__(self, outcome, message, retrieval, subgraph, paths, generation, validation, execution, names) -> None:
+    def __init__(self, outcome, message, retrieval, subgraph, paths, generation, validation, execution, names,
+                 linking=None) -> None:  # fmt: skip
         self.outcome = outcome
         self.message = message
         self.retrieval = retrieval
@@ -191,8 +206,14 @@ class _Teller:
         self.validation = validation
         self.execution = execution
         self.names = names
+        self.linking = linking
         # The SQL was read and compared with the plan.
         self.checked = validation is not None and validation.conformance is not None
+        self.answered = outcome == "answered"
+        if paths is None:
+            # Nothing was located: declined at linking, or linking failed.
+            self.used = self.told = self.untold = []
+            return
         use = {self._key(edge): edge.use for edge in paths.selected_edges}
         joined = [a for a in paths.attachments if a.selected is not None]
         # A choice the query went against, or may have, touched the answer
@@ -319,6 +340,8 @@ class _Teller:
     # ---- found ------------------------------------------------------------
 
     def found(self) -> str:
+        if self.linking is not None:
+            return self._found_linked()
         paths = self.paths
         if not paths.anchors:
             return "No table matched your question closely enough to start from."
@@ -351,11 +374,50 @@ class _Teller:
             said.append(f"The model was also shown {self.tables(beside)}, which could have linked them equally well.")
         return " ".join(said)
 
+    def _found_linked(self) -> str:
+        """trace_version 3: what the model, shown every table, named."""
+        shown = f"A language model, shown all {len(self.names['tables'])} tables,"
+        named = self.linking.tables
+        if named is None:
+            return f"{shown} was asked to name the ones your question needs, and gave no reply in the form asked for."
+        if not named:
+            return f"{shown} named none that holds the answer."
+        if len(named) == 1:
+            said = [f"{shown} named one for your question: {self.table(named[0])}."]
+        else:
+            said = [f"{shown} named {len(named)} for your question: {self.tables(named)}."]
+        paths = self.paths
+        if paths is None:
+            return said[0]
+        if paths.unconnected:
+            said.append(
+                f"{_capital(self.tables(paths.unconnected))} could not be linked to the rest within "
+                f"{_count(paths.max_joins, 'step', 'steps')}."
+            )
+            return " ".join(said)
+        bridges = [name for name in paths.tables if name not in named]
+        if bridges:
+            one = len(bridges) == 1
+            said.append(
+                f"To link them, {self.tables(bridges)} {'was' if one else 'were'} added; "
+                f"the model had not named {'it' if one else 'them'}."
+            )
+        dropped = paths.subgraph_bound.dropped_anchors
+        if dropped:
+            said.append(
+                f"{_capital(self.tables(dropped))} {'was' if len(dropped) == 1 else 'were'} also named and left out "
+                f"to keep the plan within {paths.subgraph_bound.limit} tables."
+            )
+        beside = [node.table for node in self.subgraph.nodes if not node.in_tree] if self.subgraph else []
+        if beside:
+            said.append(f"The model was also shown {self.tables(beside)}, which could have linked them equally well.")
+        return " ".join(said)
+
     # ---- route ------------------------------------------------------------
 
     def route(self) -> str:
         paths = self.paths
-        if not paths.tables:
+        if paths is None or not paths.tables:
             return "No plan was made."
         joined = [a for a in paths.attachments if a.selected is not None]
         if not joined:
@@ -424,6 +486,14 @@ class _Teller:
             return f"{what}. It is the only route between them."
         if attachment.rule == "question_evidence" and tied:
             return f"{what}. The wording of your question pointed to this over {_count(len(tied), 'other reading', 'other readings')}."
+        if attachment.rule == "model_choice" and tied:
+            readings = self._grouped(tied)
+            others = _count(len(tied), "other reading", "other readings") if len(readings) > NAMED_TIES else _listed(readings)
+            several = len(tied) > 1 or readings[0].split(" ")[-1] in PLURAL
+            return (
+                f"{what}. By the rules, {others} {'were' if several else 'was'} equally possible; a language model, "
+                "reading your question, chose this one."
+            )
         if attachment.rule == "alphabetical" and tied:
             readings = self._grouped(tied)
             if len(readings) > NAMED_TIES:
@@ -443,7 +513,7 @@ class _Teller:
 
     def not_taken(self) -> str:
         paths = self.paths
-        if not paths.tables:
+        if paths is None or not paths.tables:
             return "No plan was made, so nothing was set aside."
         if not any(a.selected is not None for a in paths.attachments):
             return "With one table there was nothing to choose between."
@@ -455,6 +525,7 @@ class _Teller:
         # ruling at stop 3 of step 9); it is told in a sentence of its own.
         taken: list[tuple] = []
         by_wording: list[tuple] = []
+        by_model: list[tuple] = []
         by_preference: list[tuple] = []
         for attachment in self.told:
             tied = self._others(attachment, "tied")
@@ -464,6 +535,10 @@ class _Teller:
                     (taken if self._made_by_the_query(route) else arbitrary).append(reading)
             elif attachment.rule == "question_evidence":
                 by_wording += tied
+            elif attachment.rule == "model_choice":
+                # Never a declared preference's (the fault that entered at
+                # b81385c, when model_choice was added).
+                by_model += tied
             else:
                 by_preference += tied
             by_preference += self._others(attachment, "withdrawn")
@@ -483,6 +558,8 @@ class _Teller:
             said.append("The query itself used one of these and not the one planned.")
         if by_wording:
             said.append(f"Set aside by the wording of your question: {_listed(self._grouped(by_wording))}.")
+        if by_model:
+            said.append(f"Set aside by the model's reading of your question: {_listed(self._grouped(by_model))}.")
         if by_preference:
             said.append(f"Set aside by declared preference: {_listed(self._grouped(by_preference))}.")
         if not said and self.told:
@@ -648,6 +725,8 @@ class _Teller:
 
     def _no_query(self) -> str:
         if self.outcome == "not_answerable":
+            if self.generation is None and self.linking is not None:
+                return "No query was written, and no model was asked to write one."
             if self.generation is None:
                 return "No query was written, and no model was asked."
             return "No query was written: the model said the tables it was shown do not hold the answer."
@@ -690,6 +769,13 @@ class _Teller:
                     f"No answer was given. The model was shown {len(shown)} tables: {self.tables(shown)}. It said "
                     "they do not hold the answer. That is a statement about these tables, not about the whole warehouse."
                 )
+            if self.linking is not None and self.linking.tables == []:
+                return (
+                    "No query was written. The model was shown every table of the warehouse, and named none that "
+                    "holds the answer."
+                )
+            if self.paths.unconnected and self.linking is not None:
+                return "No answer was given: the tables named for your question could not be linked to one another."
             if self.paths.unconnected:
                 return "No answer was given: the tables your question matched could not be linked to one another."
             return "No answer was given: nothing in the tables retrieved matched your question."

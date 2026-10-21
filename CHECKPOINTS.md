@@ -9338,6 +9338,28 @@ in `app/core/trace_document.py`), as step 10's did from `554d90f`. It
 records the code step 10b's runs used, and is checked at the commits
 those runs ran on (`a6a6aac` to `587cd61`), not on main.
 
+### Adoption step 2: the narrative at trace version 3 — 21 October 2026
+
+The narrative tells the linking and the choosing, in the wording
+approved at stop F1: what a language model, shown every table of the
+snapshot (counted from it), named for the question; a bridge the model
+had not named; a choice the model made ("By the rules, ... equally
+possible; a language model, reading your question, chose this one."), and
+what its reading set aside, apart from declared preferences; the decline
+at linking and a linking call that failed, in every part. A choice left
+open is told as before, and keeps its amber warning. `assemble` takes a
+question that was never located (declined at linking, or linking failed):
+no retrieval, subgraph or paths. Without `linking`, every sentence is what
+it was.
+
+**A fault of mine, fixed here.** The narrative's `not_taken` put every
+rule but the alphabet's and the wording's into "Set aside by declared
+preference", and its route sentence fell back to "It is the shortest
+route between them." for any other rule. Both became false for a choice
+the model made when `b81385c` added the rule `model_choice` without
+teaching the narrative. No stored answer was affected: no answer of the
+application has been chosen until now.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
