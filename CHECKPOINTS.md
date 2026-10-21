@@ -9234,6 +9234,22 @@ Then the freeze: the protocol and `eval/step10b/frozen_code.json`
 committed alone; runs 1 to 5, each its own command and commit; the
 report; stop E.
 
+### Stop E: the five runs, and the owner's rulings — 21 October 2026
+
+The protocol and its manifest frozen in `a6a6aac`; runs 1 to 5 each its
+own command and commit (`0e62ede`, `0b215c1`, `ff40fe1`, `587cd61`,
+`70c51c9`), none void, every manifest matching, 208 answers each; the
+report in `df69358`. heldout2, tables and path, the mean of five runs:
+chosen 100.0% and 98.3%, full schema 100.0% and 100.0%, linked 91.7% and
+80.0%, retrieval 36.7% and 30.0%. All thirteen predictions held. Spend on
+step10b purposes $0.28094357 of the $1.00 cap.
+
+**The owner's rulings at stop E.** The runs are complete and valid and
+they stand. The adoption rule of the protocol's section 12 picks chosen,
+and the owner adopts it: v2.1 becomes the application's pipeline. The
+facts below are items 101 to 106. The README's Evaluation section is the
+owner's, written at the close.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
@@ -9922,3 +9938,19 @@ Deliberate deferrals, recorded while the reasoning is fresh:
 100. **Future work: a second attempt with the full schema after a decline
      in retrieval mode** (step 10, the owner's ruling). Not built now;
      needs a fresh held-out set.
+101. **Choosing on heldout2** (step 10b, five runs). Asked 15 times; it
+     named a route 13 times and left 2 open. It never named the
+     alphabet's own pick (0 of 13), and each route it named was the one
+     the expectation lists (13 of 13).
+102. **Choosing on the original set** (step 10b). Every choice asked was
+     left open (Q3, and Q13), so each stayed the alphabet's and was
+     flagged as arbitrary.
+103. **heldout2 H10** (step 10b). Linked's model declined it in all five
+     runs; chosen answered it in all five.
+104. **The original set's Q13 was declined at linking in runs 3 to 5**
+     (step 10b), though it is answerable.
+105. **Chosen's lower table score than linked's on the original set**
+     (84.0% against 86.7%) came from Q6 and Q7, where no choice was asked:
+     two generation calls on one prompt.
+106. **Full schema still leads chosen on heldout2's path**, by 1.7 points:
+     H11, in run 4.
