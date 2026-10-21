@@ -37,6 +37,14 @@ prompting wins at 24 tables (items 91 to 97). Smoke 39, 0, 0. Backend
   are committed before the run they judge; nothing is tuned to one
   question; no threshold is chosen by looking at results.
 - A commit may claim a check passed only if that check's own exit status was read.
+- **The local CI check is CI's own command** (step 10b, the owner's
+  ruling after stop F1): `docker run --rm --network none -v
+  <repo>/backend:/app -w /app cartograph-backend pytest`, the source
+  mounted, no environment file, plain `pytest`, its exit status read. Not
+  `docker compose exec` with variables set empty: an empty string
+  satisfies a required setting, and the container's own variables leak in.
+- **After every push the owner reads `gh run list`, and nothing further
+  starts until the newest run on main is green.**
 - Every paid command is its own shell command, never chained with `;` or
   `&&` to anything else (step 10, stop 2).
 - A run that may outlast the session's command time limit runs in the
@@ -9250,6 +9258,40 @@ and the owner adopts it: v2.1 becomes the application's pipeline. The
 facts below are items 101 to 106. The README's Evaluation section is the
 owner's, written at the close.
 
+### CI red on main since step 10, and the fix — 21 October 2026
+
+**The fault.** Twelve end-to-end runner tests read real settings: the
+three of `tests/test_run_step10.py` that drive `--run` over fake
+pipelines, added in `f2858a4`, and nine of `tests/test_run_step10b.py`
+that copied them (from `f468b62` on). The runner's `_execute` calls
+`get_settings()`, and CI has no settings in its environment, so
+`Settings` failed ("Field required": the application database, the
+warehouse and Redis URLs). CI was red on main from the push of
+`eed22f1`, its first failing commit `f2858a4` (its parent `e4c7a21`
+passes under CI's command), until this fix. The tag `checkpoint-10-eval`
+stays where it is, on `41f4ffa`; CI would have failed there.
+
+**The second fault, of mine across step 10 and step 10b.** The local
+"CI conditions" command was not CI's: `docker compose exec` with
+`APP_DATABASE_URL`, `WAREHOUSE_DATABASE_URL` and `OPENAI_API_KEY` set to
+empty strings. An empty string satisfies a required field, and
+`REDIS_URL` leaked from the container's environment, so the failure never
+showed. Every "CI conditions" count from `f2858a4` to `7adfa73` was taken
+under that command; the full-suite counts beside them are unaffected.
+
+**The evaluation is untouched.** Only tests change. The runs of step 10
+and step 10b used the real settings, and `run_step10.py` and
+`run_step10b.py` are not changed. The step 10b manifest matches; step
+10's has differed, as intended, since `554d90f`, the first step 10b code,
+after step 10's runs had ended, and this fix adds nothing to it.
+
+**The fix.** The end-to-end helpers patch the runner's `get_settings` with
+placeholder settings and no key, as `tests/test_model_client.py` does.
+CI's own command: before, exit 1, 12 failed, 1520 passed, 94 skipped;
+after, exit 0, 1532 passed, 94 skipped, 0 failed. The suite in the
+container: exit 0, 1624 pass, 2 skip. Three mutations, each removing the
+patch from one helper, all caught under CI's command. Item 107.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
@@ -9954,3 +9996,9 @@ Deliberate deferrals, recorded while the reasoning is fresh:
      two generation calls on one prompt.
 106. **Full schema still leads chosen on heldout2's path**, by 1.7 points:
      H11, in run 4.
+107. **CI was red on main from `eed22f1` until the fix of 21 October 2026**
+     (first failing commit `f2858a4`): twelve end-to-end runner tests
+     read real settings, and the local "CI conditions" command hid it.
+     `checkpoint-10-eval` (`41f4ffa`) would have failed CI. The local CI
+     check is now CI's own command, and nothing starts after a push until
+     the newest run on main is green (Current state).

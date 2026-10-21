@@ -489,6 +489,19 @@ ANSWERS = {m: [reply(Q1_SQL)] for m in MODES}
 LINKS = [tables("store_sales", "store", "date_dim")]
 
 
+def _placeholder_settings(monkeypatch, runner) -> None:
+    """The runner reads its settings; CI has none in its environment. As in
+    test_model_client: placeholder URLs, and no key, so nothing can connect
+    or be paid for."""
+    from app.config import Settings
+
+    settings = Settings(
+        app_database_url="postgresql://x/app", warehouse_database_url="postgresql://x/wh", redis_url="redis://x",
+        openai_api_key=None,
+    )  # fmt: skip
+    monkeypatch.setattr(runner, "get_settings", lambda: settings)
+
+
 def _drive(tmp_path, monkeypatch, scripts, link_script, number=1):
     import app.run_step10b as runner
     from app.shell import pipeline_session
@@ -497,6 +510,7 @@ def _drive(tmp_path, monkeypatch, scripts, link_script, number=1):
     monkeypatch.setattr(runner, "_manifest_differences", lambda: [])
     monkeypatch.setattr(runner, "evaluation_sets", lambda: [[Q1]])
     monkeypatch.setattr(runner, "RetryingModel", lambda model: RetryingModel(model, sleep=lambda seconds: None))
+    _placeholder_settings(monkeypatch, runner)
     return main(["--run", str(number), "--head", SHA, "--out", str(tmp_path / "runs")])
 
 
@@ -572,6 +586,7 @@ def test_the_pilot_is_made_end_to_end_with_its_report(tmp_path, monkeypatch) -> 
     monkeypatch.setattr(pipeline_session, "open_pipeline", _fake_open_pipeline(tmp_path, scripts, LINKS * 2))
     monkeypatch.setattr(runner, "pilot_sets", lambda: [[Asked("dev2", "H1", Q1.question, ORIGINAL["1"])], [DEV]])
     monkeypatch.setattr(runner, "RetryingModel", lambda model: RetryingModel(model, sleep=lambda seconds: None))
+    _placeholder_settings(monkeypatch, runner)
     assert main(["--pilot", "--out", str(tmp_path / "pilot")]) == 0
     kept = json.loads((tmp_path / "pilot" / "pilot-01.json").read_text())
     assert len(kept["records"]) == 8 and kept["void"] is None
@@ -670,6 +685,7 @@ def _drive_pilot(tmp_path, monkeypatch, scripts, link_script):
     monkeypatch.setattr(pipeline_session, "open_pipeline", _fake_open_pipeline(tmp_path, scripts, link_script))
     monkeypatch.setattr(runner, "pilot_sets", lambda: [[Asked("dev2", "H1", Q1.question, ORIGINAL["1"])], [DEV]])
     monkeypatch.setattr(runner, "RetryingModel", lambda model: RetryingModel(model, sleep=lambda seconds: None))
+    _placeholder_settings(monkeypatch, runner)
     return main(["--pilot", "--out", str(tmp_path / "pilot")])
 
 
@@ -942,6 +958,7 @@ def test_a_pilot_spends_under_a_purpose_of_its_own_folder(tmp_path, monkeypatch)
     monkeypatch.setattr(pipeline_session, "open_pipeline", open_pipeline)
     monkeypatch.setattr(runner, "pilot_sets", lambda: [[Asked("dev2", "H1", Q1.question, ORIGINAL["1"])], [DEV]])
     monkeypatch.setattr(runner, "RetryingModel", lambda model: RetryingModel(model, sleep=lambda seconds: None))
+    _placeholder_settings(monkeypatch, runner)
     assert main(["--pilot", "--out", str(tmp_path / "pilot3")]) == 0
     assert set(purposes) == {"step10b pilot3"}
 

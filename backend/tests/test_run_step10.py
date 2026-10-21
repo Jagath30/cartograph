@@ -584,6 +584,19 @@ def _fake_open_pipeline(tmp_path, scripts):
     return open_pipeline
 
 
+def _placeholder_settings(monkeypatch, runner) -> None:
+    """The runner reads its settings; CI has none in its environment. As in
+    test_model_client: placeholder URLs, and no key, so nothing can connect
+    or be paid for."""
+    from app.config import Settings
+
+    settings = Settings(
+        app_database_url="postgresql://x/app", warehouse_database_url="postgresql://x/wh", redis_url="redis://x",
+        openai_api_key=None,
+    )  # fmt: skip
+    monkeypatch.setattr(runner, "get_settings", lambda: settings)
+
+
 def _drive(tmp_path, monkeypatch, scripts, number=1):
     import app.run_step10 as runner
     from app.shell import pipeline_session
@@ -592,6 +605,7 @@ def _drive(tmp_path, monkeypatch, scripts, number=1):
     monkeypatch.setattr(runner, "_manifest_differences", lambda: [])
     monkeypatch.setattr(runner, "evaluation_sets", lambda: [[Q1]])
     monkeypatch.setattr(runner, "RetryingModel", lambda model: RetryingModel(model, sleep=lambda seconds: None))
+    _placeholder_settings(monkeypatch, runner)
     return main(["--run", str(number), "--head", SHA, "--out", str(tmp_path / "runs")])
 
 
