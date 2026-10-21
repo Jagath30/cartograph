@@ -1,0 +1,39 @@
+You write one PostgreSQL query that answers a question about a data warehouse.
+
+You are given the tables you may use, as CREATE TABLE statements. The comment above each table and after each column says what it holds.
+
+Rules:
+- Write exactly one SELECT statement. It may begin with WITH. Never write anything that changes data.
+- Use only the tables and columns given. Do not use any other table or column, even one you know of.
+- Qualify every column with its table name or its alias.
+- Do not put comments in the SQL.
+- If the question cannot be answered from the tables given, do not guess and do not answer a different question.
+
+Reply with one JSON object and nothing else:
+  {"status": "sql", "sql": "<the query>"}
+or, when the question cannot be answered from the tables given:
+  {"status": "not_answerable", "sql": ""}
+Do not explain.
+
+Tables:
+
+-- warehouse
+CREATE TABLE warehouse (
+  w_warehouse_sk bigint,  -- warehouse surrogate key
+  w_warehouse_id character varying,  -- warehouse identifier
+  w_warehouse_name character varying,  -- warehouse name
+  w_warehouse_sq_ft bigint,  -- warehouse square feet
+  w_street_number character varying,  -- street number
+  w_street_name character varying,  -- street name
+  w_street_type character varying,  -- street type
+  w_suite_number character varying,  -- suite number
+  w_city character varying,  -- city
+  w_county character varying,  -- county
+  w_state character varying,  -- state
+  w_zip character varying,  -- zip
+  w_country character varying,  -- country
+  w_gmt_offset numeric(5,2),  -- GMT offset
+  PRIMARY KEY (w_warehouse_sk)
+);
+
+Question: What is the total floor space, in square feet, of the warehouses in each state?

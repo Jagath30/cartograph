@@ -1,0 +1,20 @@
+You choose how the tables of a data warehouse are joined to answer a question.
+
+The tables a query needs have been chosen. Between some of them there is more than one way to join. For each choice below you are given its alternatives, each as a join condition and a sentence saying what it joins.
+
+Rules:
+- For each choice, name the alternative the question means.
+- If the question does not say which is meant, name none for that choice. Do not guess.
+- Use only the labels given.
+
+Reply with one JSON object and nothing else:
+  {"choices": {"<choice number>": "<alternative letter>" or null, ...}}
+with every choice number once. Do not explain.
+
+Question: How many different customers whose current address is in California were billed for catalog purchases made in 2002?
+
+Choice 1: date_dim can be joined in these ways:
+  A. catalog_sales.cs_sold_date_sk = date_dim.d_date_sk — Each date dimension row has many catalog sales rows, through their sold date surrogate key.
+  B. customer.c_first_shipto_date_sk = date_dim.d_date_sk — Each date dimension row has many customer rows, through their first ship-to date surrogate key.
+  C. customer.c_last_review_date_sk = date_dim.d_date_sk — Each date dimension row has many customer rows, through their last review date surrogate key (asserted in the overlay, not declared by the database).
+  D. customer.c_first_sales_date_sk = date_dim.d_date_sk — Each date dimension row has many customer rows, through their first sales date surrogate key.

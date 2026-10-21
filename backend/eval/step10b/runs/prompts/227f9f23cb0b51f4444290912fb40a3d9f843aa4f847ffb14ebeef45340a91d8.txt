@@ -1,0 +1,136 @@
+You write one PostgreSQL query that answers a question about a data warehouse.
+
+You are given the tables you may use, as CREATE TABLE statements. The comment above each table and after each column says what it holds.
+
+Rules:
+- Write exactly one SELECT statement. It may begin with WITH. Never write anything that changes data.
+- Use only the tables and columns given. Do not use any other table or column, even one you know of.
+- Qualify every column with its table name or its alias.
+- Do not put comments in the SQL.
+- If the question cannot be answered from the tables given, do not guess and do not answer a different question.
+
+Reply with one JSON object and nothing else:
+  {"status": "sql", "sql": "<the query>"}
+or, when the question cannot be answered from the tables given:
+  {"status": "not_answerable", "sql": ""}
+Do not explain.
+
+Tables:
+
+-- customer demographics
+CREATE TABLE customer_demographics (
+  cd_demo_sk bigint,  -- demo surrogate key
+  cd_gender character varying,  -- gender
+  cd_marital_status character varying,  -- marital status
+  cd_education_status character varying,  -- education status
+  cd_purchase_estimate bigint,  -- purchase estimate
+  cd_credit_rating character varying,  -- credit rating
+  cd_dep_count bigint,  -- dependent count
+  cd_dep_employed_count bigint,  -- dependent employed count
+  cd_dep_college_count integer,  -- dependent college count
+  PRIMARY KEY (cd_demo_sk)
+);
+
+-- customer
+CREATE TABLE customer (
+  c_customer_sk bigint,  -- customer surrogate key
+  c_customer_id character varying,  -- customer identifier
+  c_current_cdemo_sk bigint,  -- current customer demographics surrogate key
+  c_current_hdemo_sk bigint,  -- current household demographics surrogate key
+  c_current_addr_sk bigint,  -- current address surrogate key
+  c_first_shipto_date_sk bigint,  -- first ship-to date surrogate key
+  c_first_sales_date_sk bigint,  -- first sales date surrogate key
+  c_salutation character varying,  -- salutation
+  c_first_name character varying,  -- first name
+  c_last_name character varying,  -- last name
+  c_preferred_cust_flag character varying,  -- preferred customer flag
+  c_birth_day bigint,  -- birth day
+  c_birth_month bigint,  -- birth month
+  c_birth_year bigint,  -- birth year
+  c_birth_country character varying,  -- birth country
+  c_login character varying,  -- login
+  c_email_address character varying,  -- email address
+  c_last_review_date_sk integer,  -- last review date surrogate key
+  PRIMARY KEY (c_customer_sk)
+);
+
+-- customer address
+CREATE TABLE customer_address (
+  ca_address_sk bigint,  -- address surrogate key
+  ca_address_id character varying,  -- address identifier
+  ca_street_number character varying,  -- street number
+  ca_street_name character varying,  -- street name
+  ca_street_type character varying,  -- street type
+  ca_suite_number character varying,  -- suite number
+  ca_city character varying,  -- city
+  ca_county character varying,  -- county
+  ca_state character varying,  -- state
+  ca_zip character varying,  -- zip
+  ca_country character varying,  -- country
+  ca_gmt_offset numeric(5,2),  -- GMT offset
+  ca_location_type character varying,  -- location type
+  PRIMARY KEY (ca_address_sk)
+);
+
+-- web returns
+CREATE TABLE web_returns (
+  wr_returned_date_sk bigint,  -- returned date surrogate key
+  wr_returned_time_sk bigint,  -- returned time surrogate key
+  wr_item_sk bigint,  -- item surrogate key
+  wr_refunded_customer_sk bigint,  -- refunded customer surrogate key
+  wr_refunded_cdemo_sk bigint,  -- refunded customer demographics surrogate key
+  wr_refunded_hdemo_sk bigint,  -- refunded household demographics surrogate key
+  wr_refunded_addr_sk bigint,  -- refunded address surrogate key
+  wr_returning_customer_sk bigint,  -- returning customer surrogate key
+  wr_returning_cdemo_sk bigint,  -- returning customer demographics surrogate key
+  wr_returning_hdemo_sk bigint,  -- returning household demographics surrogate key
+  wr_returning_addr_sk bigint,  -- returning address surrogate key
+  wr_web_page_sk bigint,  -- web page surrogate key
+  wr_reason_sk bigint,  -- reason surrogate key
+  wr_order_number bigint,  -- order number
+  wr_return_quantity bigint,  -- return quantity
+  wr_return_amt numeric(7,2),  -- return amount
+  wr_return_tax numeric(7,2),  -- return tax
+  wr_return_amt_inc_tax numeric(7,2),  -- return amount including tax
+  wr_fee numeric(7,2),  -- fee
+  wr_return_ship_cost numeric(7,2),  -- return ship cost
+  wr_refunded_cash numeric(7,2),  -- refunded cash
+  wr_reversed_charge numeric(7,2),  -- reversed charge
+  wr_account_credit numeric(7,2),  -- account credit
+  wr_net_loss numeric(7,2)  -- net loss
+);
+
+-- item
+CREATE TABLE item (
+  i_item_sk bigint,  -- item surrogate key
+  i_item_id character varying,  -- item identifier
+  i_rec_start_date date,  -- record start date
+  i_rec_end_date date,  -- record end date
+  i_item_desc character varying,  -- item description
+  i_current_price numeric(7,2),  -- current price
+  i_wholesale_cost numeric(7,2),  -- wholesale cost
+  i_brand_id bigint,  -- brand identifier
+  i_brand character varying,  -- brand
+  i_class_id bigint,  -- class identifier
+  i_class character varying,  -- class
+  i_category_id bigint,  -- category identifier
+  i_category character varying,  -- category
+  i_manufact_id bigint,  -- manufacturer identifier
+  i_manufact character varying,  -- manufacturer
+  i_size character varying,  -- size
+  i_formulation character varying,  -- formulation
+  i_color character varying,  -- color
+  i_units character varying,  -- units
+  i_container character varying,  -- container
+  i_manager_id bigint,  -- manager identifier
+  i_product_name character varying,  -- product name
+  PRIMARY KEY (i_item_sk)
+);
+
+Join conditions. These are the joins selected for this question. Wherever the query joins two of these tables, join them by exactly these conditions; a line with two conditions joined by AND is one join and needs both. Use only the tables the question needs: a table listed above need not appear in the query.
+  customer.c_current_addr_sk = customer_address.ca_address_sk
+  customer.c_current_cdemo_sk = customer_demographics.cd_demo_sk
+  web_returns.wr_item_sk = item.i_item_sk
+  web_returns.wr_refunded_customer_sk = customer.c_customer_sk
+
+Question: Which products get the best customer ratings?

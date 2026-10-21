@@ -1,0 +1,24 @@
+You choose how the tables of a data warehouse are joined to answer a question.
+
+The tables a query needs have been chosen. Between some of them there is more than one way to join. For each choice below you are given its alternatives, each as a join condition and a sentence saying what it joins.
+
+Rules:
+- For each choice, name the alternative the question means.
+- If the question does not say which is meant, name none for that choice. Do not guess.
+- Use only the labels given.
+
+Reply with one JSON object and nothing else:
+  {"choices": {"<choice number>": "<alternative letter>" or null, ...}}
+with every choice number once. Do not explain.
+
+Question: Which of our web sites lose the most money to customer returns?
+
+Choice 1: web_site can be joined in these ways:
+  A. web_site.web_close_date_sk = date_dim.d_date_sk; then web_page.wp_access_date_sk = date_dim.d_date_sk — Each web site row has one date dimension, through its close date surrogate key; then each date dimension row has many web page rows, through their access date surrogate key.
+  B. web_site.web_open_date_sk = date_dim.d_date_sk; then web_returns.wr_returned_date_sk = date_dim.d_date_sk — Each web site row has one date dimension, through its open date surrogate key; then each date dimension row has many web returns rows, through their returned date surrogate key.
+  C. web_site.web_open_date_sk = date_dim.d_date_sk; then web_page.wp_creation_date_sk = date_dim.d_date_sk — Each web site row has one date dimension, through its open date surrogate key; then each date dimension row has many web page rows, through their creation date surrogate key.
+  D. web_site.web_open_date_sk = date_dim.d_date_sk; then web_page.wp_access_date_sk = date_dim.d_date_sk — Each web site row has one date dimension, through its open date surrogate key; then each date dimension row has many web page rows, through their access date surrogate key.
+  E. web_site.web_close_date_sk = date_dim.d_date_sk; then web_page.wp_creation_date_sk = date_dim.d_date_sk — Each web site row has one date dimension, through its close date surrogate key; then each date dimension row has many web page rows, through their creation date surrogate key.
+  F. web_sales.ws_web_site_sk = web_site.web_site_sk; then web_returns.wr_item_sk = web_sales.ws_item_sk AND web_returns.wr_order_number = web_sales.ws_order_number — Each web site row has many web sales rows, through their web site surrogate key; then each web sales row has many web returns rows, through their item surrogate key and order number (asserted in the overlay, not declared by the database).
+  G. web_sales.ws_web_site_sk = web_site.web_site_sk; then web_sales.ws_web_page_sk = web_page.wp_web_page_sk — Each web site row has many web sales rows, through their web site surrogate key; then each web sales row has one web page, through its web page surrogate key.
+  H. web_site.web_close_date_sk = date_dim.d_date_sk; then web_returns.wr_returned_date_sk = date_dim.d_date_sk — Each web site row has one date dimension, through its close date surrogate key; then each date dimension row has many web returns rows, through their returned date surrogate key.

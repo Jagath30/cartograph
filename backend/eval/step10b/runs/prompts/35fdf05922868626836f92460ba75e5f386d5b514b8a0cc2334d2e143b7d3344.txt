@@ -1,0 +1,60 @@
+You write one PostgreSQL query that answers a question about a data warehouse.
+
+You are given the tables you may use, as CREATE TABLE statements. The comment above each table and after each column says what it holds.
+
+Rules:
+- Write exactly one SELECT statement. It may begin with WITH. Never write anything that changes data.
+- Use only the tables and columns given. Do not use any other table or column, even one you know of.
+- Qualify every column with its table name or its alias.
+- Do not put comments in the SQL.
+- If the question cannot be answered from the tables given, do not guess and do not answer a different question.
+
+Reply with one JSON object and nothing else:
+  {"status": "sql", "sql": "<the query>"}
+or, when the question cannot be answered from the tables given:
+  {"status": "not_answerable", "sql": ""}
+Do not explain.
+
+Tables:
+
+-- household demographics
+CREATE TABLE household_demographics (
+  hd_demo_sk bigint,  -- demo surrogate key
+  hd_income_band_sk bigint,  -- income band surrogate key
+  hd_buy_potential character varying,  -- buy potential
+  hd_dep_count bigint,  -- dependent count
+  hd_vehicle_count integer,  -- vehicle count
+  PRIMARY KEY (hd_demo_sk)
+);
+
+-- store sales
+CREATE TABLE store_sales (
+  ss_sold_date_sk bigint,  -- sold date surrogate key
+  ss_sold_time_sk bigint,  -- sold time surrogate key
+  ss_item_sk bigint,  -- item surrogate key
+  ss_customer_sk bigint,  -- customer surrogate key
+  ss_cdemo_sk bigint,  -- customer demographics surrogate key
+  ss_hdemo_sk bigint,  -- household demographics surrogate key
+  ss_addr_sk bigint,  -- address surrogate key
+  ss_store_sk bigint,  -- store surrogate key
+  ss_promo_sk bigint,  -- promotion surrogate key
+  ss_ticket_number bigint,  -- ticket number
+  ss_quantity bigint,  -- quantity
+  ss_wholesale_cost numeric(7,2),  -- wholesale cost
+  ss_list_price numeric(7,2),  -- list price
+  ss_sales_price numeric(7,2),  -- sales price
+  ss_ext_discount_amt numeric(7,2),  -- extended discount amount
+  ss_ext_sales_price numeric(7,2),  -- extended sales price
+  ss_ext_wholesale_cost numeric(7,2),  -- extended wholesale cost
+  ss_ext_list_price numeric(7,2),  -- extended list price
+  ss_ext_tax numeric(7,2),  -- extended tax
+  ss_coupon_amt numeric(7,2),  -- coupon amount
+  ss_net_paid numeric(7,2),  -- net paid
+  ss_net_paid_inc_tax numeric(7,2),  -- net paid including tax
+  ss_net_profit numeric(7,2)  -- net profit
+);
+
+Join conditions. These are the joins selected for this question. Wherever the query joins two of these tables, join them by exactly these conditions; a line with two conditions joined by AND is one join and needs both. Use only the tables the question needs: a table listed above need not appear in the query.
+  store_sales.ss_hdemo_sk = household_demographics.hd_demo_sk
+
+Question: What is the average number of dependents in households that shop at our stores?

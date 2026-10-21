@@ -1,0 +1,18 @@
+You choose how the tables of a data warehouse are joined to answer a question.
+
+The tables a query needs have been chosen. Between some of them there is more than one way to join. For each choice below you are given its alternatives, each as a join condition and a sentence saying what it joins.
+
+Rules:
+- For each choice, name the alternative the question means.
+- If the question does not say which is meant, name none for that choice. Do not guess.
+- Use only the labels given.
+
+Reply with one JSON object and nothing else:
+  {"choices": {"<choice number>": "<alternative letter>" or null, ...}}
+with every choice number once. Do not explain.
+
+Question: What was the total amount of web returns made in 2002, by the state of the returning customer's address as recorded on the return?
+
+Choice 1: customer_address can be joined in these ways:
+  A. web_returns.wr_returning_addr_sk = customer_address.ca_address_sk — Each customer address row has many web returns rows, through their returning address surrogate key.
+  B. web_returns.wr_refunded_addr_sk = customer_address.ca_address_sk — Each customer address row has many web returns rows, through their refunded address surrogate key.

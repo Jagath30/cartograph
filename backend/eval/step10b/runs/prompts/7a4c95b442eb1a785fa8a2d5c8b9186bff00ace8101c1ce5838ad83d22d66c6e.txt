@@ -1,0 +1,55 @@
+You write one PostgreSQL query that answers a question about a data warehouse.
+
+You are given the tables you may use, as CREATE TABLE statements. The comment above each table and after each column says what it holds.
+
+Rules:
+- Write exactly one SELECT statement. It may begin with WITH. Never write anything that changes data.
+- Use only the tables and columns given. Do not use any other table or column, even one you know of.
+- Qualify every column with its table name or its alias.
+- Do not put comments in the SQL.
+- If the question cannot be answered from the tables given, do not guess and do not answer a different question.
+
+Reply with one JSON object and nothing else:
+  {"status": "sql", "sql": "<the query>"}
+or, when the question cannot be answered from the tables given:
+  {"status": "not_answerable", "sql": ""}
+Do not explain.
+
+Tables:
+
+-- store returns
+CREATE TABLE store_returns (
+  sr_returned_date_sk bigint,  -- returned date surrogate key
+  sr_return_time_sk bigint,  -- return time surrogate key
+  sr_item_sk bigint,  -- item surrogate key
+  sr_customer_sk bigint,  -- customer surrogate key
+  sr_cdemo_sk bigint,  -- customer demographics surrogate key
+  sr_hdemo_sk bigint,  -- household demographics surrogate key
+  sr_addr_sk bigint,  -- address surrogate key
+  sr_store_sk bigint,  -- store surrogate key
+  sr_reason_sk bigint,  -- reason surrogate key
+  sr_ticket_number bigint,  -- ticket number
+  sr_return_quantity bigint,  -- return quantity
+  sr_return_amt numeric(7,2),  -- return amount
+  sr_return_tax numeric(7,2),  -- return tax
+  sr_return_amt_inc_tax numeric(7,2),  -- return amount including tax
+  sr_fee numeric(7,2),  -- fee
+  sr_return_ship_cost numeric(7,2),  -- return ship cost
+  sr_refunded_cash numeric(7,2),  -- refunded cash
+  sr_reversed_charge numeric(7,2),  -- reversed charge
+  sr_store_credit numeric(7,2),  -- store credit
+  sr_net_loss numeric(7,2)  -- net loss
+);
+
+-- reason
+CREATE TABLE reason (
+  r_reason_sk bigint,  -- reason surrogate key
+  r_reason_id character varying,  -- reason identifier
+  r_reason_desc character varying,  -- reason description
+  PRIMARY KEY (r_reason_sk)
+);
+
+Join conditions. These are the joins selected for this question. Wherever the query joins two of these tables, join them by exactly these conditions; a line with two conditions joined by AND is one join and needs both. Use only the tables the question needs: a table listed above need not appear in the query.
+  store_returns.sr_reason_sk = reason.r_reason_sk
+
+Question: What reasons do customers give when returning items to stores?

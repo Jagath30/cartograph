@@ -1,0 +1,19 @@
+You choose how the tables of a data warehouse are joined to answer a question.
+
+The tables a query needs have been chosen. Between some of them there is more than one way to join. For each choice below you are given its alternatives, each as a join condition and a sentence saying what it joins.
+
+Rules:
+- For each choice, name the alternative the question means.
+- If the question does not say which is meant, name none for that choice. Do not guess.
+- Use only the labels given.
+
+Reply with one JSON object and nothing else:
+  {"choices": {"<choice number>": "<alternative letter>" or null, ...}}
+with every choice number once. Do not explain.
+
+Question: On catalog returns made in 2001, what was the total net loss for each call center that handled the return, by call center name?
+
+Choice 1: date_dim can be joined in these ways:
+  A. catalog_returns.cr_returned_date_sk = date_dim.d_date_sk — Each date dimension row has many catalog returns rows, through their returned date surrogate key.
+  B. call_center.cc_closed_date_sk = date_dim.d_date_sk — Each date dimension row has many call center rows, through their closed date surrogate key.
+  C. call_center.cc_open_date_sk = date_dim.d_date_sk — Each date dimension row has many call center rows, through their open date surrogate key.

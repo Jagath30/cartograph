@@ -1,0 +1,125 @@
+You write one PostgreSQL query that answers a question about a data warehouse.
+
+You are given the tables you may use, as CREATE TABLE statements. The comment above each table and after each column says what it holds.
+
+Rules:
+- Write exactly one SELECT statement. It may begin with WITH. Never write anything that changes data.
+- Use only the tables and columns given. Do not use any other table or column, even one you know of.
+- Qualify every column with its table name or its alias.
+- Do not put comments in the SQL.
+- If the question cannot be answered from the tables given, do not guess and do not answer a different question.
+
+Reply with one JSON object and nothing else:
+  {"status": "sql", "sql": "<the query>"}
+or, when the question cannot be answered from the tables given:
+  {"status": "not_answerable", "sql": ""}
+Do not explain.
+
+Tables:
+
+-- web sales
+CREATE TABLE web_sales (
+  ws_sold_date_sk bigint,  -- sold date surrogate key
+  ws_sold_time_sk bigint,  -- sold time surrogate key
+  ws_ship_date_sk bigint,  -- ship date surrogate key
+  ws_item_sk bigint,  -- item surrogate key
+  ws_bill_customer_sk bigint,  -- bill customer surrogate key
+  ws_bill_cdemo_sk bigint,  -- bill customer demographics surrogate key
+  ws_bill_hdemo_sk bigint,  -- bill household demographics surrogate key
+  ws_bill_addr_sk bigint,  -- bill address surrogate key
+  ws_ship_customer_sk bigint,  -- ship customer surrogate key
+  ws_ship_cdemo_sk bigint,  -- ship customer demographics surrogate key
+  ws_ship_hdemo_sk bigint,  -- ship household demographics surrogate key
+  ws_ship_addr_sk bigint,  -- ship address surrogate key
+  ws_web_page_sk bigint,  -- web page surrogate key
+  ws_web_site_sk bigint,  -- web site surrogate key
+  ws_ship_mode_sk bigint,  -- ship mode surrogate key
+  ws_warehouse_sk bigint,  -- warehouse surrogate key
+  ws_promo_sk bigint,  -- promotion surrogate key
+  ws_order_number bigint,  -- order number
+  ws_quantity bigint,  -- quantity
+  ws_wholesale_cost numeric(7,2),  -- wholesale cost
+  ws_list_price numeric(7,2),  -- list price
+  ws_sales_price numeric(7,2),  -- sales price
+  ws_ext_discount_amt numeric(7,2),  -- extended discount amount
+  ws_ext_sales_price numeric(7,2),  -- extended sales price
+  ws_ext_wholesale_cost numeric(7,2),  -- extended wholesale cost
+  ws_ext_list_price numeric(7,2),  -- extended list price
+  ws_ext_tax numeric(7,2),  -- extended tax
+  ws_coupon_amt numeric(7,2),  -- coupon amount
+  ws_ext_ship_cost numeric(7,2),  -- extended ship cost
+  ws_net_paid numeric(7,2),  -- net paid
+  ws_net_paid_inc_tax numeric(7,2),  -- net paid including tax
+  ws_net_paid_inc_ship numeric(7,2),  -- net paid including ship
+  ws_net_paid_inc_ship_tax numeric(7,2),  -- net paid including ship tax
+  ws_net_profit numeric(7,2)  -- net profit
+);
+
+-- ship mode
+CREATE TABLE ship_mode (
+  sm_ship_mode_sk bigint,  -- ship mode surrogate key
+  sm_ship_mode_id character varying,  -- ship mode identifier
+  sm_type character varying,  -- type
+  sm_code character varying,  -- code
+  sm_carrier character varying,  -- carrier
+  sm_contract character varying,  -- contract
+  PRIMARY KEY (sm_ship_mode_sk)
+);
+
+-- customer address
+CREATE TABLE customer_address (
+  ca_address_sk bigint,  -- address surrogate key
+  ca_address_id character varying,  -- address identifier
+  ca_street_number character varying,  -- street number
+  ca_street_name character varying,  -- street name
+  ca_street_type character varying,  -- street type
+  ca_suite_number character varying,  -- suite number
+  ca_city character varying,  -- city
+  ca_county character varying,  -- county
+  ca_state character varying,  -- state
+  ca_zip character varying,  -- zip
+  ca_country character varying,  -- country
+  ca_gmt_offset numeric(5,2),  -- GMT offset
+  ca_location_type character varying,  -- location type
+  PRIMARY KEY (ca_address_sk)
+);
+
+-- date dimension
+CREATE TABLE date_dim (
+  d_date_sk bigint,  -- date surrogate key
+  d_date_id character varying,  -- date identifier
+  d_date date,  -- date
+  d_month_seq bigint,  -- month sequence
+  d_week_seq bigint,  -- week sequence
+  d_quarter_seq bigint,  -- quarter sequence
+  d_year bigint,  -- year
+  d_dow bigint,  -- day of week
+  d_moy bigint,  -- month of year
+  d_dom bigint,  -- day of month
+  d_qoy bigint,  -- quarter of year
+  d_fy_year bigint,  -- fiscal year
+  d_fy_quarter_seq bigint,  -- fiscal quarter sequence
+  d_fy_week_seq bigint,  -- fiscal week sequence
+  d_day_name character varying,  -- day name
+  d_quarter_name character varying,  -- quarter name
+  d_holiday character varying,  -- holiday
+  d_weekend character varying,  -- weekend
+  d_following_holiday character varying,  -- following holiday
+  d_first_dom bigint,  -- first day of month
+  d_last_dom bigint,  -- last day of month
+  d_same_day_ly bigint,  -- same day last year
+  d_same_day_lq bigint,  -- same day last quarter
+  d_current_day character varying,  -- current day
+  d_current_week character varying,  -- current week
+  d_current_month character varying,  -- current month
+  d_current_quarter character varying,  -- current quarter
+  d_current_year character varying,  -- current year
+  PRIMARY KEY (d_date_sk)
+);
+
+Join conditions. These are the joins selected for this question. Wherever the query joins two of these tables, join them by exactly these conditions; a line with two conditions joined by AND is one join and needs both. Use only the tables the question needs: a table listed above need not appear in the query.
+  web_sales.ws_ship_addr_sk = customer_address.ca_address_sk
+  web_sales.ws_ship_mode_sk = ship_mode.sm_ship_mode_sk
+  web_sales.ws_sold_date_sk = date_dim.d_date_sk
+
+Question: For web orders sold in 2002 and shipped to addresses in New York state, how many units went by each type of shipping mode?

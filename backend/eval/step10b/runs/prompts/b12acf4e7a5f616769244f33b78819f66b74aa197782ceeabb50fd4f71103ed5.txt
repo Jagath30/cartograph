@@ -1,0 +1,667 @@
+You write one PostgreSQL query that answers a question about a data warehouse.
+
+You are given the tables you may use, as CREATE TABLE statements. The comment above each table and after each column says what it holds.
+
+Rules:
+- Write exactly one SELECT statement. It may begin with WITH. Never write anything that changes data.
+- Use only the tables and columns given. Do not use any other table or column, even one you know of.
+- Qualify every column with its table name or its alias.
+- Do not put comments in the SQL.
+- If the question cannot be answered from the tables given, do not guess and do not answer a different question.
+
+Reply with one JSON object and nothing else:
+  {"status": "sql", "sql": "<the query>"}
+or, when the question cannot be answered from the tables given:
+  {"status": "not_answerable", "sql": ""}
+Do not explain.
+
+Tables:
+
+-- call center
+CREATE TABLE call_center (
+  cc_call_center_sk bigint,  -- call center surrogate key
+  cc_call_center_id character varying,  -- call center identifier
+  cc_rec_start_date date,  -- record start date
+  cc_rec_end_date date,  -- record end date
+  cc_closed_date_sk bigint,  -- closed date surrogate key
+  cc_open_date_sk bigint,  -- open date surrogate key
+  cc_name character varying,  -- name
+  cc_class character varying,  -- class
+  cc_employees bigint,  -- employees
+  cc_sq_ft bigint,  -- square feet
+  cc_hours character varying,  -- hours
+  cc_manager character varying,  -- manager
+  cc_mkt_id bigint,  -- market identifier
+  cc_mkt_class character varying,  -- market class
+  cc_mkt_desc character varying,  -- market description
+  cc_market_manager character varying,  -- market manager
+  cc_division bigint,  -- division
+  cc_division_name character varying,  -- division name
+  cc_company bigint,  -- company
+  cc_company_name character varying,  -- company name
+  cc_street_number character varying,  -- street number
+  cc_street_name character varying,  -- street name
+  cc_street_type character varying,  -- street type
+  cc_suite_number character varying,  -- suite number
+  cc_city character varying,  -- city
+  cc_county character varying,  -- county
+  cc_state character varying,  -- state
+  cc_zip character varying,  -- zip
+  cc_country character varying,  -- country
+  cc_gmt_offset numeric(5,2),  -- GMT offset
+  cc_tax_percentage numeric(5,2),  -- tax percentage
+  PRIMARY KEY (cc_call_center_sk)
+);
+
+-- catalog page
+CREATE TABLE catalog_page (
+  cp_catalog_page_sk bigint,  -- catalog page surrogate key
+  cp_catalog_page_id character varying,  -- catalog page identifier
+  cp_start_date_sk bigint,  -- start date surrogate key
+  cp_end_date_sk bigint,  -- end date surrogate key
+  cp_department character varying,  -- department
+  cp_catalog_number bigint,  -- catalog number
+  cp_catalog_page_number bigint,  -- catalog page number
+  cp_description character varying,  -- description
+  cp_type character varying,  -- type
+  PRIMARY KEY (cp_catalog_page_sk)
+);
+
+-- catalog returns
+CREATE TABLE catalog_returns (
+  cr_returned_date_sk bigint,  -- returned date surrogate key
+  cr_returned_time_sk bigint,  -- returned time surrogate key
+  cr_item_sk bigint,  -- item surrogate key
+  cr_refunded_customer_sk bigint,  -- refunded customer surrogate key
+  cr_refunded_cdemo_sk bigint,  -- refunded customer demographics surrogate key
+  cr_refunded_hdemo_sk bigint,  -- refunded household demographics surrogate key
+  cr_refunded_addr_sk bigint,  -- refunded address surrogate key
+  cr_returning_customer_sk bigint,  -- returning customer surrogate key
+  cr_returning_cdemo_sk bigint,  -- returning customer demographics surrogate key
+  cr_returning_hdemo_sk bigint,  -- returning household demographics surrogate key
+  cr_returning_addr_sk bigint,  -- returning address surrogate key
+  cr_call_center_sk bigint,  -- call center surrogate key
+  cr_catalog_page_sk bigint,  -- catalog page surrogate key
+  cr_ship_mode_sk bigint,  -- ship mode surrogate key
+  cr_warehouse_sk bigint,  -- warehouse surrogate key
+  cr_reason_sk bigint,  -- reason surrogate key
+  cr_order_number bigint,  -- order number
+  cr_return_quantity bigint,  -- return quantity
+  cr_return_amount numeric(7,2),  -- return amount
+  cr_return_tax numeric(7,2),  -- return tax
+  cr_return_amt_inc_tax numeric(7,2),  -- return amount including tax
+  cr_fee numeric(7,2),  -- fee
+  cr_return_ship_cost numeric(7,2),  -- return ship cost
+  cr_refunded_cash numeric(7,2),  -- refunded cash
+  cr_reversed_charge numeric(7,2),  -- reversed charge
+  cr_store_credit numeric(7,2),  -- store credit
+  cr_net_loss numeric(7,2)  -- net loss
+);
+
+-- catalog sales
+CREATE TABLE catalog_sales (
+  cs_sold_date_sk bigint,  -- sold date surrogate key
+  cs_sold_time_sk bigint,  -- sold time surrogate key
+  cs_ship_date_sk bigint,  -- ship date surrogate key
+  cs_bill_customer_sk bigint,  -- bill customer surrogate key
+  cs_bill_cdemo_sk bigint,  -- bill customer demographics surrogate key
+  cs_bill_hdemo_sk bigint,  -- bill household demographics surrogate key
+  cs_bill_addr_sk bigint,  -- bill address surrogate key
+  cs_ship_customer_sk bigint,  -- ship customer surrogate key
+  cs_ship_cdemo_sk bigint,  -- ship customer demographics surrogate key
+  cs_ship_hdemo_sk bigint,  -- ship household demographics surrogate key
+  cs_ship_addr_sk bigint,  -- ship address surrogate key
+  cs_call_center_sk bigint,  -- call center surrogate key
+  cs_catalog_page_sk bigint,  -- catalog page surrogate key
+  cs_ship_mode_sk bigint,  -- ship mode surrogate key
+  cs_warehouse_sk bigint,  -- warehouse surrogate key
+  cs_item_sk bigint,  -- item surrogate key
+  cs_promo_sk bigint,  -- promotion surrogate key
+  cs_order_number bigint,  -- order number
+  cs_quantity bigint,  -- quantity
+  cs_wholesale_cost numeric(7,2),  -- wholesale cost
+  cs_list_price numeric(7,2),  -- list price
+  cs_sales_price numeric(7,2),  -- sales price
+  cs_ext_discount_amt numeric(7,2),  -- extended discount amount
+  cs_ext_sales_price numeric(7,2),  -- extended sales price
+  cs_ext_wholesale_cost numeric(7,2),  -- extended wholesale cost
+  cs_ext_list_price numeric(7,2),  -- extended list price
+  cs_ext_tax numeric(7,2),  -- extended tax
+  cs_coupon_amt numeric(7,2),  -- coupon amount
+  cs_ext_ship_cost numeric(7,2),  -- extended ship cost
+  cs_net_paid numeric(7,2),  -- net paid
+  cs_net_paid_inc_tax numeric(7,2),  -- net paid including tax
+  cs_net_paid_inc_ship numeric(7,2),  -- net paid including ship
+  cs_net_paid_inc_ship_tax numeric(7,2),  -- net paid including ship tax
+  cs_net_profit numeric(7,2)  -- net profit
+);
+
+-- customer
+CREATE TABLE customer (
+  c_customer_sk bigint,  -- customer surrogate key
+  c_customer_id character varying,  -- customer identifier
+  c_current_cdemo_sk bigint,  -- current customer demographics surrogate key
+  c_current_hdemo_sk bigint,  -- current household demographics surrogate key
+  c_current_addr_sk bigint,  -- current address surrogate key
+  c_first_shipto_date_sk bigint,  -- first ship-to date surrogate key
+  c_first_sales_date_sk bigint,  -- first sales date surrogate key
+  c_salutation character varying,  -- salutation
+  c_first_name character varying,  -- first name
+  c_last_name character varying,  -- last name
+  c_preferred_cust_flag character varying,  -- preferred customer flag
+  c_birth_day bigint,  -- birth day
+  c_birth_month bigint,  -- birth month
+  c_birth_year bigint,  -- birth year
+  c_birth_country character varying,  -- birth country
+  c_login character varying,  -- login
+  c_email_address character varying,  -- email address
+  c_last_review_date_sk integer,  -- last review date surrogate key
+  PRIMARY KEY (c_customer_sk)
+);
+
+-- customer address
+CREATE TABLE customer_address (
+  ca_address_sk bigint,  -- address surrogate key
+  ca_address_id character varying,  -- address identifier
+  ca_street_number character varying,  -- street number
+  ca_street_name character varying,  -- street name
+  ca_street_type character varying,  -- street type
+  ca_suite_number character varying,  -- suite number
+  ca_city character varying,  -- city
+  ca_county character varying,  -- county
+  ca_state character varying,  -- state
+  ca_zip character varying,  -- zip
+  ca_country character varying,  -- country
+  ca_gmt_offset numeric(5,2),  -- GMT offset
+  ca_location_type character varying,  -- location type
+  PRIMARY KEY (ca_address_sk)
+);
+
+-- customer demographics
+CREATE TABLE customer_demographics (
+  cd_demo_sk bigint,  -- demo surrogate key
+  cd_gender character varying,  -- gender
+  cd_marital_status character varying,  -- marital status
+  cd_education_status character varying,  -- education status
+  cd_purchase_estimate bigint,  -- purchase estimate
+  cd_credit_rating character varying,  -- credit rating
+  cd_dep_count bigint,  -- dependent count
+  cd_dep_employed_count bigint,  -- dependent employed count
+  cd_dep_college_count integer,  -- dependent college count
+  PRIMARY KEY (cd_demo_sk)
+);
+
+-- date dimension
+CREATE TABLE date_dim (
+  d_date_sk bigint,  -- date surrogate key
+  d_date_id character varying,  -- date identifier
+  d_date date,  -- date
+  d_month_seq bigint,  -- month sequence
+  d_week_seq bigint,  -- week sequence
+  d_quarter_seq bigint,  -- quarter sequence
+  d_year bigint,  -- year
+  d_dow bigint,  -- day of week
+  d_moy bigint,  -- month of year
+  d_dom bigint,  -- day of month
+  d_qoy bigint,  -- quarter of year
+  d_fy_year bigint,  -- fiscal year
+  d_fy_quarter_seq bigint,  -- fiscal quarter sequence
+  d_fy_week_seq bigint,  -- fiscal week sequence
+  d_day_name character varying,  -- day name
+  d_quarter_name character varying,  -- quarter name
+  d_holiday character varying,  -- holiday
+  d_weekend character varying,  -- weekend
+  d_following_holiday character varying,  -- following holiday
+  d_first_dom bigint,  -- first day of month
+  d_last_dom bigint,  -- last day of month
+  d_same_day_ly bigint,  -- same day last year
+  d_same_day_lq bigint,  -- same day last quarter
+  d_current_day character varying,  -- current day
+  d_current_week character varying,  -- current week
+  d_current_month character varying,  -- current month
+  d_current_quarter character varying,  -- current quarter
+  d_current_year character varying,  -- current year
+  PRIMARY KEY (d_date_sk)
+);
+
+-- household demographics
+CREATE TABLE household_demographics (
+  hd_demo_sk bigint,  -- demo surrogate key
+  hd_income_band_sk bigint,  -- income band surrogate key
+  hd_buy_potential character varying,  -- buy potential
+  hd_dep_count bigint,  -- dependent count
+  hd_vehicle_count integer,  -- vehicle count
+  PRIMARY KEY (hd_demo_sk)
+);
+
+-- income band
+CREATE TABLE income_band (
+  ib_income_band_sk bigint,  -- income band surrogate key
+  ib_lower_bound bigint,  -- lower bound
+  ib_upper_bound integer,  -- upper bound
+  PRIMARY KEY (ib_income_band_sk)
+);
+
+-- inventory
+CREATE TABLE inventory (
+  inv_date_sk bigint,  -- date surrogate key
+  inv_item_sk bigint,  -- item surrogate key
+  inv_warehouse_sk bigint,  -- warehouse surrogate key
+  inv_quantity_on_hand integer  -- quantity on hand
+);
+
+-- item
+CREATE TABLE item (
+  i_item_sk bigint,  -- item surrogate key
+  i_item_id character varying,  -- item identifier
+  i_rec_start_date date,  -- record start date
+  i_rec_end_date date,  -- record end date
+  i_item_desc character varying,  -- item description
+  i_current_price numeric(7,2),  -- current price
+  i_wholesale_cost numeric(7,2),  -- wholesale cost
+  i_brand_id bigint,  -- brand identifier
+  i_brand character varying,  -- brand
+  i_class_id bigint,  -- class identifier
+  i_class character varying,  -- class
+  i_category_id bigint,  -- category identifier
+  i_category character varying,  -- category
+  i_manufact_id bigint,  -- manufacturer identifier
+  i_manufact character varying,  -- manufacturer
+  i_size character varying,  -- size
+  i_formulation character varying,  -- formulation
+  i_color character varying,  -- color
+  i_units character varying,  -- units
+  i_container character varying,  -- container
+  i_manager_id bigint,  -- manager identifier
+  i_product_name character varying,  -- product name
+  PRIMARY KEY (i_item_sk)
+);
+
+-- promotion
+CREATE TABLE promotion (
+  p_promo_sk bigint,  -- promotion surrogate key
+  p_promo_id character varying,  -- promotion identifier
+  p_start_date_sk bigint,  -- start date surrogate key
+  p_end_date_sk bigint,  -- end date surrogate key
+  p_item_sk bigint,  -- item surrogate key
+  p_cost numeric(15,2),  -- cost
+  p_response_target bigint,  -- response target
+  p_promo_name character varying,  -- promotion name
+  p_channel_dmail character varying,  -- channel direct mail
+  p_channel_email character varying,  -- channel email
+  p_channel_catalog character varying,  -- channel catalog
+  p_channel_tv character varying,  -- channel television
+  p_channel_radio character varying,  -- channel radio
+  p_channel_press character varying,  -- channel press
+  p_channel_event character varying,  -- channel event
+  p_channel_demo character varying,  -- channel demo
+  p_channel_details character varying,  -- channel details
+  p_purpose character varying,  -- purpose
+  p_discount_active character varying,  -- discount active
+  PRIMARY KEY (p_promo_sk)
+);
+
+-- reason
+CREATE TABLE reason (
+  r_reason_sk bigint,  -- reason surrogate key
+  r_reason_id character varying,  -- reason identifier
+  r_reason_desc character varying,  -- reason description
+  PRIMARY KEY (r_reason_sk)
+);
+
+-- ship mode
+CREATE TABLE ship_mode (
+  sm_ship_mode_sk bigint,  -- ship mode surrogate key
+  sm_ship_mode_id character varying,  -- ship mode identifier
+  sm_type character varying,  -- type
+  sm_code character varying,  -- code
+  sm_carrier character varying,  -- carrier
+  sm_contract character varying,  -- contract
+  PRIMARY KEY (sm_ship_mode_sk)
+);
+
+-- store
+CREATE TABLE store (
+  s_store_sk bigint,  -- store surrogate key
+  s_store_id character varying,  -- store identifier
+  s_rec_start_date date,  -- record start date
+  s_rec_end_date date,  -- record end date
+  s_closed_date_sk bigint,  -- closed date surrogate key
+  s_store_name character varying,  -- store name
+  s_number_employees bigint,  -- number employees
+  s_floor_space bigint,  -- floor space
+  s_hours character varying,  -- hours
+  s_manager character varying,  -- manager
+  s_market_id bigint,  -- market identifier
+  s_geography_class character varying,  -- geography class
+  s_market_desc character varying,  -- market description
+  s_market_manager character varying,  -- market manager
+  s_division_id bigint,  -- division identifier
+  s_division_name character varying,  -- division name
+  s_company_id bigint,  -- company identifier
+  s_company_name character varying,  -- company name
+  s_street_number character varying,  -- street number
+  s_street_name character varying,  -- street name
+  s_street_type character varying,  -- street type
+  s_suite_number character varying,  -- suite number
+  s_city character varying,  -- city
+  s_county character varying,  -- county
+  s_state character varying,  -- state
+  s_zip character varying,  -- zip
+  s_country character varying,  -- country
+  s_gmt_offset numeric(5,2),  -- GMT offset
+  s_tax_percentage numeric(5,2),  -- tax percentage
+  PRIMARY KEY (s_store_sk)
+);
+
+-- store returns
+CREATE TABLE store_returns (
+  sr_returned_date_sk bigint,  -- returned date surrogate key
+  sr_return_time_sk bigint,  -- return time surrogate key
+  sr_item_sk bigint,  -- item surrogate key
+  sr_customer_sk bigint,  -- customer surrogate key
+  sr_cdemo_sk bigint,  -- customer demographics surrogate key
+  sr_hdemo_sk bigint,  -- household demographics surrogate key
+  sr_addr_sk bigint,  -- address surrogate key
+  sr_store_sk bigint,  -- store surrogate key
+  sr_reason_sk bigint,  -- reason surrogate key
+  sr_ticket_number bigint,  -- ticket number
+  sr_return_quantity bigint,  -- return quantity
+  sr_return_amt numeric(7,2),  -- return amount
+  sr_return_tax numeric(7,2),  -- return tax
+  sr_return_amt_inc_tax numeric(7,2),  -- return amount including tax
+  sr_fee numeric(7,2),  -- fee
+  sr_return_ship_cost numeric(7,2),  -- return ship cost
+  sr_refunded_cash numeric(7,2),  -- refunded cash
+  sr_reversed_charge numeric(7,2),  -- reversed charge
+  sr_store_credit numeric(7,2),  -- store credit
+  sr_net_loss numeric(7,2)  -- net loss
+);
+
+-- store sales
+CREATE TABLE store_sales (
+  ss_sold_date_sk bigint,  -- sold date surrogate key
+  ss_sold_time_sk bigint,  -- sold time surrogate key
+  ss_item_sk bigint,  -- item surrogate key
+  ss_customer_sk bigint,  -- customer surrogate key
+  ss_cdemo_sk bigint,  -- customer demographics surrogate key
+  ss_hdemo_sk bigint,  -- household demographics surrogate key
+  ss_addr_sk bigint,  -- address surrogate key
+  ss_store_sk bigint,  -- store surrogate key
+  ss_promo_sk bigint,  -- promotion surrogate key
+  ss_ticket_number bigint,  -- ticket number
+  ss_quantity bigint,  -- quantity
+  ss_wholesale_cost numeric(7,2),  -- wholesale cost
+  ss_list_price numeric(7,2),  -- list price
+  ss_sales_price numeric(7,2),  -- sales price
+  ss_ext_discount_amt numeric(7,2),  -- extended discount amount
+  ss_ext_sales_price numeric(7,2),  -- extended sales price
+  ss_ext_wholesale_cost numeric(7,2),  -- extended wholesale cost
+  ss_ext_list_price numeric(7,2),  -- extended list price
+  ss_ext_tax numeric(7,2),  -- extended tax
+  ss_coupon_amt numeric(7,2),  -- coupon amount
+  ss_net_paid numeric(7,2),  -- net paid
+  ss_net_paid_inc_tax numeric(7,2),  -- net paid including tax
+  ss_net_profit numeric(7,2)  -- net profit
+);
+
+-- time dimension
+CREATE TABLE time_dim (
+  t_time_sk bigint,  -- time surrogate key
+  t_time_id character varying,  -- time identifier
+  t_time bigint,  -- time
+  t_hour bigint,  -- hour
+  t_minute bigint,  -- minute
+  t_second bigint,  -- second
+  t_am_pm character varying,  -- am pm
+  t_shift character varying,  -- shift
+  t_sub_shift character varying,  -- sub shift
+  t_meal_time character varying,  -- meal time
+  PRIMARY KEY (t_time_sk)
+);
+
+-- warehouse
+CREATE TABLE warehouse (
+  w_warehouse_sk bigint,  -- warehouse surrogate key
+  w_warehouse_id character varying,  -- warehouse identifier
+  w_warehouse_name character varying,  -- warehouse name
+  w_warehouse_sq_ft bigint,  -- warehouse square feet
+  w_street_number character varying,  -- street number
+  w_street_name character varying,  -- street name
+  w_street_type character varying,  -- street type
+  w_suite_number character varying,  -- suite number
+  w_city character varying,  -- city
+  w_county character varying,  -- county
+  w_state character varying,  -- state
+  w_zip character varying,  -- zip
+  w_country character varying,  -- country
+  w_gmt_offset numeric(5,2),  -- GMT offset
+  PRIMARY KEY (w_warehouse_sk)
+);
+
+-- web page
+CREATE TABLE web_page (
+  wp_web_page_sk bigint,  -- web page surrogate key
+  wp_web_page_id character varying,  -- web page identifier
+  wp_rec_start_date date,  -- record start date
+  wp_rec_end_date date,  -- record end date
+  wp_creation_date_sk bigint,  -- creation date surrogate key
+  wp_access_date_sk bigint,  -- access date surrogate key
+  wp_autogen_flag character varying,  -- automatically generated flag
+  wp_customer_sk bigint,  -- customer surrogate key
+  wp_url character varying,  -- url
+  wp_type character varying,  -- type
+  wp_char_count bigint,  -- character count
+  wp_link_count bigint,  -- link count
+  wp_image_count bigint,  -- image count
+  wp_max_ad_count integer,  -- max advertisement count
+  PRIMARY KEY (wp_web_page_sk)
+);
+
+-- web returns
+CREATE TABLE web_returns (
+  wr_returned_date_sk bigint,  -- returned date surrogate key
+  wr_returned_time_sk bigint,  -- returned time surrogate key
+  wr_item_sk bigint,  -- item surrogate key
+  wr_refunded_customer_sk bigint,  -- refunded customer surrogate key
+  wr_refunded_cdemo_sk bigint,  -- refunded customer demographics surrogate key
+  wr_refunded_hdemo_sk bigint,  -- refunded household demographics surrogate key
+  wr_refunded_addr_sk bigint,  -- refunded address surrogate key
+  wr_returning_customer_sk bigint,  -- returning customer surrogate key
+  wr_returning_cdemo_sk bigint,  -- returning customer demographics surrogate key
+  wr_returning_hdemo_sk bigint,  -- returning household demographics surrogate key
+  wr_returning_addr_sk bigint,  -- returning address surrogate key
+  wr_web_page_sk bigint,  -- web page surrogate key
+  wr_reason_sk bigint,  -- reason surrogate key
+  wr_order_number bigint,  -- order number
+  wr_return_quantity bigint,  -- return quantity
+  wr_return_amt numeric(7,2),  -- return amount
+  wr_return_tax numeric(7,2),  -- return tax
+  wr_return_amt_inc_tax numeric(7,2),  -- return amount including tax
+  wr_fee numeric(7,2),  -- fee
+  wr_return_ship_cost numeric(7,2),  -- return ship cost
+  wr_refunded_cash numeric(7,2),  -- refunded cash
+  wr_reversed_charge numeric(7,2),  -- reversed charge
+  wr_account_credit numeric(7,2),  -- account credit
+  wr_net_loss numeric(7,2)  -- net loss
+);
+
+-- web sales
+CREATE TABLE web_sales (
+  ws_sold_date_sk bigint,  -- sold date surrogate key
+  ws_sold_time_sk bigint,  -- sold time surrogate key
+  ws_ship_date_sk bigint,  -- ship date surrogate key
+  ws_item_sk bigint,  -- item surrogate key
+  ws_bill_customer_sk bigint,  -- bill customer surrogate key
+  ws_bill_cdemo_sk bigint,  -- bill customer demographics surrogate key
+  ws_bill_hdemo_sk bigint,  -- bill household demographics surrogate key
+  ws_bill_addr_sk bigint,  -- bill address surrogate key
+  ws_ship_customer_sk bigint,  -- ship customer surrogate key
+  ws_ship_cdemo_sk bigint,  -- ship customer demographics surrogate key
+  ws_ship_hdemo_sk bigint,  -- ship household demographics surrogate key
+  ws_ship_addr_sk bigint,  -- ship address surrogate key
+  ws_web_page_sk bigint,  -- web page surrogate key
+  ws_web_site_sk bigint,  -- web site surrogate key
+  ws_ship_mode_sk bigint,  -- ship mode surrogate key
+  ws_warehouse_sk bigint,  -- warehouse surrogate key
+  ws_promo_sk bigint,  -- promotion surrogate key
+  ws_order_number bigint,  -- order number
+  ws_quantity bigint,  -- quantity
+  ws_wholesale_cost numeric(7,2),  -- wholesale cost
+  ws_list_price numeric(7,2),  -- list price
+  ws_sales_price numeric(7,2),  -- sales price
+  ws_ext_discount_amt numeric(7,2),  -- extended discount amount
+  ws_ext_sales_price numeric(7,2),  -- extended sales price
+  ws_ext_wholesale_cost numeric(7,2),  -- extended wholesale cost
+  ws_ext_list_price numeric(7,2),  -- extended list price
+  ws_ext_tax numeric(7,2),  -- extended tax
+  ws_coupon_amt numeric(7,2),  -- coupon amount
+  ws_ext_ship_cost numeric(7,2),  -- extended ship cost
+  ws_net_paid numeric(7,2),  -- net paid
+  ws_net_paid_inc_tax numeric(7,2),  -- net paid including tax
+  ws_net_paid_inc_ship numeric(7,2),  -- net paid including ship
+  ws_net_paid_inc_ship_tax numeric(7,2),  -- net paid including ship tax
+  ws_net_profit numeric(7,2)  -- net profit
+);
+
+-- web site
+CREATE TABLE web_site (
+  web_site_sk bigint,  -- site surrogate key
+  web_site_id character varying,  -- site identifier
+  web_rec_start_date date,  -- record start date
+  web_rec_end_date date,  -- record end date
+  web_name character varying,  -- name
+  web_open_date_sk bigint,  -- open date surrogate key
+  web_close_date_sk bigint,  -- close date surrogate key
+  web_class character varying,  -- class
+  web_manager character varying,  -- manager
+  web_mkt_id bigint,  -- market identifier
+  web_mkt_class character varying,  -- market class
+  web_mkt_desc character varying,  -- market description
+  web_market_manager character varying,  -- market manager
+  web_company_id bigint,  -- company identifier
+  web_company_name character varying,  -- company name
+  web_street_number character varying,  -- street number
+  web_street_name character varying,  -- street name
+  web_street_type character varying,  -- street type
+  web_suite_number character varying,  -- suite number
+  web_city character varying,  -- city
+  web_county character varying,  -- county
+  web_state character varying,  -- state
+  web_zip character varying,  -- zip
+  web_country character varying,  -- country
+  web_gmt_offset numeric(5,2),  -- GMT offset
+  web_tax_percentage numeric(5,2),  -- tax percentage
+  PRIMARY KEY (web_site_sk)
+);
+
+Keys between tables. These are the keys by which the tables above can be joined. A line with two conditions joined by AND is one key and needs both. Two tables may be joined by more than one key. Use only the tables the question needs: a table listed above need not appear in the query.
+  call_center.cc_closed_date_sk = date_dim.d_date_sk
+  call_center.cc_open_date_sk = date_dim.d_date_sk
+  catalog_page.cp_end_date_sk = date_dim.d_date_sk
+  catalog_page.cp_start_date_sk = date_dim.d_date_sk
+  catalog_returns.cr_call_center_sk = call_center.cc_call_center_sk
+  catalog_returns.cr_catalog_page_sk = catalog_page.cp_catalog_page_sk
+  catalog_returns.cr_item_sk = catalog_sales.cs_item_sk AND catalog_returns.cr_order_number = catalog_sales.cs_order_number
+  catalog_returns.cr_item_sk = item.i_item_sk
+  catalog_returns.cr_reason_sk = reason.r_reason_sk
+  catalog_returns.cr_refunded_addr_sk = customer_address.ca_address_sk
+  catalog_returns.cr_refunded_cdemo_sk = customer_demographics.cd_demo_sk
+  catalog_returns.cr_refunded_customer_sk = customer.c_customer_sk
+  catalog_returns.cr_refunded_hdemo_sk = household_demographics.hd_demo_sk
+  catalog_returns.cr_returned_date_sk = date_dim.d_date_sk
+  catalog_returns.cr_returned_time_sk = time_dim.t_time_sk
+  catalog_returns.cr_returning_addr_sk = customer_address.ca_address_sk
+  catalog_returns.cr_returning_cdemo_sk = customer_demographics.cd_demo_sk
+  catalog_returns.cr_returning_customer_sk = customer.c_customer_sk
+  catalog_returns.cr_returning_hdemo_sk = household_demographics.hd_demo_sk
+  catalog_returns.cr_ship_mode_sk = ship_mode.sm_ship_mode_sk
+  catalog_returns.cr_warehouse_sk = warehouse.w_warehouse_sk
+  catalog_sales.cs_bill_addr_sk = customer_address.ca_address_sk
+  catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk
+  catalog_sales.cs_bill_customer_sk = customer.c_customer_sk
+  catalog_sales.cs_bill_hdemo_sk = household_demographics.hd_demo_sk
+  catalog_sales.cs_call_center_sk = call_center.cc_call_center_sk
+  catalog_sales.cs_catalog_page_sk = catalog_page.cp_catalog_page_sk
+  catalog_sales.cs_item_sk = item.i_item_sk
+  catalog_sales.cs_promo_sk = promotion.p_promo_sk
+  catalog_sales.cs_ship_addr_sk = customer_address.ca_address_sk
+  catalog_sales.cs_ship_cdemo_sk = customer_demographics.cd_demo_sk
+  catalog_sales.cs_ship_customer_sk = customer.c_customer_sk
+  catalog_sales.cs_ship_date_sk = date_dim.d_date_sk
+  catalog_sales.cs_ship_hdemo_sk = household_demographics.hd_demo_sk
+  catalog_sales.cs_ship_mode_sk = ship_mode.sm_ship_mode_sk
+  catalog_sales.cs_sold_date_sk = date_dim.d_date_sk
+  catalog_sales.cs_sold_time_sk = time_dim.t_time_sk
+  catalog_sales.cs_warehouse_sk = warehouse.w_warehouse_sk
+  customer.c_current_addr_sk = customer_address.ca_address_sk
+  customer.c_current_cdemo_sk = customer_demographics.cd_demo_sk
+  customer.c_current_hdemo_sk = household_demographics.hd_demo_sk
+  customer.c_first_sales_date_sk = date_dim.d_date_sk
+  customer.c_first_shipto_date_sk = date_dim.d_date_sk
+  customer.c_last_review_date_sk = date_dim.d_date_sk
+  household_demographics.hd_income_band_sk = income_band.ib_income_band_sk
+  inventory.inv_date_sk = date_dim.d_date_sk
+  inventory.inv_item_sk = item.i_item_sk
+  inventory.inv_warehouse_sk = warehouse.w_warehouse_sk
+  promotion.p_end_date_sk = date_dim.d_date_sk
+  promotion.p_item_sk = item.i_item_sk
+  promotion.p_start_date_sk = date_dim.d_date_sk
+  store.s_closed_date_sk = date_dim.d_date_sk
+  store_returns.sr_addr_sk = customer_address.ca_address_sk
+  store_returns.sr_cdemo_sk = customer_demographics.cd_demo_sk
+  store_returns.sr_customer_sk = customer.c_customer_sk
+  store_returns.sr_hdemo_sk = household_demographics.hd_demo_sk
+  store_returns.sr_item_sk = item.i_item_sk
+  store_returns.sr_item_sk = store_sales.ss_item_sk AND store_returns.sr_ticket_number = store_sales.ss_ticket_number
+  store_returns.sr_reason_sk = reason.r_reason_sk
+  store_returns.sr_return_time_sk = time_dim.t_time_sk
+  store_returns.sr_returned_date_sk = date_dim.d_date_sk
+  store_returns.sr_store_sk = store.s_store_sk
+  store_sales.ss_addr_sk = customer_address.ca_address_sk
+  store_sales.ss_cdemo_sk = customer_demographics.cd_demo_sk
+  store_sales.ss_customer_sk = customer.c_customer_sk
+  store_sales.ss_hdemo_sk = household_demographics.hd_demo_sk
+  store_sales.ss_item_sk = item.i_item_sk
+  store_sales.ss_promo_sk = promotion.p_promo_sk
+  store_sales.ss_sold_date_sk = date_dim.d_date_sk
+  store_sales.ss_sold_time_sk = time_dim.t_time_sk
+  store_sales.ss_store_sk = store.s_store_sk
+  web_page.wp_access_date_sk = date_dim.d_date_sk
+  web_page.wp_creation_date_sk = date_dim.d_date_sk
+  web_page.wp_customer_sk = customer.c_customer_sk
+  web_returns.wr_item_sk = item.i_item_sk
+  web_returns.wr_item_sk = web_sales.ws_item_sk AND web_returns.wr_order_number = web_sales.ws_order_number
+  web_returns.wr_reason_sk = reason.r_reason_sk
+  web_returns.wr_refunded_addr_sk = customer_address.ca_address_sk
+  web_returns.wr_refunded_cdemo_sk = customer_demographics.cd_demo_sk
+  web_returns.wr_refunded_customer_sk = customer.c_customer_sk
+  web_returns.wr_refunded_hdemo_sk = household_demographics.hd_demo_sk
+  web_returns.wr_returned_date_sk = date_dim.d_date_sk
+  web_returns.wr_returned_time_sk = time_dim.t_time_sk
+  web_returns.wr_returning_addr_sk = customer_address.ca_address_sk
+  web_returns.wr_returning_cdemo_sk = customer_demographics.cd_demo_sk
+  web_returns.wr_returning_customer_sk = customer.c_customer_sk
+  web_returns.wr_returning_hdemo_sk = household_demographics.hd_demo_sk
+  web_returns.wr_web_page_sk = web_page.wp_web_page_sk
+  web_sales.ws_bill_addr_sk = customer_address.ca_address_sk
+  web_sales.ws_bill_cdemo_sk = customer_demographics.cd_demo_sk
+  web_sales.ws_bill_customer_sk = customer.c_customer_sk
+  web_sales.ws_bill_hdemo_sk = household_demographics.hd_demo_sk
+  web_sales.ws_item_sk = item.i_item_sk
+  web_sales.ws_promo_sk = promotion.p_promo_sk
+  web_sales.ws_ship_addr_sk = customer_address.ca_address_sk
+  web_sales.ws_ship_cdemo_sk = customer_demographics.cd_demo_sk
+  web_sales.ws_ship_customer_sk = customer.c_customer_sk
+  web_sales.ws_ship_date_sk = date_dim.d_date_sk
+  web_sales.ws_ship_hdemo_sk = household_demographics.hd_demo_sk
+  web_sales.ws_ship_mode_sk = ship_mode.sm_ship_mode_sk
+  web_sales.ws_sold_date_sk = date_dim.d_date_sk
+  web_sales.ws_sold_time_sk = time_dim.t_time_sk
+  web_sales.ws_warehouse_sk = warehouse.w_warehouse_sk
+  web_sales.ws_web_page_sk = web_page.wp_web_page_sk
+  web_sales.ws_web_site_sk = web_site.web_site_sk
+  web_site.web_close_date_sk = date_dim.d_date_sk
+  web_site.web_open_date_sk = date_dim.d_date_sk
+
+Question: For web orders sold in 2000 and shipped to customers born before 1950, what was the total sales revenue of each web site, by site name?

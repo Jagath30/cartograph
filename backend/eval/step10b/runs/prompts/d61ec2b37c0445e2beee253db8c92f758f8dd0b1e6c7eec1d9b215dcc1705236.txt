@@ -1,0 +1,130 @@
+You write one PostgreSQL query that answers a question about a data warehouse.
+
+You are given the tables you may use, as CREATE TABLE statements. The comment above each table and after each column says what it holds.
+
+Rules:
+- Write exactly one SELECT statement. It may begin with WITH. Never write anything that changes data.
+- Use only the tables and columns given. Do not use any other table or column, even one you know of.
+- Qualify every column with its table name or its alias.
+- Do not put comments in the SQL.
+- If the question cannot be answered from the tables given, do not guess and do not answer a different question.
+
+Reply with one JSON object and nothing else:
+  {"status": "sql", "sql": "<the query>"}
+or, when the question cannot be answered from the tables given:
+  {"status": "not_answerable", "sql": ""}
+Do not explain.
+
+Tables:
+
+-- store sales
+CREATE TABLE store_sales (
+  ss_sold_date_sk bigint,  -- sold date surrogate key
+  ss_sold_time_sk bigint,  -- sold time surrogate key
+  ss_item_sk bigint,  -- item surrogate key
+  ss_customer_sk bigint,  -- customer surrogate key
+  ss_cdemo_sk bigint,  -- customer demographics surrogate key
+  ss_hdemo_sk bigint,  -- household demographics surrogate key
+  ss_addr_sk bigint,  -- address surrogate key
+  ss_store_sk bigint,  -- store surrogate key
+  ss_promo_sk bigint,  -- promotion surrogate key
+  ss_ticket_number bigint,  -- ticket number
+  ss_quantity bigint,  -- quantity
+  ss_wholesale_cost numeric(7,2),  -- wholesale cost
+  ss_list_price numeric(7,2),  -- list price
+  ss_sales_price numeric(7,2),  -- sales price
+  ss_ext_discount_amt numeric(7,2),  -- extended discount amount
+  ss_ext_sales_price numeric(7,2),  -- extended sales price
+  ss_ext_wholesale_cost numeric(7,2),  -- extended wholesale cost
+  ss_ext_list_price numeric(7,2),  -- extended list price
+  ss_ext_tax numeric(7,2),  -- extended tax
+  ss_coupon_amt numeric(7,2),  -- coupon amount
+  ss_net_paid numeric(7,2),  -- net paid
+  ss_net_paid_inc_tax numeric(7,2),  -- net paid including tax
+  ss_net_profit numeric(7,2)  -- net profit
+);
+
+-- item
+CREATE TABLE item (
+  i_item_sk bigint,  -- item surrogate key
+  i_item_id character varying,  -- item identifier
+  i_rec_start_date date,  -- record start date
+  i_rec_end_date date,  -- record end date
+  i_item_desc character varying,  -- item description
+  i_current_price numeric(7,2),  -- current price
+  i_wholesale_cost numeric(7,2),  -- wholesale cost
+  i_brand_id bigint,  -- brand identifier
+  i_brand character varying,  -- brand
+  i_class_id bigint,  -- class identifier
+  i_class character varying,  -- class
+  i_category_id bigint,  -- category identifier
+  i_category character varying,  -- category
+  i_manufact_id bigint,  -- manufacturer identifier
+  i_manufact character varying,  -- manufacturer
+  i_size character varying,  -- size
+  i_formulation character varying,  -- formulation
+  i_color character varying,  -- color
+  i_units character varying,  -- units
+  i_container character varying,  -- container
+  i_manager_id bigint,  -- manager identifier
+  i_product_name character varying,  -- product name
+  PRIMARY KEY (i_item_sk)
+);
+
+-- customer address
+CREATE TABLE customer_address (
+  ca_address_sk bigint,  -- address surrogate key
+  ca_address_id character varying,  -- address identifier
+  ca_street_number character varying,  -- street number
+  ca_street_name character varying,  -- street name
+  ca_street_type character varying,  -- street type
+  ca_suite_number character varying,  -- suite number
+  ca_city character varying,  -- city
+  ca_county character varying,  -- county
+  ca_state character varying,  -- state
+  ca_zip character varying,  -- zip
+  ca_country character varying,  -- country
+  ca_gmt_offset numeric(5,2),  -- GMT offset
+  ca_location_type character varying,  -- location type
+  PRIMARY KEY (ca_address_sk)
+);
+
+-- date dimension
+CREATE TABLE date_dim (
+  d_date_sk bigint,  -- date surrogate key
+  d_date_id character varying,  -- date identifier
+  d_date date,  -- date
+  d_month_seq bigint,  -- month sequence
+  d_week_seq bigint,  -- week sequence
+  d_quarter_seq bigint,  -- quarter sequence
+  d_year bigint,  -- year
+  d_dow bigint,  -- day of week
+  d_moy bigint,  -- month of year
+  d_dom bigint,  -- day of month
+  d_qoy bigint,  -- quarter of year
+  d_fy_year bigint,  -- fiscal year
+  d_fy_quarter_seq bigint,  -- fiscal quarter sequence
+  d_fy_week_seq bigint,  -- fiscal week sequence
+  d_day_name character varying,  -- day name
+  d_quarter_name character varying,  -- quarter name
+  d_holiday character varying,  -- holiday
+  d_weekend character varying,  -- weekend
+  d_following_holiday character varying,  -- following holiday
+  d_first_dom bigint,  -- first day of month
+  d_last_dom bigint,  -- last day of month
+  d_same_day_ly bigint,  -- same day last year
+  d_same_day_lq bigint,  -- same day last quarter
+  d_current_day character varying,  -- current day
+  d_current_week character varying,  -- current week
+  d_current_month character varying,  -- current month
+  d_current_quarter character varying,  -- current quarter
+  d_current_year character varying,  -- current year
+  PRIMARY KEY (d_date_sk)
+);
+
+Join conditions. These are the joins selected for this question. Wherever the query joins two of these tables, join them by exactly these conditions; a line with two conditions joined by AND is one join and needs both. Use only the tables the question needs: a table listed above need not appear in the query.
+  store_sales.ss_addr_sk = customer_address.ca_address_sk
+  store_sales.ss_item_sk = item.i_item_sk
+  store_sales.ss_sold_date_sk = date_dim.d_date_sk
+
+Question: What was the in-store revenue in 2002 from Electronics items, on sales where the shopper's address recorded on the sale was in Georgia?

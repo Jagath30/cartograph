@@ -1,0 +1,149 @@
+You write one PostgreSQL query that answers a question about a data warehouse.
+
+You are given the tables you may use, as CREATE TABLE statements. The comment above each table and after each column says what it holds.
+
+Rules:
+- Write exactly one SELECT statement. It may begin with WITH. Never write anything that changes data.
+- Use only the tables and columns given. Do not use any other table or column, even one you know of.
+- Qualify every column with its table name or its alias.
+- Do not put comments in the SQL.
+- If the question cannot be answered from the tables given, do not guess and do not answer a different question.
+
+Reply with one JSON object and nothing else:
+  {"status": "sql", "sql": "<the query>"}
+or, when the question cannot be answered from the tables given:
+  {"status": "not_answerable", "sql": ""}
+Do not explain.
+
+Tables:
+
+-- inventory
+CREATE TABLE inventory (
+  inv_date_sk bigint,  -- date surrogate key
+  inv_item_sk bigint,  -- item surrogate key
+  inv_warehouse_sk bigint,  -- warehouse surrogate key
+  inv_quantity_on_hand integer  -- quantity on hand
+);
+
+-- item
+CREATE TABLE item (
+  i_item_sk bigint,  -- item surrogate key
+  i_item_id character varying,  -- item identifier
+  i_rec_start_date date,  -- record start date
+  i_rec_end_date date,  -- record end date
+  i_item_desc character varying,  -- item description
+  i_current_price numeric(7,2),  -- current price
+  i_wholesale_cost numeric(7,2),  -- wholesale cost
+  i_brand_id bigint,  -- brand identifier
+  i_brand character varying,  -- brand
+  i_class_id bigint,  -- class identifier
+  i_class character varying,  -- class
+  i_category_id bigint,  -- category identifier
+  i_category character varying,  -- category
+  i_manufact_id bigint,  -- manufacturer identifier
+  i_manufact character varying,  -- manufacturer
+  i_size character varying,  -- size
+  i_formulation character varying,  -- formulation
+  i_color character varying,  -- color
+  i_units character varying,  -- units
+  i_container character varying,  -- container
+  i_manager_id bigint,  -- manager identifier
+  i_product_name character varying,  -- product name
+  PRIMARY KEY (i_item_sk)
+);
+
+-- warehouse
+CREATE TABLE warehouse (
+  w_warehouse_sk bigint,  -- warehouse surrogate key
+  w_warehouse_id character varying,  -- warehouse identifier
+  w_warehouse_name character varying,  -- warehouse name
+  w_warehouse_sq_ft bigint,  -- warehouse square feet
+  w_street_number character varying,  -- street number
+  w_street_name character varying,  -- street name
+  w_street_type character varying,  -- street type
+  w_suite_number character varying,  -- suite number
+  w_city character varying,  -- city
+  w_county character varying,  -- county
+  w_state character varying,  -- state
+  w_zip character varying,  -- zip
+  w_country character varying,  -- country
+  w_gmt_offset numeric(5,2),  -- GMT offset
+  PRIMARY KEY (w_warehouse_sk)
+);
+
+-- web sales
+CREATE TABLE web_sales (
+  ws_sold_date_sk bigint,  -- sold date surrogate key
+  ws_sold_time_sk bigint,  -- sold time surrogate key
+  ws_ship_date_sk bigint,  -- ship date surrogate key
+  ws_item_sk bigint,  -- item surrogate key
+  ws_bill_customer_sk bigint,  -- bill customer surrogate key
+  ws_bill_cdemo_sk bigint,  -- bill customer demographics surrogate key
+  ws_bill_hdemo_sk bigint,  -- bill household demographics surrogate key
+  ws_bill_addr_sk bigint,  -- bill address surrogate key
+  ws_ship_customer_sk bigint,  -- ship customer surrogate key
+  ws_ship_cdemo_sk bigint,  -- ship customer demographics surrogate key
+  ws_ship_hdemo_sk bigint,  -- ship household demographics surrogate key
+  ws_ship_addr_sk bigint,  -- ship address surrogate key
+  ws_web_page_sk bigint,  -- web page surrogate key
+  ws_web_site_sk bigint,  -- web site surrogate key
+  ws_ship_mode_sk bigint,  -- ship mode surrogate key
+  ws_warehouse_sk bigint,  -- warehouse surrogate key
+  ws_promo_sk bigint,  -- promotion surrogate key
+  ws_order_number bigint,  -- order number
+  ws_quantity bigint,  -- quantity
+  ws_wholesale_cost numeric(7,2),  -- wholesale cost
+  ws_list_price numeric(7,2),  -- list price
+  ws_sales_price numeric(7,2),  -- sales price
+  ws_ext_discount_amt numeric(7,2),  -- extended discount amount
+  ws_ext_sales_price numeric(7,2),  -- extended sales price
+  ws_ext_wholesale_cost numeric(7,2),  -- extended wholesale cost
+  ws_ext_list_price numeric(7,2),  -- extended list price
+  ws_ext_tax numeric(7,2),  -- extended tax
+  ws_coupon_amt numeric(7,2),  -- coupon amount
+  ws_ext_ship_cost numeric(7,2),  -- extended ship cost
+  ws_net_paid numeric(7,2),  -- net paid
+  ws_net_paid_inc_tax numeric(7,2),  -- net paid including tax
+  ws_net_paid_inc_ship numeric(7,2),  -- net paid including ship
+  ws_net_paid_inc_ship_tax numeric(7,2),  -- net paid including ship tax
+  ws_net_profit numeric(7,2)  -- net profit
+);
+
+-- catalog returns
+CREATE TABLE catalog_returns (
+  cr_returned_date_sk bigint,  -- returned date surrogate key
+  cr_returned_time_sk bigint,  -- returned time surrogate key
+  cr_item_sk bigint,  -- item surrogate key
+  cr_refunded_customer_sk bigint,  -- refunded customer surrogate key
+  cr_refunded_cdemo_sk bigint,  -- refunded customer demographics surrogate key
+  cr_refunded_hdemo_sk bigint,  -- refunded household demographics surrogate key
+  cr_refunded_addr_sk bigint,  -- refunded address surrogate key
+  cr_returning_customer_sk bigint,  -- returning customer surrogate key
+  cr_returning_cdemo_sk bigint,  -- returning customer demographics surrogate key
+  cr_returning_hdemo_sk bigint,  -- returning household demographics surrogate key
+  cr_returning_addr_sk bigint,  -- returning address surrogate key
+  cr_call_center_sk bigint,  -- call center surrogate key
+  cr_catalog_page_sk bigint,  -- catalog page surrogate key
+  cr_ship_mode_sk bigint,  -- ship mode surrogate key
+  cr_warehouse_sk bigint,  -- warehouse surrogate key
+  cr_reason_sk bigint,  -- reason surrogate key
+  cr_order_number bigint,  -- order number
+  cr_return_quantity bigint,  -- return quantity
+  cr_return_amount numeric(7,2),  -- return amount
+  cr_return_tax numeric(7,2),  -- return tax
+  cr_return_amt_inc_tax numeric(7,2),  -- return amount including tax
+  cr_fee numeric(7,2),  -- fee
+  cr_return_ship_cost numeric(7,2),  -- return ship cost
+  cr_refunded_cash numeric(7,2),  -- refunded cash
+  cr_reversed_charge numeric(7,2),  -- reversed charge
+  cr_store_credit numeric(7,2),  -- store credit
+  cr_net_loss numeric(7,2)  -- net loss
+);
+
+Join conditions. These are the joins selected for this question. Wherever the query joins two of these tables, join them by exactly these conditions; a line with two conditions joined by AND is one join and needs both. Use only the tables the question needs: a table listed above need not appear in the query.
+  catalog_returns.cr_warehouse_sk = warehouse.w_warehouse_sk
+  inventory.inv_item_sk = item.i_item_sk
+  inventory.inv_warehouse_sk = warehouse.w_warehouse_sk
+  web_sales.ws_warehouse_sk = warehouse.w_warehouse_sk
+
+Question: Which warehouses held the least stock of each item at the latest inventory date?

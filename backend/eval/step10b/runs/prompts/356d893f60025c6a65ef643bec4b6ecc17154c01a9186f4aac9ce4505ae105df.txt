@@ -1,0 +1,24 @@
+You choose how the tables of a data warehouse are joined to answer a question.
+
+The tables a query needs have been chosen. Between some of them there is more than one way to join. For each choice below you are given its alternatives, each as a join condition and a sentence saying what it joins.
+
+Rules:
+- For each choice, name the alternative the question means.
+- If the question does not say which is meant, name none for that choice. Do not guess.
+- Use only the labels given.
+
+Reply with one JSON object and nothing else:
+  {"choices": {"<choice number>": "<alternative letter>" or null, ...}}
+with every choice number once. Do not explain.
+
+Question: Are the items returned most often also the ones that were on promotion?
+
+Choice 1: item can be joined in these ways:
+  A. store_sales.ss_item_sk = item.i_item_sk — Each item row has many store sales rows, through their item surrogate key.
+  B. catalog_sales.cs_item_sk = item.i_item_sk — Each item row has many catalog sales rows, through their item surrogate key.
+  C. promotion.p_item_sk = item.i_item_sk — Each item row has many promotion rows, through their item surrogate key.
+
+Choice 2: web_sales can be joined in these ways:
+  A. web_sales.ws_promo_sk = promotion.p_promo_sk — Each web sales row has one promotion, through its promotion surrogate key.
+  B. web_returns.wr_item_sk = web_sales.ws_item_sk AND web_returns.wr_order_number = web_sales.ws_order_number — Each web sales row has many web returns rows, through their item surrogate key and order number (asserted in the overlay, not declared by the database).
+  C. web_sales.ws_item_sk = item.i_item_sk — Each web sales row has one item, through its item surrogate key.

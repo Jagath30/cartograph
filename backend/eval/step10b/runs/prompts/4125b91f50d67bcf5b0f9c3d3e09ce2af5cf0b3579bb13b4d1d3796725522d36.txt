@@ -1,0 +1,44 @@
+You write one PostgreSQL query that answers a question about a data warehouse.
+
+You are given the tables you may use, as CREATE TABLE statements. The comment above each table and after each column says what it holds.
+
+Rules:
+- Write exactly one SELECT statement. It may begin with WITH. Never write anything that changes data.
+- Use only the tables and columns given. Do not use any other table or column, even one you know of.
+- Qualify every column with its table name or its alias.
+- Do not put comments in the SQL.
+- If the question cannot be answered from the tables given, do not guess and do not answer a different question.
+
+Reply with one JSON object and nothing else:
+  {"status": "sql", "sql": "<the query>"}
+or, when the question cannot be answered from the tables given:
+  {"status": "not_answerable", "sql": ""}
+Do not explain.
+
+Tables:
+
+-- promotion
+CREATE TABLE promotion (
+  p_promo_sk bigint,  -- promotion surrogate key
+  p_promo_id character varying,  -- promotion identifier
+  p_start_date_sk bigint,  -- start date surrogate key
+  p_end_date_sk bigint,  -- end date surrogate key
+  p_item_sk bigint,  -- item surrogate key
+  p_cost numeric(15,2),  -- cost
+  p_response_target bigint,  -- response target
+  p_promo_name character varying,  -- promotion name
+  p_channel_dmail character varying,  -- channel direct mail
+  p_channel_email character varying,  -- channel email
+  p_channel_catalog character varying,  -- channel catalog
+  p_channel_tv character varying,  -- channel television
+  p_channel_radio character varying,  -- channel radio
+  p_channel_press character varying,  -- channel press
+  p_channel_event character varying,  -- channel event
+  p_channel_demo character varying,  -- channel demo
+  p_channel_details character varying,  -- channel details
+  p_purpose character varying,  -- purpose
+  p_discount_active character varying,  -- discount active
+  PRIMARY KEY (p_promo_sk)
+);
+
+Question: Which promotions were run by email, and what did each one cost?

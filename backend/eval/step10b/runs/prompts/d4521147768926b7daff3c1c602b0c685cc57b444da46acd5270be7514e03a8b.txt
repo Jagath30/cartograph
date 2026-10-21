@@ -1,0 +1,153 @@
+You write one PostgreSQL query that answers a question about a data warehouse.
+
+You are given the tables you may use, as CREATE TABLE statements. The comment above each table and after each column says what it holds.
+
+Rules:
+- Write exactly one SELECT statement. It may begin with WITH. Never write anything that changes data.
+- Use only the tables and columns given. Do not use any other table or column, even one you know of.
+- Qualify every column with its table name or its alias.
+- Do not put comments in the SQL.
+- If the question cannot be answered from the tables given, do not guess and do not answer a different question.
+
+Reply with one JSON object and nothing else:
+  {"status": "sql", "sql": "<the query>"}
+or, when the question cannot be answered from the tables given:
+  {"status": "not_answerable", "sql": ""}
+Do not explain.
+
+Tables:
+
+-- customer demographics
+CREATE TABLE customer_demographics (
+  cd_demo_sk bigint,  -- demo surrogate key
+  cd_gender character varying,  -- gender
+  cd_marital_status character varying,  -- marital status
+  cd_education_status character varying,  -- education status
+  cd_purchase_estimate bigint,  -- purchase estimate
+  cd_credit_rating character varying,  -- credit rating
+  cd_dep_count bigint,  -- dependent count
+  cd_dep_employed_count bigint,  -- dependent employed count
+  cd_dep_college_count integer,  -- dependent college count
+  PRIMARY KEY (cd_demo_sk)
+);
+
+-- store returns
+CREATE TABLE store_returns (
+  sr_returned_date_sk bigint,  -- returned date surrogate key
+  sr_return_time_sk bigint,  -- return time surrogate key
+  sr_item_sk bigint,  -- item surrogate key
+  sr_customer_sk bigint,  -- customer surrogate key
+  sr_cdemo_sk bigint,  -- customer demographics surrogate key
+  sr_hdemo_sk bigint,  -- household demographics surrogate key
+  sr_addr_sk bigint,  -- address surrogate key
+  sr_store_sk bigint,  -- store surrogate key
+  sr_reason_sk bigint,  -- reason surrogate key
+  sr_ticket_number bigint,  -- ticket number
+  sr_return_quantity bigint,  -- return quantity
+  sr_return_amt numeric(7,2),  -- return amount
+  sr_return_tax numeric(7,2),  -- return tax
+  sr_return_amt_inc_tax numeric(7,2),  -- return amount including tax
+  sr_fee numeric(7,2),  -- fee
+  sr_return_ship_cost numeric(7,2),  -- return ship cost
+  sr_refunded_cash numeric(7,2),  -- refunded cash
+  sr_reversed_charge numeric(7,2),  -- reversed charge
+  sr_store_credit numeric(7,2),  -- store credit
+  sr_net_loss numeric(7,2)  -- net loss
+);
+
+-- web returns
+CREATE TABLE web_returns (
+  wr_returned_date_sk bigint,  -- returned date surrogate key
+  wr_returned_time_sk bigint,  -- returned time surrogate key
+  wr_item_sk bigint,  -- item surrogate key
+  wr_refunded_customer_sk bigint,  -- refunded customer surrogate key
+  wr_refunded_cdemo_sk bigint,  -- refunded customer demographics surrogate key
+  wr_refunded_hdemo_sk bigint,  -- refunded household demographics surrogate key
+  wr_refunded_addr_sk bigint,  -- refunded address surrogate key
+  wr_returning_customer_sk bigint,  -- returning customer surrogate key
+  wr_returning_cdemo_sk bigint,  -- returning customer demographics surrogate key
+  wr_returning_hdemo_sk bigint,  -- returning household demographics surrogate key
+  wr_returning_addr_sk bigint,  -- returning address surrogate key
+  wr_web_page_sk bigint,  -- web page surrogate key
+  wr_reason_sk bigint,  -- reason surrogate key
+  wr_order_number bigint,  -- order number
+  wr_return_quantity bigint,  -- return quantity
+  wr_return_amt numeric(7,2),  -- return amount
+  wr_return_tax numeric(7,2),  -- return tax
+  wr_return_amt_inc_tax numeric(7,2),  -- return amount including tax
+  wr_fee numeric(7,2),  -- fee
+  wr_return_ship_cost numeric(7,2),  -- return ship cost
+  wr_refunded_cash numeric(7,2),  -- refunded cash
+  wr_reversed_charge numeric(7,2),  -- reversed charge
+  wr_account_credit numeric(7,2),  -- account credit
+  wr_net_loss numeric(7,2)  -- net loss
+);
+
+-- store sales
+CREATE TABLE store_sales (
+  ss_sold_date_sk bigint,  -- sold date surrogate key
+  ss_sold_time_sk bigint,  -- sold time surrogate key
+  ss_item_sk bigint,  -- item surrogate key
+  ss_customer_sk bigint,  -- customer surrogate key
+  ss_cdemo_sk bigint,  -- customer demographics surrogate key
+  ss_hdemo_sk bigint,  -- household demographics surrogate key
+  ss_addr_sk bigint,  -- address surrogate key
+  ss_store_sk bigint,  -- store surrogate key
+  ss_promo_sk bigint,  -- promotion surrogate key
+  ss_ticket_number bigint,  -- ticket number
+  ss_quantity bigint,  -- quantity
+  ss_wholesale_cost numeric(7,2),  -- wholesale cost
+  ss_list_price numeric(7,2),  -- list price
+  ss_sales_price numeric(7,2),  -- sales price
+  ss_ext_discount_amt numeric(7,2),  -- extended discount amount
+  ss_ext_sales_price numeric(7,2),  -- extended sales price
+  ss_ext_wholesale_cost numeric(7,2),  -- extended wholesale cost
+  ss_ext_list_price numeric(7,2),  -- extended list price
+  ss_ext_tax numeric(7,2),  -- extended tax
+  ss_coupon_amt numeric(7,2),  -- coupon amount
+  ss_net_paid numeric(7,2),  -- net paid
+  ss_net_paid_inc_tax numeric(7,2),  -- net paid including tax
+  ss_net_profit numeric(7,2)  -- net profit
+);
+
+-- store
+CREATE TABLE store (
+  s_store_sk bigint,  -- store surrogate key
+  s_store_id character varying,  -- store identifier
+  s_rec_start_date date,  -- record start date
+  s_rec_end_date date,  -- record end date
+  s_closed_date_sk bigint,  -- closed date surrogate key
+  s_store_name character varying,  -- store name
+  s_number_employees bigint,  -- number employees
+  s_floor_space bigint,  -- floor space
+  s_hours character varying,  -- hours
+  s_manager character varying,  -- manager
+  s_market_id bigint,  -- market identifier
+  s_geography_class character varying,  -- geography class
+  s_market_desc character varying,  -- market description
+  s_market_manager character varying,  -- market manager
+  s_division_id bigint,  -- division identifier
+  s_division_name character varying,  -- division name
+  s_company_id bigint,  -- company identifier
+  s_company_name character varying,  -- company name
+  s_street_number character varying,  -- street number
+  s_street_name character varying,  -- street name
+  s_street_type character varying,  -- street type
+  s_suite_number character varying,  -- suite number
+  s_city character varying,  -- city
+  s_county character varying,  -- county
+  s_state character varying,  -- state
+  s_zip character varying,  -- zip
+  s_country character varying,  -- country
+  s_gmt_offset numeric(5,2),  -- GMT offset
+  s_tax_percentage numeric(5,2),  -- tax percentage
+  PRIMARY KEY (s_store_sk)
+);
+
+Join conditions. These are the joins selected for this question. Wherever the query joins two of these tables, join them by exactly these conditions; a line with two conditions joined by AND is one join and needs both. Use only the tables the question needs: a table listed above need not appear in the query.
+  store_returns.sr_cdemo_sk = customer_demographics.cd_demo_sk
+  store_returns.sr_store_sk = store.s_store_sk
+  store_sales.ss_cdemo_sk = customer_demographics.cd_demo_sk
+  web_returns.wr_refunded_cdemo_sk = customer_demographics.cd_demo_sk
+
+Question: For goods returned to stores in 2000, how many units were returned by customers of each marital status, as recorded on the return itself?

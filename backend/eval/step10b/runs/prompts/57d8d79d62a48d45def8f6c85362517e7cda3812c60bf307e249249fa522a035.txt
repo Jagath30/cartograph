@@ -1,0 +1,24 @@
+You choose how the tables of a data warehouse are joined to answer a question.
+
+The tables a query needs have been chosen. Between some of them there is more than one way to join. For each choice below you are given its alternatives, each as a join condition and a sentence saying what it joins.
+
+Rules:
+- For each choice, name the alternative the question means.
+- If the question does not say which is meant, name none for that choice. Do not guess.
+- Use only the labels given.
+
+Reply with one JSON object and nothing else:
+  {"choices": {"<choice number>": "<alternative letter>" or null, ...}}
+with every choice number once. Do not explain.
+
+Question: How much did web customers born before 1960 pay for their orders in each year?
+
+Choice 1: customer can be joined in these ways:
+  A. web_sales.ws_bill_customer_sk = customer.c_customer_sk — Each customer row has many web sales rows, through their bill customer surrogate key.
+  B. web_sales.ws_ship_customer_sk = customer.c_customer_sk — Each customer row has many web sales rows, through their ship customer surrogate key.
+
+Choice 2: date_dim can be joined in these ways:
+  A. customer.c_last_review_date_sk = date_dim.d_date_sk — Each date dimension row has many customer rows, through their last review date surrogate key (asserted in the overlay, not declared by the database).
+  B. customer.c_first_shipto_date_sk = date_dim.d_date_sk — Each date dimension row has many customer rows, through their first ship-to date surrogate key.
+  C. web_sales.ws_sold_date_sk = date_dim.d_date_sk — Each date dimension row has many web sales rows, through their sold date surrogate key.
+  D. customer.c_first_sales_date_sk = date_dim.d_date_sk — Each date dimension row has many customer rows, through their first sales date surrogate key.

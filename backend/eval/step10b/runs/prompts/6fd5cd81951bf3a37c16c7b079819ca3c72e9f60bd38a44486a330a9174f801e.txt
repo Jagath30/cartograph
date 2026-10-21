@@ -1,0 +1,72 @@
+You write one PostgreSQL query that answers a question about a data warehouse.
+
+You are given the tables you may use, as CREATE TABLE statements. The comment above each table and after each column says what it holds.
+
+Rules:
+- Write exactly one SELECT statement. It may begin with WITH. Never write anything that changes data.
+- Use only the tables and columns given. Do not use any other table or column, even one you know of.
+- Qualify every column with its table name or its alias.
+- Do not put comments in the SQL.
+- If the question cannot be answered from the tables given, do not guess and do not answer a different question.
+
+Reply with one JSON object and nothing else:
+  {"status": "sql", "sql": "<the query>"}
+or, when the question cannot be answered from the tables given:
+  {"status": "not_answerable", "sql": ""}
+Do not explain.
+
+Tables:
+
+-- catalog returns
+CREATE TABLE catalog_returns (
+  cr_returned_date_sk bigint,  -- returned date surrogate key
+  cr_returned_time_sk bigint,  -- returned time surrogate key
+  cr_item_sk bigint,  -- item surrogate key
+  cr_refunded_customer_sk bigint,  -- refunded customer surrogate key
+  cr_refunded_cdemo_sk bigint,  -- refunded customer demographics surrogate key
+  cr_refunded_hdemo_sk bigint,  -- refunded household demographics surrogate key
+  cr_refunded_addr_sk bigint,  -- refunded address surrogate key
+  cr_returning_customer_sk bigint,  -- returning customer surrogate key
+  cr_returning_cdemo_sk bigint,  -- returning customer demographics surrogate key
+  cr_returning_hdemo_sk bigint,  -- returning household demographics surrogate key
+  cr_returning_addr_sk bigint,  -- returning address surrogate key
+  cr_call_center_sk bigint,  -- call center surrogate key
+  cr_catalog_page_sk bigint,  -- catalog page surrogate key
+  cr_ship_mode_sk bigint,  -- ship mode surrogate key
+  cr_warehouse_sk bigint,  -- warehouse surrogate key
+  cr_reason_sk bigint,  -- reason surrogate key
+  cr_order_number bigint,  -- order number
+  cr_return_quantity bigint,  -- return quantity
+  cr_return_amount numeric(7,2),  -- return amount
+  cr_return_tax numeric(7,2),  -- return tax
+  cr_return_amt_inc_tax numeric(7,2),  -- return amount including tax
+  cr_fee numeric(7,2),  -- fee
+  cr_return_ship_cost numeric(7,2),  -- return ship cost
+  cr_refunded_cash numeric(7,2),  -- refunded cash
+  cr_reversed_charge numeric(7,2),  -- reversed charge
+  cr_store_credit numeric(7,2),  -- store credit
+  cr_net_loss numeric(7,2)  -- net loss
+);
+
+-- customer address
+CREATE TABLE customer_address (
+  ca_address_sk bigint,  -- address surrogate key
+  ca_address_id character varying,  -- address identifier
+  ca_street_number character varying,  -- street number
+  ca_street_name character varying,  -- street name
+  ca_street_type character varying,  -- street type
+  ca_suite_number character varying,  -- suite number
+  ca_city character varying,  -- city
+  ca_county character varying,  -- county
+  ca_state character varying,  -- state
+  ca_zip character varying,  -- zip
+  ca_country character varying,  -- country
+  ca_gmt_offset numeric(5,2),  -- GMT offset
+  ca_location_type character varying,  -- location type
+  PRIMARY KEY (ca_address_sk)
+);
+
+Join conditions. These are the joins selected for this question. Wherever the query joins two of these tables, join them by exactly these conditions; a line with two conditions joined by AND is one join and needs both. Use only the tables the question needs: a table listed above need not appear in the query.
+  catalog_returns.cr_refunded_addr_sk = customer_address.ca_address_sk
+
+Question: Which states receive the most refunds for catalog returns?
