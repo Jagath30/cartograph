@@ -25,7 +25,28 @@ def print_trace(trace: Trace) -> None:
     if trace.message:
         line("", trace.message)
 
+    linking = trace.linking
+    if linking is not None:
+        named = "no reply of the form asked for" if linking.tables is None else ", ".join(linking.tables) or "none"
+        line("linked", named)
+        for attempt in linking.attempts:
+            line(f"link {attempt.number}", f"{attempt.outcome}; " + _cost(attempt.reply) + (f"; {attempt.fault}" if attempt.fault else ""))
+    choosing = trace.choosing
+    if choosing is not None and choosing.choices:
+        for settled in choosing.settled:
+            line(f"choice {settled.number}", f"{settled.anchor}: {settled.outcome}, named {settled.route or 'none'}")
+        for choice in choosing.arose:
+            line("", f"arose after the rebuild: {choice.anchor}")
+        if choosing.fault:
+            line("", f"left open: {choosing.fault}")
+        for attempt in choosing.attempts:
+            line(f"choose {attempt.number}", f"{attempt.outcome}; " + _cost(attempt.reply))
+
     located = trace.located
+    if located is None:
+        # Declined at linking, or linking failed: nothing was located.
+        _rest(trace)
+        return
     tree = located.tree
     line("anchors", ", ".join(tree.anchors) or "none")
     if trace.prompt is not None:
@@ -42,14 +63,27 @@ def print_trace(trace: Trace) -> None:
         if located.explanation.close_calls:
             line("close calls", str(len(located.explanation.close_calls)))
 
+    _rest(trace)
+
+
+def _cost(reply) -> str:
+    return (
+        f"asked {reply.requested_model}, answered {reply.returned_model}; "
+        f"{reply.tokens_in} in ({reply.tokens_cached} cached), {reply.tokens_out} out; "
+        f"${reply.cost_usd:.6f}; {reply.duration_ms} ms"
+    )
+
+
+def model_calls(trace: Trace) -> int:
+    """Every model call the question made: linking, choosing and generation."""
+    linking = len(trace.linking.attempts) if trace.linking else 0
+    choosing = len(trace.choosing.attempts) if trace.choosing else 0
+    return linking + choosing + len(trace.attempts)
+
+
+def _rest(trace: Trace) -> None:
     for attempt in trace.attempts:
-        reply = attempt.reply
-        line(
-            f"attempt {attempt.number}",
-            f"{attempt.outcome}; asked {reply.requested_model}, answered {reply.returned_model}; "
-            f"{reply.tokens_in} in ({reply.tokens_cached} cached), {reply.tokens_out} out; "
-            f"${reply.cost_usd:.6f}; {reply.duration_ms} ms",
-        )
+        line(f"attempt {attempt.number}", f"{attempt.outcome}; " + _cost(attempt.reply))
         for finding in attempt.findings:
             line("", f"finding: {finding}")
         if attempt.tables_outside_prompt:
@@ -84,12 +118,14 @@ def print_trace(trace: Trace) -> None:
         else:
             line("error", f"{execution.failure} {execution.sqlstate or ''}: {execution.message}")
     line("timings", "; ".join(f"{name} {ms} ms" for name, ms in trace.timings.items()))
-    line("cost", f"{trace.tokens_in} tokens in, {trace.tokens_out} out, ${trace.cost_usd:.6f}, over {len(trace.attempts)} model calls")
+    line("cost", f"{trace.tokens_in} tokens in, {trace.tokens_out} out, ${trace.cost_usd:.6f}, over {model_calls(trace)} model calls")
 
 
 def summary(trace: Trace) -> dict:
     """What a script needs of a trace, as plain data."""
     execution = trace.execution
+    located = trace.located
+    linking, choosing = trace.linking, trace.choosing
     return {
         "trace_version": trace.trace_version,
         "question": trace.question,
@@ -97,9 +133,15 @@ def summary(trace: Trace) -> dict:
         "code": trace.code,
         "message": trace.message,
         "schema_hash": trace.schema_ref[1],
-        "anchors": list(trace.located.tree.anchors),
+        "anchors": list(located.tree.anchors) if located is not None else [],
         "prompt_tables": list(trace.prompt.tables) if trace.prompt else [],
-        "warnings": sorted(trace.located.warning_codes),
+        "warnings": sorted(located.warning_codes) if located is not None else [],
+        "linked": None if linking is None or linking.tables is None else list(linking.tables),
+        "choices": [
+            {"anchor": settled.anchor, "route": settled.route, "outcome": settled.outcome}
+            for settled in (choosing.settled if choosing is not None else ())
+        ],
+        "model_calls": model_calls(trace),
         "selected_edges": [_edge(edge) for edge in trace.selected_edges],
         "actual_edges": [
             {"left": list(e.left), "right": list(e.right), "outer": e.outer, "union": e.union} for e in trace.actual_edges

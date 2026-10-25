@@ -8,8 +8,9 @@ one line that scripts/smoke.sh reads:
 
   SCHEMA     GET /schema returns the stored schema as nodes and edges.
   POST       one fixed development question through POST /queries is
-             answered: a query id, rows, and a trace with its narrative.
-             ONE PAID MODEL CALL.
+             answered: a query id, rows, and a trace with its narrative,
+             at trace version 3 with its linking. TWO OR THREE PAID MODEL
+             CALLS (linking, choosing when it runs, generation).
   READBACK   GET /queries/<that id> returns a trace IDENTICAL to the one
              POST returned, compared as canonical JSON, and no rows: the
              trace was stored, whole, and the rows were not (DR-15).
@@ -74,7 +75,8 @@ def main() -> int:
     trace = asked["trace"]
     narrative = trace.get("narrative") or {}
     told = all(narrative.get(part) for part in ("found", "route", "not_taken", "sql", "result"))
-    if asked["status"] == "answered" and asked["row_count"] and len(asked["rows"]) == asked["row_count"] and told:
+    linked = trace.get("trace_version") == 3 and bool((trace.get("linking") or {}).get("tables"))
+    if asked["status"] == "answered" and asked["row_count"] and len(asked["rows"]) == asked["row_count"] and told and linked:
         print(f"POST PASS  answered; {asked['row_count']} rows; conformance {trace['validation']['conformance']}; "
               f"${trace['cost_usd']:.6f}; query {asked['query_id']}")  # fmt: skip
     elif asked["status"] == "not_answerable":
@@ -83,7 +85,8 @@ def main() -> int:
               f"It was shown: {', '.join((trace.get('generation') or {}).get('tables_shown', []))}")  # fmt: skip
     else:
         failed = True
-        print(f"POST FAIL  status {asked['status']} ({asked['message']}); rows {asked['row_count']}; narrative whole: {told}")
+        print(f"POST FAIL  status {asked['status']} ({asked['message']}); rows {asked['row_count']}; narrative whole: {told}; "
+              f"linked at version 3: {linked}")  # fmt: skip
 
     # Whatever the outcome, what was returned must be what was stored.
     status, read = call(f"/queries/{asked['query_id']}")

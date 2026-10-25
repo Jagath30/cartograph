@@ -41,6 +41,11 @@ class Located:
     decline_reason: str | None = None
     retrieval: object = None
 
+    @property
+    def warning_codes(self) -> frozenset[str]:
+        """As app.core.locate.Located's."""
+        return frozenset() if self.declined else self.explanation.codes
+
 
 def located(*anchors: str, named: bool = False, **tree_arguments) -> Located:
     """`named`: the anchors were named by linking, as locate_linked says."""
@@ -91,6 +96,14 @@ def linked_trace(link_script, generation_script, question="A question?", choose_
     """Step 10b: a question through the link stage, and the choose stage
     when `choose_script` is given, over scripted models. The tree is the
     real JoinTree's over the tables the linking reply names."""
+    orchestrator = linked_orchestrator(link_script, generation_script, choose_script, executor, schema_ref,
+                                       **tree_arguments)  # fmt: skip
+    return orchestrator.answer(question)
+
+
+def linked_orchestrator(link_script, generation_script, choose_script=None, executor=None, schema_ref=SCHEMA_REF,
+                        keep=None, **tree_arguments) -> Orchestrator:  # fmt: skip
+    """linked_trace's orchestrator; `keep` as the pipeline gives it."""
     from app.core.choosing import build_choose_prompt
     from app.core.linking import LINK_REPLY_NAME, build_link_prompt, link_reply_schema
     from app.orchestrator import Chooser, Linker
@@ -110,9 +123,8 @@ def linked_trace(link_script, generation_script, question="A question?", choose_
             model=FakeModel(choose_script),
             relocate=lambda asked, named, chosen: located(*named, named=True, chosen=chosen, **tree_arguments),
         )
-    orchestrator = Orchestrator(SNAPSHOT, schema_ref, None, FakeModel(generation_script), executor or Runs(),
-                                linker=linker, chooser=chooser)  # fmt: skip
-    return orchestrator.answer(question)
+    return Orchestrator(SNAPSHOT, schema_ref, None, FakeModel(generation_script), executor or Runs(),
+                        keep=keep, linker=linker, chooser=chooser)  # fmt: skip
 
 
 def linked_document(*arguments, **keywords) -> TraceDocument:

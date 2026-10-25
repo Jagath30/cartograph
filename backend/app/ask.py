@@ -1,14 +1,16 @@
-"""One question through the whole pipeline: retrieval, the join tree, the
-model, validation, conformance, execution. The first real answer.
+"""One question through the whole pipeline: linking, the join tree,
+choosing, the model, validation, conformance, execution. The first real
+answer. Since step 10b it runs the application's mode, chosen.
 
     docker compose exec backend python -m app.ask "Which catalog pages brought in the most orders?"
     docker compose exec backend python -m app.ask "..." --json
 
-Prints the result and the trace the orchestrator assembled: the tables the
-model was shown, every attempt with its findings, the SQL that ran, the
+Prints the result and the trace the orchestrator assembled: the tables
+linking named, each choice put to the model, the tables the model was shown, every attempt with its findings, the SQL that ran, the
 joins it really made beside the joins selected, and the rows.
 
-THIS IS A PAID CALL: the model, and the embedding of a question that is
+THESE ARE PAID CALLS: linking, choosing when the tree holds a choice the
+alphabet made, and generation, and the embedding of a question that is
 not in the cache. Each model call is written to the spend ledger, and the
 last line says what this run cost and the ledger's total. It needs
 OPENAI_API_KEY; without it the command says what to set and exits 3.
@@ -32,7 +34,7 @@ from app.config import get_settings
 from app.orchestrator import TraceNotPersisted
 from app.shell.embedder import EmbeddingKeyMissing
 from app.shell.model_client import ModelKeyMissing
-from app.shell.pipeline_session import CEILING_USD, open_pipeline
+from app.shell.pipeline_session import APPLICATION_MODE, CEILING_USD, open_pipeline
 from app.shell.trace_store import TraceStore
 
 NO_KEY_EXIT = 3
@@ -52,7 +54,8 @@ def main(argv: list[str]) -> int:
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
     try:
-        pipeline = open_pipeline("ask", arguments.purpose, store=TraceStore(get_settings().app_database_url))
+        store = TraceStore(get_settings().app_database_url)
+        pipeline = open_pipeline("ask", arguments.purpose, store=store, mode=APPLICATION_MODE)
         kept = pipeline.orchestrator.answer_and_keep(arguments.question)
     except (ModelKeyMissing, EmbeddingKeyMissing) as missing:
         print(f"ask: {missing}", file=sys.stderr)

@@ -2,8 +2,10 @@
 
     docker compose exec backend python -m app.smoke_pipeline
 
-One fixed development question goes through the whole pipeline: one paid
-model call. Then two things are checked, and each prints one line that
+One fixed development question goes through the whole pipeline, in the
+application's mode (chosen, since step 10b): two or three paid model
+calls, linking, choosing when the tree holds a choice the alphabet made,
+and generation. Then two things are checked, and each prints one line that
 scripts/smoke.sh reads:
 
   PIPELINE   the question was answered: rows came back, and the trace
@@ -36,11 +38,11 @@ import sys
 
 import psycopg
 
-from app.answer_report import summary
+from app.answer_report import model_calls, summary
 from app.config import get_settings
 from app.shell.embedder import EmbeddingKeyMissing
 from app.shell.model_client import ModelKeyMissing
-from app.shell.pipeline_session import open_pipeline
+from app.shell.pipeline_session import APPLICATION_MODE, open_pipeline
 
 # Development question d4 of eval/dev_questions.yaml: one join, with two
 # keys to choose between. Not an evaluation question. (d3 was first named
@@ -99,7 +101,7 @@ def witness(sql: str, warehouse_url: str) -> set[frozenset]:
 def main() -> int:
     logging.basicConfig(level=logging.WARNING, format="%(message)s", stream=sys.stderr)
     try:
-        pipeline = open_pipeline("smoke_pipeline", "smoke")
+        pipeline = open_pipeline("smoke_pipeline", "smoke", mode=APPLICATION_MODE)
         trace = pipeline.orchestrator.answer(QUESTION)
     except (ModelKeyMissing, EmbeddingKeyMissing) as missing:
         print(f"NO KEY  {missing}")
@@ -113,12 +115,14 @@ def main() -> int:
         "validation": trace.validation is not None,
         "conformance": trace.conformance is not None,
         "execution": trace.execution is not None,
-        "timings": {"locate", "prompt", "generate", "validate", "conform", "execute"} <= set(trace.timings),
+        "linking": trace.linking is not None and bool(trace.linking.tables),
+        "timings": {"link", "locate", "prompt", "generate", "validate", "conform", "execute"} <= set(trace.timings),
     }
     missing = [name for name, present in sections.items() if not present]
     if trace.outcome == "answered" and found["row_count"] and not missing:
         print(f"PIPELINE PASS  answered; {found['row_count']} rows; conformance {found['conformance']}; "
-              f"{len(trace.attempts)} model call(s), ${trace.cost_usd:.6f}; model {trace.attempts[-1].reply.returned_model}")  # fmt: skip
+              f"{model_calls(trace)} model call(s), ${trace.cost_usd:.6f}; model {trace.attempts[-1].reply.returned_model}; "
+              f"linked {', '.join(trace.linking.tables)}")  # fmt: skip
     elif trace.outcome == "not_answerable" and trace.attempts:
         # Strict on purpose: a check that can pass without running the whole
         # pipeline is decorative. But the cause is said, so that the model

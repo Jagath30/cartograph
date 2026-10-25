@@ -8,6 +8,8 @@ two retries a question (NFR-15); a cut-off reply is not retried; linking's
 tokens and cost are the question's.
 """
 
+import json
+
 import pytest
 from tracing import GRAPH, SCHEMA_REF, SNAPSHOT, Runs, located, reply
 
@@ -192,16 +194,30 @@ def test_a_failed_linking_call_ends_the_question_and_is_not_retried_here(failure
 
 
 # --------------------------------------------------------------------------
-# Not persisted until adopted (ruling 7)
+# Kept once adopted: trace version 3 (stop F1)
 # --------------------------------------------------------------------------
 
 
-def test_a_linked_answer_is_never_kept() -> None:
+def test_a_chosen_answer_is_kept_as_trace_version_3() -> None:
+    """Until v2.1 was adopted a linked answer was refused here (ruling 7 at
+    stop B). Now it is kept, with how its tables were found and how its
+    choices were made."""
+    from test_orchestrator_keep import ID, WHEN, Keeps
+    from tracing import CONTEXT, linked_orchestrator
+
     from app.orchestrator import Keep
 
-    linking = Linking([])
-    keep = Keep(store=None, context=None, user_id=1)
-    orchestrator = Orchestrator(SNAPSHOT, SCHEMA_REF, None, FakeModel([]), Runs(), keep=keep, linker=linking.linker())
-    with pytest.raises(RuntimeError, match="not kept"):
-        orchestrator.answer_and_keep(QUESTION)
-    assert linking.model.calls == []
+    store = Keeps()
+    keep = Keep(store, CONTEXT, user_id=42, now=lambda: WHEN, new_id=lambda: ID)
+    tables = json.dumps({"tables": ["catalog_sales", "customer_address"]})
+    sql = ("SELECT ca.ca_state FROM catalog_sales cs JOIN customer_address ca "
+           "ON cs.cs_bill_addr_sk = ca.ca_address_sk")  # fmt: skip
+    choose = json.dumps({"choices": {"1": None}})
+    orchestrator = linked_orchestrator([tables], [reply(sql)], [choose], keep=keep)
+    kept = orchestrator.answer_and_keep("Where are our catalog customers located?")
+    assert store.saved == [kept.document]
+    document = kept.document
+    assert document.trace_version == 3 and document.outcome == "answered"
+    assert document.linking.tables == ["catalog_sales", "customer_address"]
+    assert document.choosing is not None and len(document.choosing.attempts) == 1
+    assert kept.trace.linking is not None and kept.trace.choosing is not None

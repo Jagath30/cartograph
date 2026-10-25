@@ -48,8 +48,9 @@ no generation call. The named tables are located by the linker (the
 anchors of the frozen tree), and everything after is as without one. The
 two calls share one budget of two retries a question (NFR-15): what
 linking spends, generation does not get. A cut-off reply is not retried.
-Linking's tokens and cost are the question's. A linked answer is not kept:
-the stored document does not change until the owner rules to adopt v2.
+Linking's tokens and cost are the question's. Since v2.1 was adopted
+(stop F1), a linked answer is kept as trace version 3, with its linking
+and choosing.
 
 CHOOSING (step 10b, v2.1, the owner's rulings at stop A2). Given a chooser
 as well, once linking's tables are located: if the tree holds a choice the
@@ -358,8 +359,6 @@ class Orchestrator:
         keep = self._keep
         if keep is None:
             raise RuntimeError("this orchestrator was given no store to keep a trace in")
-        if self._linker is not None:
-            raise RuntimeError("a linked answer is not kept: the stored document changes only if v2 is adopted")
         trace = self.answer(question)
         document = assemble(trace, keep.context, keep.new_id(), keep.user_id, keep.now())
         began = time.monotonic()

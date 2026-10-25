@@ -87,9 +87,11 @@ class QueryService:
 
 def make_service(app_database_url: str) -> QueryService:
     """The real one: the pipeline as the commands open it, with a store."""
-    from app.shell.pipeline_session import open_pipeline
+    from app.shell.pipeline_session import APPLICATION_MODE, open_pipeline
 
     traces = TraceStore(app_database_url)
     return QueryService(
-        lambda: open_pipeline("api", "api", store=traces).orchestrator, traces, SnapshotStore(app_database_url)
+        lambda: open_pipeline("api", "api", store=traces, mode=APPLICATION_MODE).orchestrator,
+        traces,
+        SnapshotStore(app_database_url),
     )

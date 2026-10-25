@@ -61,6 +61,10 @@ CEILING_USD = 0.50
 
 Mode = Literal["retrieval", "full_schema", "linked", "chosen"]
 
+# The mode the application runs: the API, `ask` and the smoke check (step
+# 10b, v2.1 adopted at stop E). The evaluation's runners name their own.
+APPLICATION_MODE: Mode = "chosen"
+
 
 @dataclass(frozen=True)
 class Pipeline:
