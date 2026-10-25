@@ -296,7 +296,8 @@ class Keep:
 
     store: Store
     context: Context
-    # Whose query it is. Until step 11, the one local user.
+    # Whose query it is when the caller names no one: the local user, for
+    # the commands. The API names the signed-in user on every question.
     user_id: int
     now: Callable[[], datetime] = lambda: datetime.now(UTC)
     new_id: Callable[[], UUID] = uuid4
@@ -353,14 +354,16 @@ class Orchestrator:
         self._declined = NOT_ANSWERABLE if linker is None else {**NOT_ANSWERABLE, **NOT_ANSWERABLE_NAMED}
         self._chooser = chooser
 
-    def answer_and_keep(self, question: str) -> Kept:
-        """`answer`, then the one write. Raises TraceNotPersisted when the
-        store refuses it."""
+    def answer_and_keep(self, question: str, user_id: int | None = None) -> Kept:
+        """`answer`, then the one write, under `user_id`: the caller the API
+        signed in, or, when none is named, the pipeline's own user. Raises
+        TraceNotPersisted when the store refuses it."""
         keep = self._keep
         if keep is None:
             raise RuntimeError("this orchestrator was given no store to keep a trace in")
         trace = self.answer(question)
-        document = assemble(trace, keep.context, keep.new_id(), keep.user_id, keep.now())
+        owner = keep.user_id if user_id is None else user_id
+        document = assemble(trace, keep.context, keep.new_id(), owner, keep.now())
         began = time.monotonic()
         try:
             keep.store.save(document)

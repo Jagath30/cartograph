@@ -1,5 +1,5 @@
 """What the API calls: a question asked and kept, a stored query read
-back, and the schema as stored.
+back, a user's history, and the schema as stored.
 
 Impure (DD-01), and nothing here decides anything about an answer: it
 opens the pipeline, hands the question to the orchestrator, and reads the
@@ -10,6 +10,10 @@ starts: the stack must come up with no warehouse, no stored schema and no
 key, and say what is missing when it is asked for something that needs
 it. Every such case is `NotReady`, with the reason in words; the API
 answers 503.
+
+WHOSE IT IS (step 11). Every call but the schema names the signed-in
+user: a question is kept under them, and a stored query or a history is
+read only as theirs.
 
 TWO QUESTIONS AT ONCE (NFR-06). Opening is guarded by a lock. After that
 nothing is shared that a question changes: the orchestrator keeps a
@@ -29,7 +33,7 @@ from app.orchestrator import Kept, Orchestrator
 from app.shell.embedder import EmbeddingKeyMissing
 from app.shell.model_client import ModelKeyMissing
 from app.shell.snapshot_store import NoCurrentSnapshot, SnapshotStore, StoredSnapshot
-from app.shell.trace_store import TraceStore
+from app.shell.trace_store import Listed, TraceStore
 
 
 class NotReady(RuntimeError):
@@ -63,16 +67,22 @@ class QueryService:
                     raise NotReady(_UNREACHABLE) from None
             return self._orchestrator
 
-    def ask(self, question: str) -> Kept:
+    def ask(self, question: str, user_id: int) -> Kept:
         orchestrator = self._pipeline()
         try:
-            return orchestrator.answer_and_keep(question)
+            return orchestrator.answer_and_keep(question, user_id=user_id)
         except EmbeddingKeyMissing as missing:
             raise NotReady(str(missing)) from None
 
-    def fetch(self, query_id: UUID) -> TraceDocument | None:
+    def fetch(self, query_id: UUID, owner: int) -> TraceDocument | None:
         try:
-            return self._traces.load(query_id)
+            return self._traces.load(query_id, owner=owner)
+        except psycopg.OperationalError:
+            raise NotReady(_UNREACHABLE) from None
+
+    def history(self, owner: int) -> list[Listed]:
+        try:
+            return self._traces.history(owner)
         except psycopg.OperationalError:
             raise NotReady(_UNREACHABLE) from None
 

@@ -51,8 +51,19 @@ class Settings(BaseSettings):
     # thing to get wrong in a deployment environment variable.
     frontend_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
+    # The session cookie's Secure attribute (step 11). True unless a
+    # setting says otherwise, which only local development over plain
+    # http does.
+    session_cookie_secure: bool = True
+
     def allowed_origins(self) -> list[str]:
-        return [origin.strip() for origin in self.frontend_origins.split(",") if origin.strip()]
+        """The origins CORS names and the origin check takes. Never "*": a
+        wildcard would let any site send a request that carries the
+        session (T-08)."""
+        origins = [origin.strip() for origin in self.frontend_origins.split(",") if origin.strip()]
+        if "*" in origins:
+            raise ValueError('FRONTEND_ORIGINS names its origins and is never "*"')
+        return origins
 
 
 @dataclass(frozen=True)

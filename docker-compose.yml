@@ -48,6 +48,9 @@ services:
       # Optional. Empty on a clean clone, and the stack still starts: only
       # the commands that embed need it, and they say so when it is absent.
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # Local development is plain http, where a Secure cookie is never
+      # sent back. Everywhere else the default, true, holds (step 11).
+      SESSION_COOKIE_SECURE: "false"
     # Migrate, then serve: one process, in sequence (DR-14). Nothing migrates
     # as a side effect of importing the application.
     command: sh -c "alembic upgrade head && exec uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000 --reload"

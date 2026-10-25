@@ -17,72 +17,22 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from fastapi.testclient import TestClient
+from api_client import ADDRESS, SETTINGS, NoSchema, ask, client, service
+from memory_stores import Memory
 from samples import SMALL
 from tracing import CONTEXT, SCHEMA_REF, SNAPSHOT, Runs, located, orchestrator, reply
 
-from app.api import get_service
-from app.config import Settings
-from app.core.trace_document import TraceDocument
 from app.main import create_app
 from app.orchestrator import Keep, Orchestrator
+from app.shell.accounts import SignedIn
 from app.shell.model_client import FAILURES, ModelKeyMissing, ModelReply
 from app.shell.query_executor import Execution
 from app.shell.query_service import QueryService
 from app.shell.snapshot_store import NoCurrentSnapshot, SnapshotStore
-from app.shell.trace_store import TraceStore
+from app.shell.trace_store import LOCAL_USER_EMAIL, TraceStore
 
-ADDRESS = ("catalog_sales", "customer_address")
 BILL = "SELECT ca.ca_state FROM catalog_sales cs JOIN customer_address ca ON cs.cs_bill_addr_sk = ca.ca_address_sk"
 STORE_SQL = "SELECT s.s_store_name FROM store_sales ss JOIN store s ON ss.ss_store_sk = s.s_store_sk"
-SETTINGS = Settings(
-    app_database_url="postgresql://unused/unused", warehouse_database_url="postgresql://unused/unused", redis_url="redis://unused"
-)
-
-
-class Memory:
-    """A trace store that keeps what it was given as the JSON it would
-    have written, so that reading back goes through the same door."""
-
-    def __init__(self, refuse: Exception | None = None) -> None:
-        self.bodies: dict[uuid.UUID, str] = {}
-        self.refuse = refuse
-
-    def save(self, document: TraceDocument) -> None:
-        if self.refuse:
-            raise self.refuse
-        self.bodies[document.query_id] = document.model_dump_json()
-
-    def load(self, query_id: uuid.UUID) -> TraceDocument | None:
-        body = self.bodies.get(query_id)
-        return TraceDocument.model_validate_json(body) if body else None
-
-
-class NoSchema:
-    def load_current(self):
-        raise NoCurrentSnapshot("the application store holds no schema snapshot: nothing has been ingested")
-
-
-def service(script, anchors=ADDRESS, executor=None, traces=None, snapshots=None, opened=None, **tree_arguments) -> QueryService:
-    traces = traces if traces is not None else Memory()
-
-    def open_orchestrator() -> Orchestrator:
-        if opened is not None:
-            opened.append(1)
-        keep = Keep(traces, CONTEXT, user_id=1)
-        return orchestrator(script, located(*anchors, **tree_arguments), executor, keep=keep)
-
-    return QueryService(open_orchestrator, traces, snapshots or NoSchema())
-
-
-def client(made: QueryService) -> TestClient:
-    app = create_app(SETTINGS)
-    app.dependency_overrides[get_service] = lambda: made
-    return TestClient(app, raise_server_exceptions=False)
-
-
-def ask(made: QueryService, question: str = "Where are catalogue buyers billed?"):
-    return client(made).post("/api/v1/queries", json={"question": question})
 
 
 # --------------------------------------------------------------------------
@@ -162,8 +112,9 @@ def test_through_the_real_stores_the_trace_read_back_is_identical(scratch_databa
         return orchestrator([reply(BILL)], located(*ADDRESS), keep=Keep(traces, CONTEXT, traces_user))
 
     made = QueryService(open_orchestrator, traces, SnapshotStore(scratch_database))
-    asked = ask(made).json()
-    read = client(made).get(f"/api/v1/queries/{asked['query_id']}").json()
+    signed = SignedIn(traces_user, LOCAL_USER_EMAIL)
+    asked = client(made, signed).post("/api/v1/queries", json={"question": "Where are catalogue buyers billed?"}).json()
+    read = client(made, signed).get(f"/api/v1/queries/{asked['query_id']}").json()
     assert read["trace"] == asked["trace"] and read["trace"]["user_id"] == traces_user
     assert json.dumps(read["trace"], sort_keys=True) == json.dumps(asked["trace"], sort_keys=True)
 

@@ -16,7 +16,8 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
 from app.api import router
-from app.api_models import ErrorOut
+from app.api_models import ErrorOut, Refused
+from app.auth import RequestGuard
 from app.config import Settings, get_settings
 from app.orchestrator import TraceNotPersisted
 from app.shell.query_service import NotReady
@@ -45,6 +46,10 @@ def _errors(app: FastAPI) -> None:
         code = "not_found" if error.status_code == 404 else "invalid_request"
         return _error(error.status_code, code=code, message=str(error.detail))
 
+    @app.exception_handler(Refused)
+    async def said_no(request: Request, error: Refused) -> JSONResponse:
+        return _error(error.status, code=error.code, message=error.message)
+
     @app.exception_handler(NotReady)
     async def not_ready(request: Request, error: NotReady) -> JSONResponse:
         return _error(503, code="not_ready", message=str(error))
@@ -69,12 +74,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title="Cartograph", version="0.1.0")
 
-    # Named origins, never "*". A wildcard is incompatible with credentialed
-    # requests, so allowing it now would have to be undone at step 11 when
-    # sessions arrive (T-08).
+    origins = resolved.allowed_origins()
+    # Inside CORS: a change from another site is refused before any route
+    # is reached (step 11, T-08).
+    app.add_middleware(RequestGuard, origins=origins)
+    # Named origins, never "*" (allowed_origins refuses it). The browser
+    # reaches the API through the frontend's own origin, so CORS is the
+    # second line, not the first.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=resolved.allowed_origins(),
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

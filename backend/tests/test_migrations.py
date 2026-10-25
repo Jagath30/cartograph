@@ -6,7 +6,7 @@ nothing else. These tests run them up and down, and then ask Postgres to
 refuse the things the schema exists to refuse. The first migration (step
 6) made the three schema tables; the second (step 8) makes users, queries
 and traces, with user_id on queries from the moment the table exists
-(DR-08).
+(DR-08); the third (step 11) makes sessions.
 """
 
 import json
@@ -19,7 +19,8 @@ from alembic import command
 from appdb import alembic_config
 
 SCHEMA_TABLES = ["schema_edges", "schema_elements", "schema_snapshots"]
-TABLES = ["queries", "schema_edges", "schema_elements", "schema_snapshots", "traces", "users"]
+TABLES = ["queries", "schema_edges", "schema_elements", "schema_snapshots", "sessions", "traces", "users"]
+STEP8_TABLES = ["queries", "schema_edges", "schema_elements", "schema_snapshots", "traces", "users"]
 LOCAL_USER = "local@cartograph.invalid"
 
 
@@ -55,7 +56,7 @@ def test_the_first_migration_creates_exactly_the_three_schema_tables(empty_datab
     assert _tables(empty_database) == SCHEMA_TABLES
 
 
-def test_upgrade_to_head_creates_exactly_the_six_tables(empty_database) -> None:
+def test_upgrade_to_head_creates_exactly_the_seven_tables(empty_database) -> None:
     command.upgrade(alembic_config(empty_database), "head")
     assert _tables(empty_database) == TABLES
 
@@ -64,6 +65,18 @@ def test_the_second_migration_comes_down_alone_and_leaves_the_schema_tables(scra
     config = alembic_config(scratch_database)
     command.downgrade(config, "0001")
     assert _tables(scratch_database) == SCHEMA_TABLES
+    command.upgrade(config, "head")
+    assert _tables(scratch_database) == TABLES
+
+
+def test_the_third_migration_comes_down_alone_and_leaves_the_users_and_their_queries(scratch_database) -> None:
+    config = alembic_config(scratch_database)
+    with psycopg.connect(scratch_database) as connection:
+        query = _query(connection, _local_user(connection))
+    command.downgrade(config, "0002")
+    assert _tables(scratch_database) == STEP8_TABLES
+    with psycopg.connect(scratch_database) as connection:
+        assert connection.execute("select id from queries").fetchall() == [(query,)]
     command.upgrade(config, "head")
     assert _tables(scratch_database) == TABLES
 
@@ -253,3 +266,79 @@ def test_an_edge_is_one_column_pair_and_a_key_of_two_columns_is_two_rows(scratch
         connection.rollback()
         with pytest.raises(psycopg.errors.ForeignKeyViolation):
             edge(2, 0, ids[0], 999999)
+
+
+# --------------------------------------------------------------------------
+# sessions (step 11)
+# --------------------------------------------------------------------------
+
+
+def _user(connection, email: str = "ada@example.com") -> int:
+    return connection.execute(
+        "insert into users (email, password_hash) values (%s, '$argon2id$x') returning id", (email,)
+    ).fetchone()[0]
+
+
+def _session(connection, user: int, digest: str = "a" * 64, lifetime: str = "7 days") -> int:
+    return connection.execute(
+        "insert into sessions (user_id, token_sha256, created_at, expires_at) "
+        "values (%s, %s, now(), now() + %s::interval) returning id",
+        (user, digest, lifetime),
+    ).fetchone()[0]
+
+
+def test_the_third_migration_keeps_every_user_and_query_it_finds(empty_database) -> None:
+    """Existing rows keep their user (the brief, part 2, 1)."""
+    config = alembic_config(empty_database)
+    command.upgrade(config, "0002")
+    with psycopg.connect(empty_database) as connection:
+        query = _query(connection, _local_user(connection))
+    command.upgrade(config, "head")
+    with psycopg.connect(empty_database) as connection:
+        assert connection.execute("select q.id, u.email from queries q join users u on u.id = q.user_id").fetchall() == [
+            (query, LOCAL_USER)
+        ]
+        assert connection.execute("select email, password_hash from users").fetchall() == [(LOCAL_USER, None)]
+
+
+def test_a_session_holds_a_user_a_digest_and_its_times(scratch_database) -> None:
+    with psycopg.connect(scratch_database) as connection:
+        columns = connection.execute(
+            "select column_name, data_type, is_nullable from information_schema.columns "
+            "where table_name = 'sessions' order by ordinal_position"
+        ).fetchall()
+    assert columns == [
+        ("id", "bigint", "NO"),
+        ("user_id", "bigint", "NO"),
+        ("token_sha256", "text", "NO"),
+        ("created_at", "timestamp with time zone", "NO"),
+        ("expires_at", "timestamp with time zone", "NO"),
+        ("revoked_at", "timestamp with time zone", "YES"),
+    ]
+
+
+def test_a_digest_is_held_once(scratch_database) -> None:
+    with psycopg.connect(scratch_database) as connection:
+        user = _user(connection)
+        _session(connection, user)
+        with pytest.raises(psycopg.errors.UniqueViolation):
+            _session(connection, user)
+
+
+@pytest.mark.parametrize("digest", ["a" * 63, "a" * 65, "A" * 64, "g" * 64, ""])
+def test_a_digest_is_64_lowercase_hex_characters(scratch_database, digest) -> None:
+    with psycopg.connect(scratch_database) as connection:
+        with pytest.raises(psycopg.errors.CheckViolation):
+            _session(connection, _user(connection), digest)
+
+
+def test_a_session_belongs_to_a_user_who_exists(scratch_database) -> None:
+    with psycopg.connect(scratch_database) as connection:
+        with pytest.raises(psycopg.errors.ForeignKeyViolation):
+            _session(connection, 999_999)
+
+
+def test_a_session_ends_after_it_begins(scratch_database) -> None:
+    with psycopg.connect(scratch_database) as connection:
+        with pytest.raises(psycopg.errors.CheckViolation):
+            _session(connection, _user(connection), lifetime="0 seconds")

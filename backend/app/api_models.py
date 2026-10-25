@@ -13,8 +13,9 @@ from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, StringConstraints
+from pydantic import BaseModel, ConfigDict, StringConstraints, field_validator
 
+from app.core.credentials import MAX_EMAIL, MAX_PASSWORD, MIN_PASSWORD, normalise_email
 from app.core.snapshot import SchemaSnapshot
 from app.core.trace_document import Outcome, TraceDocument
 
@@ -22,7 +23,11 @@ MAX_QUESTION = 500
 
 # IR-05's codes, as correction 1 of the Design left them, and those of the
 # API itself.
-ErrorCode = Literal["invalid_request", "not_found", "not_ready", "trace_not_persisted", "internal_error"]
+ErrorCode = Literal[
+    "invalid_request", "not_found", "not_ready", "trace_not_persisted", "internal_error",
+    # step 11
+    "not_signed_in", "invalid_credentials", "email_taken", "origin_refused", "json_only",
+]  # fmt: skip
 
 Value = str | int | float | bool | None
 
@@ -33,6 +38,46 @@ class Body(BaseModel):
 
 class QuestionIn(Body):
     question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_QUESTION)]
+
+
+class RegisterIn(Body):
+    email: Annotated[str, StringConstraints(max_length=MAX_EMAIL + 64)]
+    # Refused here, before anything hashes it (the owner's ruling 4).
+    password: Annotated[str, StringConstraints(min_length=MIN_PASSWORD, max_length=MAX_PASSWORD)]
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, email: str) -> str:
+        return normalise_email(email)
+
+
+class LoginIn(Body):
+    """Only lengths are checked here: a login that is not of an account's
+    form fails as any other wrong login does."""
+
+    email: Annotated[str, StringConstraints(max_length=MAX_EMAIL + 64)]
+    password: Annotated[str, StringConstraints(max_length=MAX_PASSWORD)]
+
+
+class AccountOut(Body):
+    email: str
+
+
+class Listed(Body):
+    """One row of a history: no trace, no body (DD-17)."""
+
+    query_id: UUID
+    question: str
+    created_at: datetime
+    status: Outcome
+    # A choice made without a basis touched the answer (DD-21).
+    had_ambiguity: bool
+
+
+class HistoryOut(Body):
+    """IR-08: the caller's newest queries, newest first, at most 100."""
+
+    queries: list[Listed]
 
 
 class QueryOut(Body):
@@ -52,6 +97,16 @@ class QueryOut(Body):
     row_count: int | None
     truncated: bool | None
     trace: TraceDocument
+
+
+class Refused(Exception):
+    """A request the API says no to, with IR-05's code and a message."""
+
+    def __init__(self, status: int, code: ErrorCode, message: str) -> None:
+        super().__init__(message)
+        self.status = status
+        self.code = code
+        self.message = message
 
 
 class ErrorOut(Body):
@@ -158,3 +213,13 @@ def schema_out(snapshot_id: int, digest: str, snapshot: SchemaSnapshot) -> Schem
             for key in snapshot.foreign_keys
         ],  # fmt: skip
     )
+
+
+def history_out(listed) -> HistoryOut:
+    return HistoryOut(
+        queries=[
+            Listed(query_id=row.query_id, question=row.question, created_at=row.created_at, status=row.outcome,
+                   had_ambiguity=row.had_ambiguity)
+            for row in listed
+        ]
+    )  # fmt: skip

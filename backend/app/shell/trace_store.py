@@ -12,10 +12,18 @@ The five extracted columns of DD-07 are lifted from the document here, at
 write time, and are on `queries`: a history list reads those rows and
 never the bodies (DD-17).
 
-THE LOCAL USER. Until authentication arrives at step 11, every query
-belongs to the one user the second migration seeded.
+THE LOCAL USER. The second migration seeded it; it has no password and
+nobody can log in as it. The queries stored before step 11 are its, and
+the commands (ask, the evaluation's runners) still ask as it.
+
+WHOSE IT IS (step 11). A load that names an owner finds a query only if
+it is that owner's: anyone else's reads as not there, so the API answers
+404 and never 403. A history list is one owner's, newest first, read from
+`queries` alone and never from the bodies (DD-17).
 """
 
+from dataclasses import dataclass
+from datetime import datetime
 from uuid import UUID
 
 import psycopg
@@ -23,6 +31,20 @@ import psycopg
 from app.core.trace_document import READABLE_VERSIONS, TraceDocument
 
 LOCAL_USER_EMAIL = "local@cartograph.invalid"
+# No paging: the newest this many (the owner's ruling 7, a known limit).
+HISTORY_LIMIT = 100
+
+
+@dataclass(frozen=True)
+class Listed:
+    """One row of a history list."""
+
+    query_id: UUID
+    question: str
+    created_at: datetime
+    outcome: str
+    # A choice made without a basis touched the answer (DD-21).
+    had_ambiguity: bool
 
 
 class TraceStore:
@@ -55,10 +77,16 @@ class TraceStore:
                 (document.query_id, document.trace_version, document.model_dump_json()),
             )
 
-    def load(self, query_id: UUID) -> TraceDocument | None:
+    def load(self, query_id: UUID, owner: int | None = None) -> TraceDocument | None:
+        """`owner` None reads any query, as the commands do; the API always
+        names one."""
         with psycopg.connect(self._dsn) as connection:
             row = connection.execute(
-                "select trace_version, body from traces where query_id = %s", (query_id,)
+                """
+                select traces.trace_version, traces.body from traces join queries on queries.id = traces.query_id
+                where traces.query_id = %s and (%s::bigint is null or queries.user_id = %s::bigint)
+                """,
+                (query_id, owner, owner),
             ).fetchone()
         if row is None:
             return None
@@ -67,3 +95,14 @@ class TraceStore:
             read = " and ".join(str(known) for known in READABLE_VERSIONS)
             raise ValueError(f"this build reads trace_version {read} and the stored trace is trace_version {version}")
         return TraceDocument.model_validate(body)
+
+    def history(self, owner: int, limit: int = HISTORY_LIMIT) -> list[Listed]:
+        with psycopg.connect(self._dsn) as connection:
+            rows = connection.execute(
+                """
+                select id, question, created_at, outcome, had_ambiguity from queries
+                where user_id = %s order by created_at desc, id limit %s
+                """,
+                (owner, limit),
+            ).fetchall()
+        return [Listed(*row) for row in rows]

@@ -51,6 +51,15 @@ def test_the_trace_is_assembled_and_written_once() -> None:
     assert kept.trace.execution.rows == ((0,), (1,))
 
 
+def test_a_question_asked_for_a_user_is_kept_under_that_user() -> None:
+    """Step 11: the API names the caller on every question; the commands
+    name no one and keep the pipeline's own user."""
+    store = Keeps()
+    keeper = keeping([reply(BILL), reply(BILL)], store)
+    assert keeper.answer_and_keep("For Ada?", user_id=7).document.user_id == 7
+    assert keeper.answer_and_keep("For no one named?").document.user_id == 42
+
+
 @pytest.mark.parametrize(
     ("script", "executor", "arguments", "outcome"),
     [

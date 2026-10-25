@@ -5,6 +5,7 @@ Against a scratch database migrated to head. The documents are assembled
 from the orchestrator with a scripted model.
 """
 
+import datetime
 import json
 import uuid
 from decimal import Decimal
@@ -13,7 +14,7 @@ import psycopg
 import pytest
 from tracing import document, reply
 
-from app.shell.trace_store import LOCAL_USER_EMAIL, TraceStore
+from app.shell.trace_store import HISTORY_LIMIT, LOCAL_USER_EMAIL, TraceStore
 
 ADDRESS = ("catalog_sales", "customer_address")
 BILL = "SELECT ca.ca_state FROM catalog_sales cs JOIN customer_address ca ON cs.cs_bill_addr_sk = ca.ca_address_sk"
@@ -158,3 +159,56 @@ def test_a_trace_written_at_version_1_is_still_read(scratch_database) -> None:
     assert old.trace_version == 1 and [w.plain for w in old.paths.warnings] == [None] * len(written.paths.warnings)
     assert [w.text for w in old.paths.warnings] == [w.text for w in written.paths.warnings]
     assert old.narrative == written.narrative
+
+
+# --------------------------------------------------------------------------
+# Whose it is, and the history list (step 11)
+# --------------------------------------------------------------------------
+
+
+def _user(url: str, email: str) -> int:
+    with psycopg.connect(url) as connection:
+        return connection.execute(
+            "insert into users (email, password_hash) values (%s, '$argon2id$x') returning id", (email,)
+        ).fetchone()[0]
+
+
+def test_a_query_read_for_its_owner_is_there_and_for_anyone_else_is_not(scratch_database) -> None:
+    store = TraceStore(scratch_database)
+    ada, bob = _user(scratch_database, "ada@example.com"), _user(scratch_database, "bob@example.com")
+    written = made(user=ada)
+    store.save(written)
+    assert store.load(written.query_id, owner=ada) == written
+    assert store.load(written.query_id, owner=bob) is None
+    assert store.load(written.query_id) == written, "with no owner named, as the commands read"
+
+
+def test_history_is_the_owners_newest_first_with_the_columns_a_list_needs(scratch_database) -> None:
+    store = TraceStore(scratch_database)
+    ada, bob = _user(scratch_database, "ada@example.com"), _user(scratch_database, "bob@example.com")
+    start = datetime.datetime(2026, 10, 25, 9, 0, tzinfo=datetime.UTC)
+    for n, (owner, script) in enumerate([(ada, None), (bob, None), (ada, [reply(status="not_answerable")]), (ada, None)]):
+        written = made(script, user=owner).model_copy(
+            update={"question": f"Q{n}?", "created_at": start + datetime.timedelta(minutes=n), "had_ambiguity": n == 3}
+        )
+        store.save(written)
+    listed = store.history(ada)
+    assert [row.question for row in listed] == ["Q3?", "Q2?", "Q0?"]
+    assert [row.outcome for row in listed] == ["answered", "not_answerable", "answered"]
+    assert [row.had_ambiguity for row in listed] == [True, False, False]
+    assert listed[0].created_at == start + datetime.timedelta(minutes=3)
+    assert [row.question for row in store.history(bob)] == ["Q1?"]
+    assert store.history(_user(scratch_database, "cy@example.com")) == []
+
+
+def test_history_lists_at_most_100(scratch_database) -> None:
+    store = TraceStore(scratch_database)
+    ada = _user(scratch_database, "ada@example.com")
+    start = datetime.datetime(2026, 10, 1, tzinfo=datetime.UTC)
+    base = made(user=ada)
+    for n in range(103):
+        store.save(base.model_copy(update={"query_id": uuid.uuid4(), "question": f"Q{n}?",
+                                           "created_at": start + datetime.timedelta(minutes=n)}))  # fmt: skip
+    listed = store.history(ada)
+    assert len(listed) == HISTORY_LIMIT == 100
+    assert (listed[0].question, listed[-1].question) == ("Q102?", "Q3?")
