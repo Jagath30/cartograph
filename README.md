@@ -4,6 +4,34 @@ Natural-language querying of complex data warehouses with schema-graph retrieval
 
 ## Evaluation
 
+Cartograph was measured against a fair baseline: the same model (gpt-6-luna, temperature 0), given all 24 tables of the warehouse and all 107 keys between them, with no plan. The two prompts differ only in what Cartograph adds, and tests pin that. A frozen judge scores each answer's SQL on two counts: whether it read the tables the question needs, and whether it joined them along the expected path. Where a path cannot be checked, such as a join on a computed key, the answer leaves the path count. The protocol, the code's hashes and the predictions were committed before any run, and each mode ran five times.
+
+The headline set, heldout2, is 12 questions frozen before linking and choosing were built. Neither the design nor the code was made with sight of them: only the evaluation code opens the file.
+
+| heldout2, mean of 5 runs | Right tables | Right path |
+|---|---|---|
+| **Cartograph v2.1: linking and choosing (adopted)** | **100.0%** | **98.3%** |
+| Cartograph v2: linking | 91.7% | 80.0% |
+| Full schema (the baseline) | 100.0% | 100.0% |
+| Cartograph v1: retrieval | 36.7% | 30.0% |
+
+- v1's weakness was finding the tables: on heldout2, the tables retrieval chose held 67.6% of those the questions need. Linking, a model shown every table and asked to name the ones needed, named all of them.
+- v2.1 matches the baseline on tables, and misses it on path by one answer in sixty.
+- What Cartograph adds is not accuracy but an account: every join choice says how it was made (by a rule, by the model reading the question, or with no basis), and a choice with no basis is flagged.
+- On the original set, used throughout development (15 questions scored), v2.1 found the right tables more often than the baseline (84.0% against 77.3%) and the right path less often (77.1% against 82.9%).
+- The first held-out set (12 questions) was spent at step 10, and its failures there shaped v2, so it has been a development set since. On it, v2.1 and the baseline both found the right tables and the right path 91.7% of the time.
+- dev2 (12 questions) was seen during development, and its pilot results helped shape v2.1. On it, v2.1 scored 100.0% on tables and 91.7% on path; the baseline, 100.0% and 100.0%.
+- An answer from v2.1 averages 2.17 model calls and 9,194 input tokens on heldout2, with a median of 5.4 seconds and $0.000973 uncached. The whole of step 10b's evaluation cost $0.280944.
+
+Limits: the sets are small (12 and 15 questions), so one question is a large step; one model; the judge checks tables and path, not the rows returned; one warehouse, TPC-DS.
+
+The protocol is backend/eval/step10b_protocol.md, the runs and the report are in backend/eval/step10b/runs/, and the working record is CHECKPOINTS.md.
+
+### The first evaluation: v1, 18 October 2026
+
+*Kept as written then. Here "Cartograph" means v1, retrieval, and "held-out" is the first held-out set.*
+
+
 Measured on 18 October 2026, by a protocol committed before any run (`backend/eval/step10_protocol.md`). Two modes, with the same model (gpt-6-luna, temperature 0) and the same rules: Cartograph's pipeline, and full-schema prompting, which gives the model all 24 tables and all 107 keys between them, with no plan. Each question was asked five times in each mode. What is measured is whether the generated SQL read the expected tables and joined along the expected path, not whether its numbers were right.
 
 | | Tables | Path |
@@ -120,11 +148,14 @@ strictly with none. `CHECKPOINTS.md` has the whole record.
     docker compose exec backend python -m app.ask "How do purchases on the web split by the buyer's level of education?"
 
 puts one question through the whole pipeline and prints its answer and its
-trace: the tables the model was shown and the joins selected for it, each
+trace: the tables a language model, shown every table, named for it; each
+choice the rules left open and what the model named for it; the tables
+the model writing the query was shown and the joins selected for it, each
 attempt, the SQL that ran, the joins that SQL really made beside the ones
-selected, and the first rows. It is a paid call to the model
-(`gpt-6-luna`), a few hundredths of a cent, written to a spend ledger; the
-last line gives the running total.
+selected, and the first rows. It makes two or three paid calls to the
+model (`gpt-6-luna`): naming the tables, choosing when the rules leave a
+choice open, and writing the SQL. Together they cost about a tenth of a
+cent, written to a spend ledger; the last line gives the running total.
 
 What the pipeline guarantees, and what it only reports:
 
@@ -137,8 +168,16 @@ What the pipeline guarantees, and what it only reports:
   selected. If they differ the query still runs and the trace says
   **diverged**, naming the joins. A model that takes another route is
   reported, not corrected.
-- When the tables retrieved do not hold the answer the model says so, and
-  the reply is "cannot be answered from the tables retrieved". That is a
-  statement about the tables it was shown, not about the warehouse.
+- When the model, shown every table, names none that holds the answer,
+  the question ends there, and the reply is "This cannot be answered from
+  this schema: shown every table, the model named none that holds the
+  answer." No query is written.
+- When the model writing the query says the tables it was shown do not
+  hold the answer, the reply is "This cannot be answered from the tables
+  found for it: the model writing the query, shown those tables, said
+  they do not hold the answer." That is a statement about the tables it
+  was shown, not about the warehouse.
 
-Nothing is stored yet: the trace is printed and gone.
+The trace is stored, as the API stores it: the query's id is printed, and
+`GET /api/v1/queries/<id>` returns the trace with its plain-English
+account. The rows are not stored.

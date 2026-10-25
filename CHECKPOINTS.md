@@ -7,21 +7,23 @@ to explain, and what the next single deliverable is.
 
 ---
 
-## Current state — 18 October 2026, kept current at every close
+## Current state — 25 October 2026, kept current at every close
 
-**What exists.** Steps 1 to 10 and a retrieval pass, tagged
-`checkpoint-01-stack` to `checkpoint-10-eval`. Steps 1 to 8's
-pipeline, its decisions unchanged but for two declared preferences (a
-sale over the page it was made through). Step 9: one page, `/ask`: the
-amber block when a choice had no basis; the narrative beside the results
-(copy, CSV); the graph of the plan and of the joins the SQL made; the
-detail behind disclosures; `?id=` reopens a stored answer. No WCAG 2.1 AA
-violation by axe; keyboard throughout. Step 10: the evaluation, run by a
-protocol frozen before any run, five runs in two modes over the held-out
-and the original sets; its record is committed files under
-`backend/eval/step10/`, its result is in the README, and full-schema
-prompting wins at 24 tables (items 91 to 97). Smoke 39, 0, 0. Backend
-1454 pass, 2 skip; frontend 211.
+**What exists.** Steps 1 to 10b and a retrieval pass, tagged
+`checkpoint-01-stack` to `checkpoint-10b-v2.1`. The application runs
+v2.1, chosen mode (`APPLICATION_MODE`): a language model, shown every
+table and key, names the tables; the join tree is built over them by
+DD-12's rules; where the alphabet would decide, the model is asked which
+route the question means; then the model writes the SQL, which is
+validated, checked against the plan and run read-only. Traces are stored
+at version 3 (`linking`, `choosing`, `decided_by`); versions 1 and 2 are
+served and drawn byte for byte as before. One page, `/ask`, as at step 9,
+with the tables named, who decided each join and the choices put to the
+model. Step 10's evaluation, then step 10b's: four modes, five runs, a
+protocol frozen before any run; v2.1 matches full-schema prompting on
+heldout2's tables (100.0%) and misses its path by one answer in sixty
+(98.3%). README "Evaluation". Smoke 39, 0, 0. Backend: CI's command 1587
+pass, 96 skip; the suite 1681 pass, 2 skip; frontend 226. `next` 16.4.1.
 
 **Rules every session follows.**
 - `OPENAI_API_KEY` is never printed, displayed or read; `.env` is never
@@ -32,7 +34,10 @@ prompting wins at 24 tables (items 91 to 97). Smoke 39, 0, 0. Backend
   `rm -rf`, and nothing is deleted through a shell variable.
 - Frontend packages at exact versions at least two weeks old, resolved
   with `--before`. Every pre-push check includes `npm audit --omit=dev`
-  (item 82).
+  (item 82). One exception, the owner's, at the close of step 10b: `next`
+  and `eslint-config-next` at 16.4.1 (item 110).
+- A dependency change rebuilds the frontend image and recreates the
+  frontend with `--renew-anon-volumes` (item 5).
 - Tests first; mutate any rule that decides; predictions and keep-rules
   are committed before the run they judge; nothing is tuned to one
   question; no threshold is chosen by looking at results.
@@ -65,17 +70,19 @@ been run, so any future change to retrieval needs a fresh held-out set,
 written and frozen before the change (items 98 to 100). Step 10b's fresh
 held-out set, `backend/eval/heldout2.yaml` (sha256 `ffd28657...20f3d1`,
 `8577fce`), and development set 2, `backend/eval/dev2.yaml` (sha256
-`4d6dd232...6c13da`, `e78b98a`).
+`4d6dd232...6c13da`, `e78b98a`). Step 10b's protocol, manifest
+(`a6a6aac`), pilots, run files and report (`df69358`), under
+`backend/eval/step10b/`. **heldout2 is spent**: any later change to
+linking or choosing needs a fresh held-out set, written and frozen
+before the change. Step 10b's manifest records the code its runs used;
+it is checked at the commits they ran on (`a6a6aac` to `587cd61`), not
+on main.
 
-**Next.** Step 10b, before step 11: first, a fresh held-out set of 12
-questions, drafted blind from the schema alone, reviewed by the owner
-and frozen before any new code; then the next version (items 98 to 100),
-designed in the planning chat and measured against full-schema prompting
-on that set, by a protocol committed first. The 12 questions run at step
-10 are now development questions.
+**Next.** Step 11.
 Step 11: 76, 88.
-Step 12: 1, 8, 9, 10, 14, 18, 41, 73, 77, 80, 85; owed to the Design:
-DD-01, 06, 07, 12 to 16, 19, 21, FR-13, IR-05, section 04. Step 13: 86,
+Step 12: 1, 8, 9, 10, 11, 14, 18, 41, 73, 77, 80, 85, 108, 109; owed to the Design:
+DD-01, 06, 07, 12 to 16, 19, 21, FR-13, IR-05, section 04, and step 10b's
+(the checkpoint-10b-v2.1 entry). Step 13: 86,
 90. Step 14: 75. Future work: 53, 55, 56, 98, 99, 100. Known limits:
 62, 68, 69, 78, 87, 91. Left behind: 79. **Resume:** read this, the newest entry and the
 items named; `git status`; `./scripts/smoke.sh` (two paid calls).
@@ -9437,6 +9444,93 @@ The examples are now Q3, states, birth country and suppliers. Each
 example's replies are pinned in `tests/test_examples_chosen.py`, with
 gender's as the reason it left.
 
+### checkpoint-10b-v2.1: v2.1 adopted, the application on chosen — 25 October 2026
+
+**What was adopted.** v2.1, chosen mode, by the adoption rule frozen in
+the protocol before any run, and the owner's ruling at stop E. Linking
+names the tables; DD-12's rules build the tree, with a new rule,
+`model_choice`, between the declared preference and the alphabet: where
+the alphabet would decide, one call names the route the question means,
+or none; a choice left open stays the alphabet's, and loud. Linking,
+choosing and generation share a budget of two retries a question.
+
+**The results** (heldout2, mean of five runs, tables and path): chosen
+100.0% and 98.3%; linked 91.7% and 80.0%; full schema 100.0% and 100.0%;
+retrieval 36.7% and 30.0%. All 13 predictions held. The original set:
+chosen 84.0% and 77.1%, full schema 77.3% and 82.9%. The first held-out
+set: both 91.7% and 91.7%. dev2: chosen 100.0% and 91.7%, full schema
+100.0% and 100.0%. On heldout2 an answer averages 2.17 calls, 9,194
+tokens in, a median of 5.4 s (run 3), $0.000973 uncached.
+
+**The spend.** The evaluation: $0.280944 on step10b purposes, pilots
+included, under its cap of $1.00. F3, smoke and the examples, then the
+close's smoke: 24 model calls, $0.00849050 uncached against F3's budget
+of $0.05; the ledger from 2110 lines and $0.35769527 to 2134 lines and
+$0.36476665. The ceiling refused nothing.
+
+**The adoption, commit by commit.** Trace version 3 (`a827694`); the
+narrative (`34b3f61`); the wording ruled at F2 (`16df94a`); the
+application on chosen (`b65ce70`); the frontend (`5e68f86`); F3
+(`f8d96a0`); this close: `next` 16.4.1 (item 110), the two sentences
+reworded at F3 ("No query was run. The SQL written would have done
+something other than read the data. It was refused, and the model
+writing the query was not asked again." and "No query was run. The SQL
+written was refused {n} times: ..."), at version 3 only and pinned; the
+README's Evaluation section, step 10's kept beneath it; "Asking a
+question" brought up to date. The stack restarted clean, the frontend
+recreated with `--renew-anon-volumes` (item 5), serving `next` 16.4.1;
+every service healthy; smoke 39, 0, 0.
+
+**The checks at the close**, each exit status read: CI's command exit 0,
+1587 passed, 96 skipped, 0 failed; the suite exit 0, 1681 passed, 2
+skipped; frontend tests 226, build, tsc, lint, each exit 0; `npm audit
+--omit=dev` exit 0; secret-pattern lines 0 in the commits since
+`origin/main`, 0 in the uncommitted diff, 0 files at HEAD; the frozen
+files: none differs from `7c425ac` (steps 5 to 10), `a6a6aac` (step 10b's
+protocol and manifest) or `df69358` (its runs, report and pilots);
+`heldout2.yaml` the same object as at its freeze, 0 commits since;
+step 10b's manifest, 75 of 75 files match at each of the five commits its
+runs ran on.
+
+**The faults of step 10b, recorded where each happened.** The first
+pilot was void (a transport failure); the second exposed three harness
+faults (`0490262`); `c4b3c94`'s message gave wrong counts; my stop A2
+correction on H8 was wrong; a test wrote the real ledger (82 lines, kept;
+the guard since); CI was red from `eed22f1` and a fake local "CI" hid it
+(item 107); the narrative's `not_taken` fault from `b81385c`; the F1
+plan's "about 550 questions" (item 108). At the close: a frozen-file
+check of mine compared step 10b's files with a commit before they
+existed and exited 1; the command was at fault, not the files, and it
+was run again against the commits that froze them. The first lock-only
+install exited 243 (EACCES on the root-owned volume) and its output was
+not used.
+
+**What to dissect.** Choosing named a route 13 of 15 times on heldout2
+and never the alphabet's own pick (item 101), but left every choice open
+on the original set (item 102); the gender example went from a choice
+with no basis to the model's (F3). What makes the model name a route,
+and whether it names the right one beyond the 13 checked, is not known.
+
+**Owed to the Design** (`docs/Cartograph_Design_v3.pdf`, a PDF, not
+edited here), as planned at stop F1:
+- DD-12: the rule `model_choice`, between the declared preference and
+  the alphabet.
+- FR-42 and DD-14: the decline at linking, detected before generation.
+- DD-04, sections 03 and 04: the link and choose stages; the trace's
+  `linking` and `choosing`.
+- DD-15 and NFR-15: the retry budget of two, shared by three calls.
+- DD-21: a choice the model made raises no warning.
+- DD-06: trace version 3 beside 1 and 2.
+- Section 12 and DD-20: four modes, linked and chosen paired; retrieval's
+  role, scoring for order and evidence only; the latency, a median of
+  about 5 s, not 2.
+- From step 10: Charter criterion 6, and the eval-tables amendment
+  (DR-13).
+
+**Carried forward.** Items 101 to 110; 108 and 109 open for step 12.
+
+**Next.** Step 11.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
@@ -9458,6 +9552,13 @@ Deliberate deferrals, recorded while the reasoning is fresh:
    from the lockfile, the host copy serves the editor. **Any dependency
    change requires rebuilding the frontend image**, and the editor will not
    warn you.
+   **And recreating the frontend with `--renew-anon-volumes`** (step 10b,
+   the close, by the owner's ruling): `docker compose up -d --build
+   --force-recreate` rebuilt the image with `next` 16.4.1, every check in
+   fresh containers passed, and the running container still served
+   16.3.8: `--force-recreate` keeps the old anonymous `/app/node_modules`
+   volume. `docker compose up -d --force-recreate --renew-anon-volumes
+   frontend` renewed it, and the running container then served 16.4.1.
 6. `eslint@9.39.5` arrives flagged as unsupported, via `eslint-config-next`.
 7. Starlette now wants `httpx2` rather than `httpx` for its test client.
 8. Neither Dockerfile uses a non-root user. The backend writes root-owned
@@ -10158,3 +10259,26 @@ Deliberate deferrals, recorded while the reasoning is fresh:
      deployed application would refuse every call after about $0.14 more,
      about 157 uncached questions (the F1 plan's "about 550" was wrong).
      **Open for step 12:** replace it with a budget fit for a public demo.
+109. **The frontend image's `NODE_ENV=development` fails the production
+     build** (step 10b, the close). `next build` in the image ends in
+     "Cannot read properties of null (reading 'useContext')" while
+     prerendering `/_global-error`, at baseline too; with
+     `NODE_ENV=production`, as on CI's runner, it passes. The local
+     build check runs with `-e NODE_ENV=production`. **Open for step 12**,
+     whose deployment build is separate.
+110. **The exception to the two-week rule: `next` and
+     `eslint-config-next` at 16.4.1** (step 10b, the close, the owner's
+     ruling). `npm audit --omit=dev` at the close found 1 critical in
+     `next` 16.3.8, three advisories (GHSA-2464-fhr4-w9xw, remote code
+     execution in Image Optimization with SVG files; GHSA-p3m5-59mp-jv5r,
+     denial of service through Server Actions; GHSA-673q-mjm6-r5xr,
+     remote code execution in `use cache` functions), covering >=16.0.0
+     <=16.4.0. 16.4.1 audits clean and was published 14 October, 11 days
+     before. No release is both two weeks old and patched (16.4.0, the
+     newest that old, is in the range), and a critical remote-code
+     advisory cannot ship to a public URL, so 16.4.1, the oldest patched
+     release, was taken. The lockfile was made in the image (npm
+     11.20.0), in a scratch folder: 12 packages changed, all of the
+     Next.js family, nothing else. The image was rebuilt (exit 0); tests
+     226, build, tsc and lint each exit 0; `npm audit --omit=dev` exit 0,
+     0 vulnerabilities.

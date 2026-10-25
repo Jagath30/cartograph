@@ -235,3 +235,21 @@ def test_a_generation_call_that_failed_after_linking_is_told_by_its_fault() -> N
     made = linked_document([linked("customer")], [failed], question="How many?", choose_script=[])
     assert made.outcome == "model_failed" and made.linking.tables == ["customer"]
     assert made.narrative.sql == "No query was written: the model's reply was cut off by the output limit."
+
+
+def test_sql_that_would_write_is_told_in_the_owners_words() -> None:
+    made = linked_document([linked("customer")], [reply("DELETE FROM customer")], question="How many?", choose_script=[])
+    assert made.outcome == "validation_failed"
+    assert made.narrative.sql == (
+        "No query was run. The SQL written would have done something other than read the data. It was refused, and "
+        "the model writing the query was not asked again."
+    )
+
+
+def test_sql_refused_every_time_is_told_in_the_owners_words() -> None:
+    wrong = reply("SELECT no_such_column FROM customer")
+    made = linked_document([linked("customer")], [wrong, wrong, wrong], question="How many?", choose_script=[])
+    assert made.outcome == "validation_failed" and len(made.generation.attempts) == 3
+    assert made.narrative.sql.endswith(
+        "No query was run. The SQL written was refused 3 times: it was not a query this warehouse could run."
+    )

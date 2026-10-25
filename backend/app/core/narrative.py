@@ -741,13 +741,15 @@ class _Teller:
             return "No query was written, and no model was asked to write one."
         if self.outcome == "model_failed":
             return _sentence(f"No query was written: {self.message}")
+        # In a trace with linking, the owner's wording at stop F3.
+        written = "What the model wrote" if self.linking is None else "The SQL written"
         if self.validation is not None and self.validation.read_only == "fail":
             return (
-                f"No query was run. What {self.writer} wrote would have done something other than read the data. "
+                f"No query was run. {written} would have done something other than read the data. "
                 f"It was refused, and {self.writer} was not asked again."
             )
         asked = len(self.generation.attempts) if self.generation else 0
-        return f"No query was run. What {self.writer} wrote was refused {_count(asked, 'time', 'times')}: it was not a query this warehouse could run."
+        return f"No query was run. {written} was refused {_count(asked, 'time', 'times')}: it was not a query this warehouse could run."
 
     # ---- result -----------------------------------------------------------
 
