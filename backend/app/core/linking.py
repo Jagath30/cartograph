@@ -166,5 +166,5 @@ def locate_linked(
     )
     declined = tree.decline_reason == ANCHORS_NOT_CONNECTED
     return LinkedLocated(
-        retrieval, tree, explain_tree(tree, graph), declined, tree.decline_reason if declined else None, linked
+        retrieval, tree, explain_tree(tree, graph, named=True), declined, tree.decline_reason if declined else None, linked
     )

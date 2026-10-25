@@ -117,6 +117,12 @@ NOT_ANSWERABLE = {
     "model": "This cannot be answered from the tables retrieved: the model, shown those tables, said they do not hold the answer.",
     "linking": "This cannot be answered from this schema: shown every table, the model named none that holds the answer.",
 }  # fmt: skip
+# Given a linker, the tables were named, not retrieved (the owner's ruling
+# at stop F2). A linked tree always has anchors, so "no_anchors" never arises.
+NOT_ANSWERABLE_NAMED = {
+    "anchors_not_connected": "This cannot be answered from the tables named for it: they could not be joined to one another.",
+    "model": "This cannot be answered from the tables found for it: the model writing the query, shown those tables, said they do not hold the answer.",
+}  # fmt: skip
 
 AttemptOutcome = Literal[
     "accepted", "not_answerable", "malformed", "refused_retryable", "refused_terminal", "cut_off", "model_failed"
@@ -343,6 +349,7 @@ class Orchestrator:
         self._keep = keep
         self._build = build
         self._linker = linker
+        self._declined = NOT_ANSWERABLE if linker is None else {**NOT_ANSWERABLE, **NOT_ANSWERABLE_NAMED}
         self._chooser = chooser
 
     def answer_and_keep(self, question: str) -> Kept:
@@ -527,7 +534,7 @@ class Orchestrator:
         if located.declined or not tree.tables:
             reason = tree.decline_reason or "no_anchors"
             stage("locate", began, reason)
-            return finish("not_answerable", NOT_ANSWERABLE[reason])
+            return finish("not_answerable", self._declined[reason])
         stage("locate", began, "located")
 
         # ---- choose: only with a chooser, and only when the alphabet chose
@@ -568,7 +575,7 @@ class Orchestrator:
                 continue
             if read.kind == "not_answerable":
                 attempts.append(Attempt(number, messages, reply, "not_answerable"))
-                return finish("not_answerable", NOT_ANSWERABLE["model"])
+                return finish("not_answerable", self._declined["model"])
 
             began = time.monotonic()
             validation = validate(read.sql, self._schema)

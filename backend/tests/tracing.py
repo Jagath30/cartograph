@@ -42,10 +42,12 @@ class Located:
     retrieval: object = None
 
 
-def located(*anchors: str, **tree_arguments) -> Located:
+def located(*anchors: str, named: bool = False, **tree_arguments) -> Located:
+    """`named`: the anchors were named by linking, as locate_linked says."""
     scores = {anchor: 1.0 - position / 10 for position, anchor in enumerate(anchors)}
     tree = build_tree(GRAPH, anchors, scores, **tree_arguments)
-    return Located(tree, explain_tree(tree, GRAPH), tree.decline_reason == "anchors_not_connected", tree.decline_reason)
+    explanation = explain_tree(tree, GRAPH, named=named)
+    return Located(tree, explanation, tree.decline_reason == "anchors_not_connected", tree.decline_reason)
 
 
 class Runs:
@@ -99,14 +101,14 @@ def linked_trace(link_script, generation_script, question="A question?", choose_
         shape=ReplyShape(LINK_REPLY_NAME, link_reply_schema(SNAPSHOT)),
         known=frozenset(table.name for table in SNAPSHOT.tables),
         model=FakeModel(link_script),
-        locate=lambda asked, named: located(*named, **tree_arguments),
+        locate=lambda asked, named: located(*named, named=True, **tree_arguments),
     )
     chooser = None
     if choose_script is not None:
         chooser = Chooser(
             prompt=lambda asked, choices: build_choose_prompt(asked, choices, GRAPH),
             model=FakeModel(choose_script),
-            relocate=lambda asked, named, chosen: located(*named, chosen=chosen, **tree_arguments),
+            relocate=lambda asked, named, chosen: located(*named, named=True, chosen=chosen, **tree_arguments),
         )
     orchestrator = Orchestrator(SNAPSHOT, schema_ref, None, FakeModel(generation_script), executor or Runs(),
                                 linker=linker, chooser=chooser)  # fmt: skip

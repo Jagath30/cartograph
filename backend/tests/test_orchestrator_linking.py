@@ -12,7 +12,7 @@ import pytest
 from tracing import GRAPH, SCHEMA_REF, SNAPSHOT, Runs, located, reply
 
 from app.core.linking import LINK_REPLY_NAME, build_link_prompt, link_reply_schema
-from app.orchestrator import NOT_ANSWERABLE, Linker, Orchestrator
+from app.orchestrator import NOT_ANSWERABLE, NOT_ANSWERABLE_NAMED, Linker, Orchestrator
 from app.shell.model_client import FakeModel, ModelReply, ReplyShape
 
 QUESTION = "Which stores sold the most?"
@@ -133,7 +133,7 @@ def test_linked_tables_that_cannot_be_joined_decline_as_in_v1() -> None:
     linker = Linker(base.prompt, base.shape, base.known, base.model, locate)
     generation = FakeModel([])
     trace = Orchestrator(SNAPSHOT, SCHEMA_REF, None, generation, Runs(), linker=linker).answer(QUESTION)
-    assert trace.outcome == "not_answerable" and trace.message == NOT_ANSWERABLE["anchors_not_connected"]
+    assert trace.outcome == "not_answerable" and trace.message == NOT_ANSWERABLE_NAMED["anchors_not_connected"]
     assert generation.calls == []
 
 

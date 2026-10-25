@@ -19,7 +19,7 @@ import json
 from tracing import SNAPSHOT, linked_document, located, reply
 
 from app.core.choosing import choices_of, label
-from app.orchestrator import NOT_ANSWERABLE
+from app.orchestrator import NOT_ANSWERABLE, NOT_ANSWERABLE_NAMED
 from app.shell.model_client import ModelReply
 
 QUESTION = "Where are our catalog customers located?"
@@ -156,7 +156,9 @@ def test_a_linking_call_that_failed_is_told() -> None:
         f"A language model, shown all {COUNT} tables, was asked to name the ones your question needs, and gave no "
         "reply in the form asked for."
     )
-    assert made.narrative.sql == "No query was written: the model's reply was cut off by the output limit."
+    # The fault stays in the outcome's message (the owner's ruling at F2).
+    assert made.message == "the model's reply was cut off by the output limit"
+    assert made.narrative.sql == "No query was written, and no model was asked to write one."
     assert made.narrative.result == "No answer was given."
 
 
@@ -169,3 +171,67 @@ def test_named_tables_that_cannot_be_linked_are_told_so() -> None:
     assert made.narrative.result == (
         "No answer was given: the tables named for your question could not be linked to one another."
     )
+    assert made.message == NOT_ANSWERABLE_NAMED["anchors_not_connected"] == (
+        "This cannot be answered from the tables named for it: they could not be joined to one another."
+    )
+
+
+# --------------------------------------------------------------------------
+# Two models in one answer: the one that writes the SQL is named as such
+# (the owner's ruling at stop F2)
+# --------------------------------------------------------------------------
+
+STORE = ("store", "household_demographics")
+
+
+def test_the_models_decline_after_linking_is_told_of_the_model_writing_the_query() -> None:
+    """Render case 9 at stop F2, in the owner's words."""
+    made = linked_document([linked(*STORE)], [reply(status="not_answerable")], question="A question?")
+    assert made.outcome == "not_answerable"
+    assert made.message == NOT_ANSWERABLE_NAMED["model"] == (
+        "This cannot be answered from the tables found for it: the model writing the query, shown those tables, said "
+        "they do not hold the answer."
+    )
+    told = made.narrative
+    assert told.found == (
+        f"A language model, shown all {COUNT} tables, named 2 for your question: store and household demographics. "
+        "To link them, store returns was added; the model had not named it. The model writing the query was also "
+        "shown store sales, which could have linked them equally well."
+    )
+    assert told.sql == "No query was written: the model writing the query said the tables it was shown do not hold the answer."
+    assert told.result == (
+        "No answer was given. The model writing the query was shown 4 tables: store, household demographics, store "
+        "returns and store sales. It said they do not hold the answer. That is a statement about these tables, not "
+        "about the whole warehouse."
+    )
+
+
+def test_a_retry_is_told_of_the_model_writing_the_query() -> None:
+    made = linked_document([linked("customer")], [reply("not sql at all"), reply("SELECT COUNT(*) FROM customer")],
+                           question="How many?", choose_script=[])  # fmt: skip
+    assert made.outcome == "answered" and len(made.generation.attempts) == 2
+    assert made.narrative.sql.startswith("The model writing the query was asked 2 times; the earlier reply was not accepted.")
+
+
+def test_the_seed_is_told_as_one_of_the_tables_named() -> None:
+    made = chosen(_letter("cs_ship_addr_sk"))
+    (seed, *_) = made.paths.attachments
+    assert seed.reason == "Started from catalog sales: of the tables named, the question matched it best."
+
+
+def test_without_linking_the_seed_and_the_declines_read_as_before() -> None:
+    from app.core.explainer import explain_tree
+    from tracing import GRAPH
+
+    tree = located(*TIED).tree
+    (seed, *_) = explain_tree(tree, GRAPH).attachments
+    assert seed.reason.text == "Started from catalog sales, the table the question matched best."
+    assert NOT_ANSWERABLE["model"].startswith("This cannot be answered from the tables retrieved:")
+    assert NOT_ANSWERABLE["anchors_not_connected"].startswith("This cannot be answered from the tables retrieved:")
+
+
+def test_a_generation_call_that_failed_after_linking_is_told_by_its_fault() -> None:
+    failed = ModelReply("m", "m", None, None, 0, 0, 0, 0.0, 5, "cut_off", "the model's reply was cut off by the output limit")
+    made = linked_document([linked("customer")], [failed], question="How many?", choose_script=[])
+    assert made.outcome == "model_failed" and made.linking.tables == ["customer"]
+    assert made.narrative.sql == "No query was written: the model's reply was cut off by the output limit."

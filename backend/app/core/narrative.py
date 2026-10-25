@@ -207,6 +207,9 @@ class _Teller:
         self.execution = execution
         self.names = names
         self.linking = linking
+        # Two models can appear in a trace with linking, so the one that
+        # writes the SQL is named as such there (the owner's ruling at F2).
+        self.writer = "the model" if linking is None else "the model writing the query"
         # The SQL was read and compared with the plan.
         self.checked = validation is not None and validation.conformance is not None
         self.answered = outcome == "answered"
@@ -410,7 +413,10 @@ class _Teller:
             )
         beside = [node.table for node in self.subgraph.nodes if not node.in_tree] if self.subgraph else []
         if beside:
-            said.append(f"The model was also shown {self.tables(beside)}, which could have linked them equally well.")
+            said.append(
+                f"The model writing the query was also shown {self.tables(beside)}, which could have linked them "
+                "equally well."
+            )
         return " ".join(said)
 
     # ---- route ------------------------------------------------------------
@@ -644,7 +650,7 @@ class _Teller:
         asked = len(self.generation.attempts)
         if asked > 1:
             earlier = "reply was" if asked == 2 else "replies were"
-            said = f"The model was asked {asked} times; the earlier {earlier} not accepted. {said}"
+            said = f"{_capital(self.writer)} was asked {asked} times; the earlier {earlier} not accepted. {said}"
         return said
 
     def _counted_twice(self, warning) -> str:
@@ -729,16 +735,19 @@ class _Teller:
                 return "No query was written, and no model was asked to write one."
             if self.generation is None:
                 return "No query was written, and no model was asked."
-            return "No query was written: the model said the tables it was shown do not hold the answer."
+            return f"No query was written: {self.writer} said the tables it was shown do not hold the answer."
+        if self.outcome == "model_failed" and self.linking is not None and self.linking.tables is None:
+            # The linking call failed; its fault is in the outcome's message.
+            return "No query was written, and no model was asked to write one."
         if self.outcome == "model_failed":
             return _sentence(f"No query was written: {self.message}")
         if self.validation is not None and self.validation.read_only == "fail":
             return (
-                "No query was run. What the model wrote would have done something other than read the data. "
-                "It was refused, and the model was not asked again."
+                f"No query was run. What {self.writer} wrote would have done something other than read the data. "
+                f"It was refused, and {self.writer} was not asked again."
             )
         asked = len(self.generation.attempts) if self.generation else 0
-        return f"No query was run. What the model wrote was refused {_count(asked, 'time', 'times')}: it was not a query this warehouse could run."
+        return f"No query was run. What {self.writer} wrote was refused {_count(asked, 'time', 'times')}: it was not a query this warehouse could run."
 
     # ---- result -----------------------------------------------------------
 
@@ -762,11 +771,11 @@ class _Teller:
                 shown = self.generation.tables_shown
                 if len(shown) == 1:
                     return (
-                        f"No answer was given. The model was shown one table: {self.table(shown[0])}. It said it does "
+                        f"No answer was given. {_capital(self.writer)} was shown one table: {self.table(shown[0])}. It said it does "
                         "not hold the answer. That is a statement about this table, not about the whole warehouse."
                     )
                 return (
-                    f"No answer was given. The model was shown {len(shown)} tables: {self.tables(shown)}. It said "
+                    f"No answer was given. {_capital(self.writer)} was shown {len(shown)} tables: {self.tables(shown)}. It said "
                     "they do not hold the answer. That is a statement about these tables, not about the whole warehouse."
                 )
             if self.linking is not None and self.linking.tables == []:

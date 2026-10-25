@@ -333,7 +333,8 @@ class TreeExplanation:
         return frozenset(warning.code for warning in self.warnings)
 
 
-def explain_tree(tree: JoinTree, graph: nx.DiGraph) -> TreeExplanation:
+def explain_tree(tree: JoinTree, graph: nx.DiGraph, named: bool = False) -> TreeExplanation:
+    """`named` is true when linking named the tree's anchors (step 10b)."""
     if tree.declined:
         if tree.decline_reason == ANCHORS_NOT_CONNECTED:
             names = ", ".join(_table(graph, table) for table in tree.unconnected)
@@ -348,7 +349,11 @@ def explain_tree(tree: JoinTree, graph: nx.DiGraph) -> TreeExplanation:
     attachments = []
     for attachment in tree.attachments:
         if attachment.path is None:
-            reason = Reason(None, f"Started from {_table(graph, attachment.anchor)}, the table the question matched best.")
+            seed = _table(graph, attachment.anchor)
+            if named:
+                reason = Reason(None, f"Started from {seed}: of the tables named, the question matched it best.")
+            else:
+                reason = Reason(None, f"Started from {seed}, the table the question matched best.")
             attachments.append(ExplainedAttachment(attachment.anchor, attachment.order, None, None, (), reason))
             continue
 

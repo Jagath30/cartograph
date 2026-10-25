@@ -9360,6 +9360,45 @@ the model made when `b81385c` added the rule `model_choice` without
 teaching the narrative. No stored answer was affected: no answer of the
 application has been chosen until now.
 
+### Stop F2: the owner's rulings, and the wording ruled — 25 October 2026
+
+Stop F2 read with the twelve rendered cases (offline, no model call) and
+both pinned answers.
+
+**Ruling 1 corrected.** The ruling at stop F1 read: the $0.50 counts
+every entry the spend ledger gains from the start of F3 to its end, model
+calls and embeddings alike, at uncached prices, inside step 10b's $1.00
+cap. Corrected at F2: `CEILING_USD` stays $0.50 over the whole ledger,
+unchanged; it is the project's safety stop. F3's own budget is $0.05, the
+ledger's gain from F3's start to its end at uncached prices, the total
+read in its own command before and after. If F3 would pass $0.05, or the
+ceiling refuses a call, F3 stops. At F2 the ledger's step10b total was
+$0.28094357 (headroom $0.71905643 under the $1.00 cap) and the whole
+ledger's $0.35769527, which leaves the model client $0.14230473 before
+the ceiling refuses.
+
+**A fault of mine, in the F1 plan.** It said the API's $0.50 ceiling
+covered about 550 uncached questions. The ceiling counts the whole ledger,
+so it covers about 157 at $0.000903 an answer. Item 108.
+
+**The wording ruled at F2**, each only in a trace with linking; version 1
+and 2 answers stay byte for byte as pinned:
+- The three sentences written at step 2 approved as written.
+- The model's decline: "This cannot be answered from the tables found
+  for it: the model writing the query, shown those tables, said they do
+  not hold the answer."
+- Named tables that cannot be linked: "This cannot be answered from the
+  tables named for it: they could not be joined to one another."
+- The seed: "Started from {table}: of the tables named, the question
+  matched it best."
+- Two models can appear in one answer, so the one that writes the SQL is
+  named as such: "The model writing the query" in found, sql and result.
+- A linking call that failed: sql reads "No query was written, and no
+  model was asked to write one."; the fault stays in the outcome's
+  message.
+Each pinned by a test; 13 mutations, one survived at first (a generation
+failure after linking succeeded) and got a test; all caught.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
@@ -10076,3 +10115,8 @@ Deliberate deferrals, recorded while the reasoning is fresh:
      `checkpoint-10-eval` (`41f4ffa`) would have failed CI. The local CI
      check is now CI's own command, and nothing starts after a push until
      the newest run on main is green (Current state).
+108. **`CEILING_USD` counts the whole ledger since the project began**
+     (stop F2). At F2 the ledger held $0.35769527 of the $0.50, so a
+     deployed application would refuse every call after about $0.14 more,
+     about 157 uncached questions (the F1 plan's "about 550" was wrong).
+     **Open for step 12:** replace it with a budget fit for a public demo.

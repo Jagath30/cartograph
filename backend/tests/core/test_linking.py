@@ -211,6 +211,15 @@ def test_retrievals_scores_order_the_anchors_not_the_order_they_were_named(graph
     assert located.tree.seed == "store"
 
 
+def test_the_seed_is_told_as_one_of_the_tables_named(graph) -> None:
+    """The owner's wording at stop F2; without linking it reads as before."""
+    scores = _scores(graph, store=1.0, store_sales=0.9, customer__c_customer_sk=0.0)
+    (seed, *_) = locate_linked("q", ("store_sales", "store"), scores, (), graph, SETTINGS).explanation.attachments
+    assert seed.reason.text == "Started from store: of the tables named, the question matched it best."
+    (seed, *_) = locate("q", scores, (), graph, SETTINGS).explanation.attachments
+    assert seed.reason.text == "Started from store, the table the question matched best."
+
+
 def test_the_questions_wording_still_breaks_a_tie_between_keys(graph) -> None:
     """As in test_locate: the shipping key scored far above the billing key
     decides the tie, and nothing warns."""
