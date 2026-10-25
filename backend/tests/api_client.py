@@ -15,7 +15,7 @@ from app.main import create_app
 from app.orchestrator import Keep, Orchestrator
 from app.shell.accounts import SignedIn
 from app.shell.query_service import QueryService
-from app.shell.snapshot_store import NoCurrentSnapshot
+from app.shell.snapshot_store import NoCurrentSnapshot, StoredSnapshot
 
 ADDRESS = ("catalog_sales", "customer_address")
 URLS = dict(
@@ -31,6 +31,19 @@ class NoSchema:
         raise NoCurrentSnapshot("the application store holds no schema snapshot: nothing has been ingested")
 
 
+class Snapshots:
+    """The schema as stored: the one the scripted pipeline answers over,
+    unless a test names another."""
+
+    def __init__(self, snapshot=None) -> None:
+        from tracing import SNAPSHOT
+
+        self.snapshot = snapshot or SNAPSHOT
+
+    def load_current(self):
+        return StoredSnapshot(7, "abc123", "test", None), self.snapshot
+
+
 class Ticking:
     """A clock for Keep: each question a minute after the one before."""
 
@@ -43,7 +56,7 @@ class Ticking:
 
 
 def service(script, anchors=ADDRESS, executor=None, traces=None, snapshots=None, opened=None, clock=None,
-            **tree_arguments) -> QueryService:  # fmt: skip
+            rerun_executor=None, **tree_arguments) -> QueryService:  # fmt: skip
     traces = traces if traces is not None else Memory()
 
     def open_orchestrator() -> Orchestrator:
@@ -52,7 +65,7 @@ def service(script, anchors=ADDRESS, executor=None, traces=None, snapshots=None,
         keep = Keep(traces, CONTEXT, user_id=1, now=clock or Ticking())
         return orchestrator(script, located(*anchors, **tree_arguments), executor, keep=keep)
 
-    return QueryService(open_orchestrator, traces, snapshots or NoSchema())
+    return QueryService(open_orchestrator, traces, snapshots or NoSchema(), rerun_executor)
 
 
 def client(made: QueryService, user: SignedIn | None = ADA) -> TestClient:

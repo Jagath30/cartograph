@@ -26,7 +26,7 @@ MAX_QUESTION = 500
 ErrorCode = Literal[
     "invalid_request", "not_found", "not_ready", "trace_not_persisted", "internal_error",
     # step 11
-    "not_signed_in", "invalid_credentials", "email_taken", "origin_refused", "json_only",
+    "not_signed_in", "invalid_credentials", "email_taken", "origin_refused", "json_only", "nothing_to_rerun",
 ]  # fmt: skip
 
 Value = str | int | float | bool | None
@@ -107,6 +107,22 @@ class Refused(Exception):
         self.status = status
         self.code = code
         self.message = message
+
+
+class RerunOut(Body):
+    """A stored answer's SQL run again (item 88): the rows as of `ran_at`,
+    not as of the question. Nothing of it is stored. When it is not
+    answered, `code` and `message` are IR-05's."""
+
+    query_id: UUID
+    ran_at: datetime
+    status: Literal["answered", "validation_failed", "execution_failed"]
+    code: str | None
+    message: str | None
+    columns: list[str]
+    rows: list[list[Value]] | None
+    row_count: int | None
+    truncated: bool | None
 
 
 class ErrorOut(Body):
@@ -222,4 +238,16 @@ def history_out(listed) -> HistoryOut:
                    had_ambiguity=row.had_ambiguity)
             for row in listed
         ]
+    )  # fmt: skip
+
+
+def rerun_out(query_id: UUID, ran_at: datetime, rerun) -> RerunOut:
+    ran = rerun.status == "answered"
+    execution = rerun.execution
+    return RerunOut(
+        query_id=query_id, ran_at=ran_at, status=rerun.status, code=rerun.code, message=rerun.message,
+        columns=list(execution.columns) if ran else [],
+        rows=[[value(cell) for cell in row] for row in execution.rows] if ran else None,
+        row_count=execution.row_count if ran else None,
+        truncated=execution.truncated if ran else None,
     )  # fmt: skip

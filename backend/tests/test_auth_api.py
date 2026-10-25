@@ -297,7 +297,7 @@ FOREIGN = ["https://evil.example", "null", "http://localhost:3001", "http://127.
 @pytest.mark.parametrize(
     ("path", "body"),
     [("/api/v1/auth/register", ADA), ("/api/v1/auth/login", ADA), ("/api/v1/auth/logout", None),
-     ("/api/v1/queries", {"question": "Where are buyers billed?"})],
+     ("/api/v1/queries", {"question": "Where are buyers billed?"}), ("/api/v1/queries/00000000-0000-4000-8000-000000000000/rerun", None)],
 )  # fmt: skip
 def test_a_state_changing_request_from_a_foreign_origin_is_refused(accounts, origin, path, body) -> None:
     opened: list = []
@@ -351,6 +351,15 @@ def test_a_body_declared_json_is_taken(accounts, kind) -> None:
     web = served(accounts=accounts)
     content = b'{"email": "ada@example.com", "password": "correct horse battery"}'
     assert web.post("/api/v1/auth/register", content=content, headers={"Content-Type": kind}).status_code == 201
+
+
+def test_logout_and_rerun_take_no_body_and_are_not_refused_for_it(accounts) -> None:
+    """The owner's ruling 3: the JSON-only guard applies to a request
+    that carries a body."""
+    web = signed_in(accounts)
+    rerun = web.post("/api/v1/queries/00000000-0000-4000-8000-000000000000/rerun")
+    assert rerun.status_code == 404
+    assert web.post("/api/v1/auth/logout").status_code == 204
 
 
 def test_cors_names_its_origins_and_never_allows_every_one() -> None:

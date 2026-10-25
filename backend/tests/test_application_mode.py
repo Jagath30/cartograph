@@ -29,7 +29,7 @@ def test_the_api_opens_the_application_mode(monkeypatch) -> None:
 
     asked: list = []
     monkeypatch.setattr(pipeline_session, "open_pipeline", _recording(asked))
-    service = query_service.make_service("postgresql://nowhere/none")
+    service = query_service.make_service("postgresql://nowhere/none", "postgresql://nowhere/none")
     with pytest.raises(query_service.NotReady):
         service.ask("A question?", 1)
     assert asked == ["chosen"]

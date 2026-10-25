@@ -20,16 +20,18 @@ from app.api_models import (
     QuestionIn,
     Refused,
     RegisterIn,
+    RerunOut,
     SchemaOut,
     history_out,
     query_out,
+    rerun_out,
     schema_out,
 )
 from app.auth import COOKIE, AccountsDep, NowDep, UserDep, clear_session, set_session
 from app.config import Settings, get_settings
 from app.shell.accounts import EmailTaken
 from app.shell.probes import check_postgres, check_redis
-from app.shell.query_service import QueryService, make_service
+from app.shell.query_service import NothingToRerun, QueryService, make_service
 
 router = APIRouter(prefix="/api/v1")
 
@@ -40,7 +42,8 @@ SettingsDep = Annotated[Settings, Depends(get_settings)]
 def get_service() -> QueryService:
     """One for the process. Built on first use and opens nothing until a
     request needs it, so that importing the application needs nothing."""
-    return make_service(get_settings().app_database_url)
+    settings = get_settings()
+    return make_service(settings.app_database_url, settings.warehouse_database_url)
 
 
 ServiceDep = Annotated[QueryService, Depends(get_service)]
@@ -161,6 +164,22 @@ def fetch(query_id: UUID, service: ServiceDep, user: UserDep) -> QueryOut:
     if document is None:
         raise HTTPException(status_code=404, detail=f"no query {query_id} is stored")
     return query_out(document, None)
+
+
+@router.post(
+    "/queries/{query_id}/rerun", response_model=RerunOut, responses=ERRORS | {404: {"model": ErrorOut}, 409: {"model": ErrorOut}}
+)
+def rerun(query_id: UUID, service: ServiceDep, user: UserDep, at: NowDep) -> RerunOut:
+    """Item 88: one of the caller's stored answers, its SQL validated
+    again and run now. No model is called; the rows are returned and not
+    stored. Anyone else's is 404."""
+    try:
+        done = service.rerun(query_id, user.user_id)
+    except NothingToRerun:
+        raise Refused(409, "nothing_to_rerun", "This answer has no SQL to run again.") from None
+    if done is None:
+        raise HTTPException(status_code=404, detail=f"no query {query_id} is stored")
+    return rerun_out(query_id, at, done)
 
 
 @router.get("/schema", response_model=SchemaOut, responses=ERRORS)

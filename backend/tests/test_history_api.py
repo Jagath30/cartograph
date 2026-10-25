@@ -52,9 +52,9 @@ def two_users(accounts, script=(), traces=None, opened=None):
 @pytest.mark.parametrize(
     ("method", "path", "body"),
     [("post", "/api/v1/queries", {"question": "Where are buyers billed?"}), ("get", "/api/v1/queries", None),
-     ("get", f"/api/v1/queries/{uuid.uuid4()}", None)],
+     ("get", f"/api/v1/queries/{uuid.uuid4()}", None), ("post", f"/api/v1/queries/{uuid.uuid4()}/rerun", None)],
 )  # fmt: skip
-def test_without_a_session_asking_the_list_and_reading_are_refused(accounts, method, path, body) -> None:
+def test_without_a_session_asking_the_list_reading_and_rerunning_are_refused(accounts, method, path, body) -> None:
     opened: list = []
     web = served(service([reply(BILL)], opened=opened), accounts=accounts)
     response = getattr(web, method)(path, json=body) if body else getattr(web, method)(path)
@@ -93,6 +93,12 @@ def test_another_users_answer_is_a_404_the_same_as_one_that_does_not_exist(accou
     assert theirs.json()["code"] == nobodys.json()["code"] == "not_found"
     assert theirs.json()["message"].replace(asked["query_id"], "ID") == nobodys.json()["message"].replace(nobody, "ID")
     assert "Ada asks?" not in theirs.text
+
+
+def test_another_users_answer_cannot_be_rerun(accounts) -> None:
+    ada, bob, _ = two_users(accounts, [reply(BILL)])
+    asked = ada.post("/api/v1/queries", json={"question": "Ada asks?"}).json()
+    assert bob.post(f"/api/v1/queries/{asked['query_id']}/rerun").status_code == 404
 
 
 def test_the_local_users_queries_are_no_ones_to_read(accounts) -> None:
