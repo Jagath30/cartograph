@@ -1,9 +1,12 @@
-# Pinned from the first successful build. Intent: fastapi, uvicorn[standard], pydantic-settings, psycopg[binary], redis, pytest, httpx, pyyaml, networkx, alembic, sqlalchemy, sqlglot
+# Pinned from the first successful build. Intent: fastapi, uvicorn[standard], pydantic-settings, psycopg[binary], redis, pytest, httpx, pyyaml, networkx, alembic, sqlalchemy, sqlglot, argon2-cffi
 alembic==1.20.0
 annotated-doc==0.0.5
 annotated-types==0.8.0
 anyio==4.15.1
+argon2-cffi-bindings==26.1.0
+argon2-cffi==25.1.0
 certifi==2026.7.22
+cffi==2.1.1
 click==8.5.0
 fastapi==0.141.1
 h11==0.16.0
@@ -19,6 +22,7 @@ packaging==26.3
 pluggy==1.6.0
 psycopg-binary==3.3.5
 psycopg==3.3.5
+pycparser==3.11
 pydantic-settings==2.15.0
 pydantic==2.13.5
 pydantic_core==2.46.5
