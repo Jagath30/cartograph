@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { seconds } from "@/lib/ask/format";
-import { STAGES, stageAt, took } from "@/lib/ask/stages";
+import { STAGES, stageAt, stagesOf, took } from "@/lib/ask/stages";
 
 /**
  * IR-12. While a question is in flight the stage shown is an estimate
@@ -50,10 +50,10 @@ export function StageIndicator({ startedAt }: { startedAt: number }) {
 }
 
 /** What each stage took, from the trace: no longer an estimate. */
-export function StageTimes({ timings }: { timings: Record<string, number> }) {
+export function StageTimes({ timings, traceVersion }: { timings: Record<string, number>; traceVersion: number }) {
   return (
     <ul className="space-y-1 text-sm">
-      {took(timings).map((stage) => (
+      {took(timings, stagesOf(traceVersion)).map((stage) => (
         <li key={stage.label} className="flex justify-between gap-6">
           <span>{stage.label}</span>
           <span className="tabular-nums text-gray-600">{stage.ms === null ? "not reached" : `${stage.ms} ms`}</span>

@@ -2,7 +2,7 @@
 
 import { count, seconds } from "@/lib/ask/format";
 import { alarms, quietWarnings } from "@/lib/ask/warnings";
-import type { TraceDocument } from "@/lib/trace/types";
+import type { DecidedBy, ModelCall, TraceDocument } from "@/lib/trace/types";
 
 import { CopyButton } from "./Actions";
 import { StageTimes } from "./StageIndicator";
@@ -44,6 +44,14 @@ const PARTS: { key: "found" | "route" | "not_taken" | "sql"; label: string }[] =
   { key: "sql", label: "What the query did" },
 ];
 
+/** trace_version 3: the tables were named by a model, not matched (stop F1). */
+const PARTS_LINKED: typeof PARTS = [
+  { key: "found", label: "The tables named for your question" },
+  { key: "route", label: "How it was linked" },
+  { key: "not_taken", label: "What was not used" },
+  { key: "sql", label: "What the query did" },
+];
+
 /**
  * The narrative: the stored plain-English account (FR-26, NFR-17, DD-06).
  * Its strings are shown as they were stored. What came back is told
@@ -54,7 +62,7 @@ export function Narrative({ trace }: { trace: TraceDocument }) {
     <section data-ask="narrative">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">How this answer was reached</h2>
       <dl className="mt-3 space-y-3">
-        {PARTS.map((part) => (
+        {(trace.linking ? PARTS_LINKED : PARTS).map((part) => (
           <div key={part.key}>
             <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">{part.label}</dt>
             <dd className="mt-0.5 text-[15px] leading-relaxed text-gray-900">{trace.narrative[part.key]}</dd>
@@ -85,18 +93,78 @@ const BODY = "rounded-b-md border border-t-0 border-gray-200 bg-white px-4 py-4"
 // takes focus so that it can be scrolled by keyboard (polish D).
 const SIDEWAYS = "mt-2 overflow-x-auto";
 
-/** The first of the two disclosures: what retrieval found, with its scores (FR-09, FR-41). */
+/** One model call of linking or choosing, on one line. */
+function Call({ label, call }: { label: string; call: ModelCall }) {
+  return (
+    <li>
+      <span className="font-medium">{label}:</span> {call.outcome}
+      <span className="text-gray-600">
+        {" "}
+        &middot; {call.returned_model ?? call.requested_model} &middot; {count(call.tokens_in)} tokens in,{" "}
+        {count(call.tokens_out)} out &middot; ${call.cost_usd.toFixed(6)} &middot; {seconds(call.duration_ms)}
+      </span>
+      {(call.fault ?? call.failure) && <span className="block text-red-800">{call.fault ?? call.failure}</span>}
+    </li>
+  );
+}
+
+/** The owner's words at stop F1. */
+export const SCORES_LINE =
+  "Retrieval's scores do not choose the tables: they set the order in which the tables are joined, and weigh the wording of your question where it points to one key over another.";
+
+/** trace_version 3: what the model, shown every table, named (stop F1). */
+function Named({ linking }: { linking: NonNullable<TraceDocument["linking"]> }) {
+  return (
+    <>
+      <h3 className={HEAD}>The tables the model named</h3>
+      <p className="mt-2 text-sm">
+        {linking.tables === null ? (
+          "No reply of the form asked for came back."
+        ) : linking.tables.length === 0 ? (
+          "None: the model named no table that holds the answer."
+        ) : (
+          <span className="font-mono text-xs">{linking.tables.join(", ")}</span>
+        )}
+      </p>
+      <ul className="mt-2 space-y-2 text-sm">
+        {linking.attempts.map((attempt) => (
+          <Call key={attempt.number} label={`Naming, attempt ${attempt.number}`} call={attempt} />
+        ))}
+      </ul>
+      <details className="mt-3">
+        <summary className="cursor-pointer text-sm text-gray-700">The naming prompt, as it was sent</summary>
+        <Code label="The naming prompt's system message">{linking.prompt_system}</Code>
+        <p className="mt-2 break-all text-sm text-gray-700">
+          The user message held every table and key of the warehouse, and the question. It is kept by its sha256,{" "}
+          <span className="font-mono text-xs">{linking.prompt_user_sha256}</span>, and is rebuilt from schema snapshot{" "}
+          <span className="font-mono text-xs">{linking.snapshot_hash.slice(0, 12)}</span> and the question.
+        </p>
+      </details>
+    </>
+  );
+}
+
+/** The first of the two disclosures: what retrieval found, with its scores
+ *  (FR-09, FR-41); at trace_version 3, the tables the model named first. */
 function Retrieved({ trace }: { trace: TraceDocument }) {
   const retrieval = trace.retrieval;
   const bound = trace.paths?.subgraph_bound;
+  const linking = trace.linking;
+  const named = linking?.tables ?? [];
   return (
     <details data-ask="retrieved">
-      <summary className={SUMMARY}>Tables and columns retrieved, with scores</summary>
+      <summary className={SUMMARY}>
+        {linking ? "How the tables were found: the model's naming, and retrieval's scores" : "Tables and columns retrieved, with scores"}
+      </summary>
       <div className={BODY}>
+        {linking && <Named linking={linking} />}
         {!retrieval ? (
-          <p className="text-sm text-gray-600">This trace holds no retrieval.</p>
+          <p className={linking ? "mt-6 text-sm text-gray-600" : "text-sm text-gray-600"}>This trace holds no retrieval.</p>
         ) : (
           <>
+            {linking && (
+              <p className="mt-6 text-sm text-gray-700">{SCORES_LINE}</p>
+            )}
             <h3 className={HEAD}>Tables, by score</h3>
             <div className={SIDEWAYS} role="region" aria-label="Tables, by score" tabIndex={0}>
             <table className="text-sm">
@@ -116,20 +184,31 @@ function Retrieved({ trace }: { trace: TraceDocument }) {
                       <Score value={entry.score} />
                     </td>
                     <td className="pr-6 font-mono text-xs text-gray-600">{entry.best}</td>
-                    <td className="text-xs text-gray-600">{retrieval.anchors.includes(entry.table) ? "anchor" : ""}</td>
+                    <td className="text-xs text-gray-600">
+                      {linking ? (named.includes(entry.table) ? "named" : "") : retrieval.anchors.includes(entry.table) ? "anchor" : ""}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             </div>
-            <p className="mt-2 text-sm text-gray-700">
-              A table is an anchor from a score of <Score value={retrieval.anchor_bound.cut} />, and at most{" "}
-              {retrieval.anchor_bound.cap} are taken.
-              {bound && ` The plan may hold ${bound.limit} tables.`}
-            </p>
-            <Listed label="Left out by the limit on anchors" items={retrieval.anchor_bound.excluded_by_cap} />
-            <Listed label="Set aside as rivals of a table taken" items={retrieval.anchor_bound.set_aside_as_rivals} />
-            <Listed label="Anchors dropped to keep the plan within its limit" items={bound?.dropped_anchors ?? []} />
+            {linking ? (
+              bound && <p className="mt-2 text-sm text-gray-700">The plan may hold {bound.limit} tables.</p>
+            ) : (
+              <>
+                <p className="mt-2 text-sm text-gray-700">
+                  A table is an anchor from a score of <Score value={retrieval.anchor_bound.cut} />, and at most{" "}
+                  {retrieval.anchor_bound.cap} are taken.
+                  {bound && ` The plan may hold ${bound.limit} tables.`}
+                </p>
+                <Listed label="Left out by the limit on anchors" items={retrieval.anchor_bound.excluded_by_cap} />
+                <Listed label="Set aside as rivals of a table taken" items={retrieval.anchor_bound.set_aside_as_rivals} />
+              </>
+            )}
+            <Listed
+              label={linking ? "Named tables dropped to keep the plan within its limit" : "Anchors dropped to keep the plan within its limit"}
+              items={bound?.dropped_anchors ?? []}
+            />
             <Listed label="Tables the limit kept out" items={bound?.excluded ?? []} />
 
             <h3 className={HEAD}>What each word of the question was weighed against</h3>
@@ -202,6 +281,66 @@ function Retrieved({ trace }: { trace: TraceDocument }) {
   );
 }
 
+/** trace_version 3: who decided each attachment, in words (stop F1). */
+export const DECIDED_BY: Record<DecidedBy, string> = {
+  only_path: "the only route",
+  shortest: "the shortest route",
+  wording: "the wording of your question",
+  declared_default: "this warehouse's declared default",
+  model_reading: "a language model reading your question",
+  alphabet: "the alphabet: no basis",
+};
+
+const SETTLED: Record<NonNullable<TraceDocument["choosing"]>["choices"][number]["outcome"], string> = {
+  applied: "the route named was taken",
+  left_open: "no route was named, and the choice was left to the alphabet",
+  not_met: "the route named could not be taken, and the choice was left to the alphabet",
+};
+
+/** trace_version 3: each choice the rules left open, as it was put to the
+ *  model, and what it named. */
+function Choices({ choosing }: { choosing: NonNullable<TraceDocument["choosing"]> }) {
+  return (
+    <>
+      <h3 className={HEAD}>What the model was asked about the choices the rules left open</h3>
+      <ul className="mt-2 space-y-3 text-sm">
+        {choosing.choices.map((choice) => (
+          <li key={choice.number}>
+            <ul className="space-y-1">
+              {choice.alternatives.map((alternative) => (
+                <li key={alternative.letter}>
+                  <span className="font-mono text-xs">{choice.anchor}</span>: {alternative.letter}.{" "}
+                  <span className="font-mono text-xs">{alternative.route_id}</span> &mdash; {alternative.description}{" "}
+                  <span className="text-gray-600">
+                    &middot; {choice.named === alternative.letter ? "named" : "not named"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <span className="mt-1 block text-gray-700">Outcome: {SETTLED[choice.outcome]}.</span>
+          </li>
+        ))}
+      </ul>
+      {choosing.arose.length > 0 && (
+        <Listed label="Choices that arose after the rebuild, never asked about" items={choosing.arose.map((arose) => arose.anchor)} />
+      )}
+      {choosing.fault && <p className="mt-2 text-sm text-red-800">Every choice was left open: {choosing.fault}</p>}
+      <ul className="mt-2 space-y-2 text-sm">
+        {choosing.attempts.map((attempt) => (
+          <Call key={attempt.number} label={`Choosing, attempt ${attempt.number}`} call={attempt} />
+        ))}
+      </ul>
+      {choosing.prompt_system && choosing.prompt_user && (
+        <details className="mt-3">
+          <summary className="cursor-pointer text-sm text-gray-700">The choosing prompt, exactly as it was sent</summary>
+          <Code label="The choosing prompt's system message">{choosing.prompt_system}</Code>
+          <Code label="The choosing prompt's user message">{choosing.prompt_user}</Code>
+        </details>
+      )}
+    </>
+  );
+}
+
 // Code keeps its lines: a wide one scrolls sideways inside its own box.
 const CODE = "mt-2 overflow-x-auto whitespace-pre rounded bg-gray-50 p-3 font-mono text-xs text-gray-900";
 
@@ -233,7 +372,8 @@ function Generated({ trace }: { trace: TraceDocument }) {
         {generation && (
           <>
             <h3 className={HEAD}>
-              The model was asked {generation.attempts.length} {generation.attempts.length === 1 ? "time" : "times"}
+              {trace.linking ? "The model writing the query" : "The model"} was asked {generation.attempts.length}{" "}
+              {generation.attempts.length === 1 ? "time" : "times"}
             </h3>
             <ul className="mt-2 space-y-2 text-sm">
               {generation.attempts.map((attempt) => (
@@ -314,12 +454,17 @@ function Generated({ trace }: { trace: TraceDocument }) {
                     </>
                   )}
                   {attachment.rule && <span className="text-gray-600"> &middot; rule: {attachment.rule}</span>}
+                  {attachment.decided_by && (
+                    <span className="block text-gray-600">Decided by: {DECIDED_BY[attachment.decided_by]}</span>
+                  )}
                   <span className="block text-gray-800">{attachment.reason}</span>
                 </li>
               ))}
             </ul>
           </>
         )}
+
+        {trace.choosing && trace.choosing.choices.length > 0 && <Choices choosing={trace.choosing} />}
 
         {quiet.length > 0 && (
           <>
@@ -339,7 +484,7 @@ function Generated({ trace }: { trace: TraceDocument }) {
 
         <h3 className={HEAD}>Timings</h3>
         <div className="mt-2 max-w-xl">
-          <StageTimes timings={trace.timings} />
+          <StageTimes timings={trace.timings} traceVersion={trace.trace_version} />
           <p className="mt-1 flex justify-between gap-6 border-t pt-1 text-sm font-medium">
             <span>In all</span>
             <span className="tabular-nums">{trace.duration_ms} ms</span>

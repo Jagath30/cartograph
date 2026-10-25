@@ -42,7 +42,7 @@ function Answer({ result, stored }: { result: QueryOut; stored: boolean }) {
         ending={{
           tone: "failed",
           title: `This trace is version ${trace.trace_version}`,
-          lines: [`This page reads versions ${READABLE_VERSIONS.join(" and ")}.`],
+          lines: [`This page reads versions ${READABLE_VERSIONS.slice(0, -1).join(", ")} and ${READABLE_VERSIONS.at(-1)}.`],
         }}
       />
     );

@@ -5,6 +5,11 @@
  *
  * trace_version 2 adds `plain` to a warning. A trace stored at version 1
  * has none, and is read as it was written (DD-06, DD-07).
+ *
+ * trace_version 3 (step 10b, v2.1) adds `linking`, `choosing` and each
+ * attachment's `decided_by`. The backend leaves each out when absent, so
+ * every one is optional here, and a trace of version 1 or 2 is read as it
+ * was written.
  */
 
 export type Outcome = "answered" | "not_answerable" | "validation_failed" | "model_failed" | "execution_failed";
@@ -14,7 +19,7 @@ export type EdgeUse = "present" | "partial" | "missing";
 export type KeySource = "catalog" | "overlay";
 
 /** The versions this page can draw. */
-export const READABLE_VERSIONS = [1, 2];
+export const READABLE_VERSIONS = [1, 2, 3];
 
 export type SchemaRef = { snapshot_id: number | null; hash: string; preferences_hash: string };
 
@@ -101,6 +106,9 @@ export type Join = SchemaEdge & { walked: string; description: string };
 export type Route = { id: string; tables: string[]; length: number; joins: Join[]; description: string };
 export type Alternative = Route & { status: "tied" | "withdrawn" };
 
+/** trace_version 3: who decided an attachment, from its rule. */
+export type DecidedBy = "only_path" | "shortest" | "wording" | "declared_default" | "model_reading" | "alphabet";
+
 export type Attachment = {
   anchor: string;
   anchor_readable: string;
@@ -113,6 +121,8 @@ export type Attachment = {
   discovered: number;
   selected: Route | null;
   alternatives: Alternative[];
+  /** trace_version 3. Absent before it, and for the seed. */
+  decided_by?: DecidedBy | null;
 };
 
 export type SelectedEdge = SchemaEdge & { use: EdgeUse | null };
@@ -211,6 +221,66 @@ export type Execution = {
   error: string | null;
 };
 
+/** One model call of linking or choosing: what it sent beyond the one
+ *  before, what came back, and what it cost. */
+export type ModelCall = {
+  number: number;
+  outcome: string;
+  messages_added: Message[];
+  reply: string | null;
+  fault: string | null;
+  requested_model: string;
+  returned_model: string | null;
+  fingerprint: string | null;
+  tokens_in: number;
+  tokens_cached: number;
+  tokens_out: number;
+  cost_usd: number;
+  duration_ms: number;
+  failure: string | null;
+  failure_class: string | null;
+};
+
+export type LinkAttempt = ModelCall & { tables: string[] };
+
+/** trace_version 3: how the tables were found. The user message is kept by
+ *  its sha256: it is rebuilt from the snapshot of that hash and the question. */
+export type Linking = {
+  prompt_system: string;
+  prompt_user_sha256: string;
+  snapshot_hash: string;
+  /** [] for the decline at linking; null when no reply of the form asked for came back. */
+  tables: string[] | null;
+  attempts: LinkAttempt[];
+};
+
+export type ChoiceOffered = { letter: string; route_id: string; description: string };
+
+export type ChoiceAsked = {
+  number: number;
+  anchor: string;
+  attached_to: string;
+  alternatives: ChoiceOffered[];
+  alphabet: string;
+  named: string | null;
+  named_route: string | null;
+  outcome: "applied" | "left_open" | "not_met";
+};
+
+export type ChoiceArose = { anchor: string; attached_to: string; alternatives: string[] };
+
+export type ChooseAttempt = ModelCall & { named: (string | null)[] };
+
+/** trace_version 3: the choices the rules left open, put to the model. */
+export type Choosing = {
+  prompt_system: string | null;
+  prompt_user: string | null;
+  choices: ChoiceAsked[];
+  arose: ChoiceArose[];
+  attempts: ChooseAttempt[];
+  fault: string | null;
+};
+
 export type Narrative = { found: string; route: string; not_taken: string; sql: string; result: string };
 
 export type TraceDocument = {
@@ -237,6 +307,9 @@ export type TraceDocument = {
   had_ambiguity: boolean;
   duration_ms: number;
   narrative: Narrative;
+  /** trace_version 3. */
+  linking?: Linking;
+  choosing?: Choosing;
 };
 
 /** One cell of a result. A numeric arrives as text, exact; a date in ISO form. */

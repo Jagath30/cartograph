@@ -1,0 +1,72 @@
+{
+  "trace_version": 3,
+  "query_id": "00000000-0000-4000-8000-000000000001",
+  "user_id": 1,
+  "question": "Which customers abandoned their carts?",
+  "created_at": "2026-10-10T12:00:00Z",
+  "outcome": "not_answerable",
+  "code": "question_not_answerable",
+  "message": "This cannot be answered from this schema: shown every table, the model named none that holds the answer.",
+  "schema_ref": {
+    "snapshot_id": 7,
+    "hash": "abc123",
+    "preferences_hash": "59022985a4452cb3ff99b618dd7a2cf90663df78be9e6c5bb78198a9474d1c26"
+  },
+  "settings": {
+    "alpha": null,
+    "anchor_cut": null,
+    "anchor_cap": null,
+    "margin": null,
+    "subgraph_bound": 10,
+    "max_joins": 3,
+    "model": "fake-scripted",
+    "temperature": 0.0
+  },
+  "retrieval": null,
+  "subgraph": null,
+  "paths": null,
+  "generation": null,
+  "validation": null,
+  "execution": null,
+  "timings": {
+    "link": 0
+  },
+  "tokens_in": 0,
+  "tokens_out": 0,
+  "cost_usd": 0.0,
+  "had_ambiguity": false,
+  "duration_ms": 0,
+  "narrative": {
+    "found": "A language model, shown all 24 tables, named none that holds the answer.",
+    "route": "No plan was made.",
+    "not_taken": "No plan was made, so nothing was set aside.",
+    "sql": "No query was written, and no model was asked to write one.",
+    "result": "No query was written. The model was shown every table of the warehouse, and named none that holds the answer."
+  },
+  "linking": {
+    "prompt_system": "You name the tables of a data warehouse that a question needs.\n\nYou are given the tables as CREATE TABLE statements, then the keys by which they can be joined. The comment above each table and after each column says what it holds.\n\nRules:\n- Name every table a query answering the question would read, including a table needed only to join two others.\n- Name no other table.\n- Use only the table names given.\n- If the question cannot be answered from these tables, do not guess: name none.\n\nReply with one JSON object and nothing else:\n  {\"tables\": [\"<table name>\", ...]}\nor, when the question cannot be answered from these tables:\n  {\"tables\": []}\nDo not explain.",
+    "prompt_user_sha256": "37ac747a4c585824621391971d3f2091bd40d90e04bf16d08124c1a4d3184b95",
+    "snapshot_hash": "abc123",
+    "tables": [],
+    "attempts": [
+      {
+        "number": 1,
+        "outcome": "none",
+        "messages_added": [],
+        "reply": "{\"tables\": []}",
+        "tables": [],
+        "fault": null,
+        "requested_model": "fake-scripted",
+        "returned_model": "fake-scripted",
+        "fingerprint": null,
+        "tokens_in": 0,
+        "tokens_cached": 0,
+        "tokens_out": 0,
+        "cost_usd": 0.0,
+        "duration_ms": 0,
+        "failure": null,
+        "failure_class": null
+      }
+    ]
+  }
+}

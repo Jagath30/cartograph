@@ -1,0 +1,1180 @@
+<section class="rounded-md border-2 border-amber-400 bg-amber-50 p-6 text-amber-950" role="alert" data-ask="amber"><h2 class="text-base font-semibold">This answer rests on 2 choices the system had no basis for</h2><ul class="mt-2 space-y-2"><li class="text-[15px] leading-relaxed">This answer uses the billed customer&#x27;s demographics. It could equally have used the shipped-to customer&#x27;s; nothing in your question said which. If you meant the other, the answer may differ.</li><li class="text-[15px] leading-relaxed">This answer uses the web sale&#x27;s date of sale, not the web page&#x27;s date of last access as planned. They were equally valid; nothing in your question said which. If you meant the other, the answer may differ.</li></ul></section>
+
+<section data-ask="narrative"><h2 class="text-sm font-semibold uppercase tracking-wide text-gray-600">How this answer was reached</h2><dl class="mt-3 space-y-3"><div><dt class="text-xs font-medium uppercase tracking-wide text-gray-500">What your question matched</dt><dd class="mt-0.5 text-[15px] leading-relaxed text-gray-900">Your question matched 5 tables: web sales, web returns, customer demographics, web page and calendar dates.</dd></div><div><dt class="text-xs font-medium uppercase tracking-wide text-gray-500">How it was linked</dt><dd class="mt-0.5 text-[15px] leading-relaxed text-gray-900">The answer links each web sale to the billed customer&#x27;s demographics. A preference declared for this warehouse set aside 2 readings, because a return refers to its sale, so whatever either could carry is taken to describe the sale (an operator&#x27;s default). 1 other remained equally possible; nothing in your question said which you meant, so the choice was made alphabetically: it is arbitrary. It also links each web page to its date of last access. A preference declared for this warehouse set aside 2 readings, for the reason already given and because a question that names no date means the date of sale (an operator&#x27;s default). 2 others remained equally possible; nothing in your question said which you meant, so the choice was made alphabetically: it is arbitrary. The plan also brought in web returns and web page; the query did not use them.</dd></div><div><dt class="text-xs font-medium uppercase tracking-wide text-gray-500">What was not used</dt><dd class="mt-0.5 text-[15px] leading-relaxed text-gray-900">Not used: the shipped-to customer&#x27;s demographics, the creation date and the web sale&#x27;s date of sale. If you meant one of those, the answer may differ; ask again naming it. The query itself used one of these and not the one planned. Set aside by declared preference: the web return&#x27;s refunded and returning customers&#x27; demographics; the web return&#x27;s date of return; and the web sale&#x27;s ship date. 636 longer routes also existed; the shortest was used. Other choices were made in the part of the plan the query did not use; they did not affect this answer.</dd></div><div><dt class="text-xs font-medium uppercase tracking-wide text-gray-500">What the query did</dt><dd class="mt-0.5 text-[15px] leading-relaxed text-gray-900">The query did not follow this plan. It linked each web sale to its date of sale, which the plan did not choose. Planned and not used: the link from each web return to its web sale, the link from each web sale to its web page and the link from each web page to its date of last access.</dd></div></dl></section>
+
+<div class="space-y-3"><details data-ask="retrieved"><summary class="cursor-pointer select-none rounded-md border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50">Tables and columns retrieved, with scores</summary><div class="rounded-b-md border border-t-0 border-gray-200 bg-white px-4 py-4"><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">Tables, by score</h3><div class="mt-2 overflow-x-auto" role="region" aria-label="Tables, by score" tabindex="0"><table class="text-sm"><thead class="text-left text-xs text-gray-500"><tr><th class="pr-6 font-medium">table</th><th class="pr-6 font-medium">score</th><th class="pr-6 font-medium">best element</th><th class="font-medium"> </th></tr></thead><tbody><tr><td class="pr-6 font-mono text-xs">web_sales</td><td class="pr-6"><span class="tabular-nums">0.919</span></td><td class="pr-6 font-mono text-xs text-gray-600">web_sales.ws_net_paid</td><td class="text-xs text-gray-600">anchor</td></tr><tr><td class="pr-6 font-mono text-xs">web_returns</td><td class="pr-6"><span class="tabular-nums">0.840</span></td><td class="pr-6 font-mono text-xs text-gray-600">web_returns.wr_fee</td><td class="text-xs text-gray-600">anchor</td></tr><tr><td class="pr-6 font-mono text-xs">web_site</td><td class="pr-6"><span class="tabular-nums">0.802</span></td><td class="pr-6 font-mono text-xs text-gray-600">web_site.web_tax_percentage</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">customer_demographics</td><td class="pr-6"><span class="tabular-nums">0.796</span></td><td class="pr-6 font-mono text-xs text-gray-600">customer_demographics.cd_gender</td><td class="text-xs text-gray-600">anchor</td></tr><tr><td class="pr-6 font-mono text-xs">web_page</td><td class="pr-6"><span class="tabular-nums">0.768</span></td><td class="pr-6 font-mono text-xs text-gray-600">web_page</td><td class="text-xs text-gray-600">anchor</td></tr><tr><td class="pr-6 font-mono text-xs">date_dim</td><td class="pr-6"><span class="tabular-nums">0.584</span></td><td class="pr-6 font-mono text-xs text-gray-600">date_dim</td><td class="text-xs text-gray-600">anchor</td></tr><tr><td class="pr-6 font-mono text-xs">customer</td><td class="pr-6"><span class="tabular-nums">0.523</span></td><td class="pr-6 font-mono text-xs text-gray-600">customer.c_birth_year</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">household_demographics</td><td class="pr-6"><span class="tabular-nums">0.352</span></td><td class="pr-6 font-mono text-xs text-gray-600">household_demographics.hd_buy_potential</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">catalog_sales</td><td class="pr-6"><span class="tabular-nums">0.318</span></td><td class="pr-6 font-mono text-xs text-gray-600">catalog_sales.cs_net_paid_inc_ship</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">store_sales</td><td class="pr-6"><span class="tabular-nums">0.280</span></td><td class="pr-6 font-mono text-xs text-gray-600">store_sales.ss_net_paid</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">promotion</td><td class="pr-6"><span class="tabular-nums">0.224</span></td><td class="pr-6 font-mono text-xs text-gray-600">promotion.p_channel_dmail</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">catalog_returns</td><td class="pr-6"><span class="tabular-nums">0.219</span></td><td class="pr-6 font-mono text-xs text-gray-600">catalog_returns.cr_returning_hdemo_sk</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">item</td><td class="pr-6"><span class="tabular-nums">0.203</span></td><td class="pr-6 font-mono text-xs text-gray-600">item.i_wholesale_cost</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">store_returns</td><td class="pr-6"><span class="tabular-nums">0.200</span></td><td class="pr-6 font-mono text-xs text-gray-600">store_returns.sr_hdemo_sk</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">income_band</td><td class="pr-6"><span class="tabular-nums">0.198</span></td><td class="pr-6 font-mono text-xs text-gray-600">income_band</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">call_center</td><td class="pr-6"><span class="tabular-nums">0.195</span></td><td class="pr-6 font-mono text-xs text-gray-600">call_center.cc_tax_percentage</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">catalog_page</td><td class="pr-6"><span class="tabular-nums">0.178</span></td><td class="pr-6 font-mono text-xs text-gray-600">catalog_page.cp_department</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">customer_address</td><td class="pr-6"><span class="tabular-nums">0.165</span></td><td class="pr-6 font-mono text-xs text-gray-600">customer_address.ca_country</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">store</td><td class="pr-6"><span class="tabular-nums">0.136</span></td><td class="pr-6 font-mono text-xs text-gray-600">store.s_tax_percentage</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">ship_mode</td><td class="pr-6"><span class="tabular-nums">0.136</span></td><td class="pr-6 font-mono text-xs text-gray-600">ship_mode.sm_code</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">warehouse</td><td class="pr-6"><span class="tabular-nums">0.122</span></td><td class="pr-6 font-mono text-xs text-gray-600">warehouse.w_zip</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">time_dim</td><td class="pr-6"><span class="tabular-nums">0.095</span></td><td class="pr-6 font-mono text-xs text-gray-600">time_dim.t_am_pm</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">reason</td><td class="pr-6"><span class="tabular-nums">0.058</span></td><td class="pr-6 font-mono text-xs text-gray-600">reason.r_reason_desc</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">inventory</td><td class="pr-6"><span class="tabular-nums">0.056</span></td><td class="pr-6 font-mono text-xs text-gray-600">inventory.inv_date_sk</td><td class="text-xs text-gray-600"></td></tr></tbody></table></div><p class="mt-2 text-sm text-gray-700">A table is an anchor from a score of <span class="tabular-nums">0.500</span>, and at most 5 are taken. The plan may hold 10 tables.</p><p class="mt-2 text-sm"><span class="text-gray-600">Left out by the limit on anchors:</span> <span class="font-mono text-xs">customer</span></p><p class="mt-2 text-sm"><span class="text-gray-600">Set aside as rivals of a table taken:</span> <span class="font-mono text-xs">web_site</span></p><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">What each word of the question was weighed against</h3><ul class="mt-2 space-y-1.5 text-sm"><li><span class="font-medium">“gender”</span> <span class="text-gray-600">chose</span> <span class="font-mono text-xs">customer_demographics.cd_gender</span><span class="text-gray-600"> over customer_demographics 0.796, customer_demographics.cd_marital_status 0.311, ship_mode.sm_code 0.300, customer_demographics.cd_education_status 0.297</span></li><li><span class="font-medium">“spent”</span> <span class="text-gray-600">chose</span> <span class="font-mono text-xs">store.s_rec_end_date</span><span class="text-gray-600"> over web_sales 0.490, store_sales 0.474, store.s_county 0.444, store_returns 0.439</span></li><li><span class="font-medium">“web”</span> <span class="text-gray-600">chose</span> <span class="font-mono text-xs">web_page.wp_url</span><span class="text-gray-600"> over web_page.wp_web_page_id 0.947, web_site.web_city 0.930, web_page.wp_type 0.922, web_site.web_class 0.918</span></li><li><span class="font-medium">“year”</span> <span class="text-gray-600">chose</span> <span class="font-mono text-xs">date_dim</span><span class="text-gray-600"> over date_dim.d_year 0.835, date_dim.d_fy_year 0.820, customer.c_birth_year 0.817, date_dim.d_qoy 0.774</span></li><li><span class="font-medium">“2002”</span> <span class="text-gray-600">chose</span> <span class="font-mono text-xs">customer.c_birth_year</span><span class="text-gray-600"> over date_dim.d_year 0.456, date_dim.d_current_year 0.445, call_center.cc_rec_start_date 0.439, call_center.cc_rec_end_date 0.435</span></li><li><span class="font-medium">“gender spent”</span> <span class="text-gray-600">chose</span> <span class="font-mono text-xs">customer_demographics.cd_gender</span><span class="text-gray-600"> over customer_demographics 0.777, customer_demographics.cd_marital_status 0.264, time_dim.t_shift 0.253, customer_demographics.cd_education_status 0.246</span></li><li><span class="font-medium">“year 2002”</span> <span class="text-gray-600">chose</span> <span class="font-mono text-xs">customer.c_birth_year</span><span class="text-gray-600"> over date_dim.d_year 0.774, date_dim 0.766, date_dim.d_fy_year 0.755, date_dim.d_current_year 0.709</span></li></ul><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">Close calls</h3><ul class="mt-2 list-disc space-y-1 pl-5 text-sm"><li>&quot;web&quot; in the question could as well mean web site. web page was used: it scored 0.959 against 0.930, too close to tell apart. web site is not part of this answer.</li></ul><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">The 50 best-scored of 449 tables and columns</h3><div class="mt-2 overflow-x-auto" role="region" aria-label="The best-scored tables and columns" tabindex="0"><table class="text-sm"><thead class="text-left text-xs text-gray-500"><tr><th class="pr-6 font-medium">rank</th><th class="pr-6 font-medium">element</th><th class="pr-6 font-medium">by meaning</th><th class="pr-6 font-medium">by wording</th><th class="font-medium">combined</th></tr></thead><tbody><tr><td class="pr-6 tabular-nums text-gray-600">1</td><td class="pr-6 font-mono text-xs">web_sales.ws_net_paid</td><td class="pr-6"><span class="tabular-nums">1.000</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.919</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">2</td><td class="pr-6 font-mono text-xs">web_sales.ws_bill_hdemo_sk</td><td class="pr-6"><span class="tabular-nums">0.978</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.908</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">3</td><td class="pr-6 font-mono text-xs">web_sales.ws_net_profit</td><td class="pr-6"><span class="tabular-nums">0.966</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.902</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">4</td><td class="pr-6 font-mono text-xs">web_sales.ws_net_paid_inc_tax</td><td class="pr-6"><span class="tabular-nums">0.950</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.894</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">5</td><td class="pr-6 font-mono text-xs">web_sales.ws_net_paid_inc_ship</td><td class="pr-6"><span class="tabular-nums">0.939</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.888</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">6</td><td class="pr-6 font-mono text-xs">web_sales.ws_net_paid_inc_ship_tax</td><td class="pr-6"><span class="tabular-nums">0.897</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.868</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">7</td><td class="pr-6 font-mono text-xs">web_sales.ws_coupon_amt</td><td class="pr-6"><span class="tabular-nums">0.896</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.867</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">8</td><td class="pr-6 font-mono text-xs">web_sales.ws_sales_price</td><td class="pr-6"><span class="tabular-nums">0.894</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.866</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">9</td><td class="pr-6 font-mono text-xs">web_sales.ws_wholesale_cost</td><td class="pr-6"><span class="tabular-nums">0.884</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.861</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">10</td><td class="pr-6 font-mono text-xs">web_sales.ws_ext_wholesale_cost</td><td class="pr-6"><span class="tabular-nums">0.873</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.856</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">11</td><td class="pr-6 font-mono text-xs">web_sales.ws_quantity</td><td class="pr-6"><span class="tabular-nums">0.873</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.856</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">12</td><td class="pr-6 font-mono text-xs">web_sales.ws_list_price</td><td class="pr-6"><span class="tabular-nums">0.869</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.854</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">13</td><td class="pr-6 font-mono text-xs">web_sales.ws_ship_hdemo_sk</td><td class="pr-6"><span class="tabular-nums">0.868</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.853</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">14</td><td class="pr-6 font-mono text-xs">web_sales.ws_ext_tax</td><td class="pr-6"><span class="tabular-nums">0.853</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.845</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">15</td><td class="pr-6 font-mono text-xs">web_sales</td><td class="pr-6"><span class="tabular-nums">0.844</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.841</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">16</td><td class="pr-6 font-mono text-xs">web_returns.wr_fee</td><td class="pr-6"><span class="tabular-nums">0.842</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.840</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">17</td><td class="pr-6 font-mono text-xs">web_sales.ws_bill_cdemo_sk</td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.838</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">18</td><td class="pr-6 font-mono text-xs">web_returns.wr_returning_hdemo_sk</td><td class="pr-6"><span class="tabular-nums">0.835</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.837</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">19</td><td class="pr-6 font-mono text-xs">web_sales.ws_ext_list_price</td><td class="pr-6"><span class="tabular-nums">0.833</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.836</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">20</td><td class="pr-6 font-mono text-xs">web_returns.wr_refunded_hdemo_sk</td><td class="pr-6"><span class="tabular-nums">0.830</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.834</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">21</td><td class="pr-6 font-mono text-xs">web_returns.wr_net_loss</td><td class="pr-6"><span class="tabular-nums">0.824</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.831</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">22</td><td class="pr-6 font-mono text-xs">web_returns.wr_return_amt</td><td class="pr-6"><span class="tabular-nums">0.820</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.829</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">23</td><td class="pr-6 font-mono text-xs">web_sales.ws_ext_discount_amt</td><td class="pr-6"><span class="tabular-nums">0.817</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.828</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">24</td><td class="pr-6 font-mono text-xs">web_sales.ws_web_page_sk</td><td class="pr-6"><span class="tabular-nums">0.743</span></td><td class="pr-6"><span class="tabular-nums">0.913</span></td><td><span class="tabular-nums">0.828</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">25</td><td class="pr-6 font-mono text-xs">web_sales.ws_ext_sales_price</td><td class="pr-6"><span class="tabular-nums">0.806</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.822</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">26</td><td class="pr-6 font-mono text-xs">web_sales.ws_web_site_sk</td><td class="pr-6"><span class="tabular-nums">0.721</span></td><td class="pr-6"><span class="tabular-nums">0.913</span></td><td><span class="tabular-nums">0.817</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">27</td><td class="pr-6 font-mono text-xs">web_returns.wr_return_amt_inc_tax</td><td class="pr-6"><span class="tabular-nums">0.787</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.813</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">28</td><td class="pr-6 font-mono text-xs">web_sales.ws_ext_ship_cost</td><td class="pr-6"><span class="tabular-nums">0.783</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.811</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">29</td><td class="pr-6 font-mono text-xs">web_returns.wr_refunded_cash</td><td class="pr-6"><span class="tabular-nums">0.781</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.810</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">30</td><td class="pr-6 font-mono text-xs">web_sales.ws_ship_cdemo_sk</td><td class="pr-6"><span class="tabular-nums">0.777</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.808</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">31</td><td class="pr-6 font-mono text-xs">web_returns</td><td class="pr-6"><span class="tabular-nums">0.773</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.806</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">32</td><td class="pr-6 font-mono text-xs">web_site.web_tax_percentage</td><td class="pr-6"><span class="tabular-nums">0.767</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.802</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">33</td><td class="pr-6 font-mono text-xs">web_returns.wr_return_ship_cost</td><td class="pr-6"><span class="tabular-nums">0.765</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.802</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">34</td><td class="pr-6 font-mono text-xs">web_returns.wr_account_credit</td><td class="pr-6"><span class="tabular-nums">0.764</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.801</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">35</td><td class="pr-6 font-mono text-xs">web_returns.wr_reversed_charge</td><td class="pr-6"><span class="tabular-nums">0.764</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.801</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">36</td><td class="pr-6 font-mono text-xs">web_returns.wr_returning_cdemo_sk</td><td class="pr-6"><span class="tabular-nums">0.758</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.798</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">37</td><td class="pr-6 font-mono text-xs">customer_demographics.cd_gender</td><td class="pr-6"><span class="tabular-nums">0.922</span></td><td class="pr-6"><span class="tabular-nums">0.671</span></td><td><span class="tabular-nums">0.796</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">38</td><td class="pr-6 font-mono text-xs">web_sales.ws_bill_addr_sk</td><td class="pr-6"><span class="tabular-nums">0.751</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.795</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">39</td><td class="pr-6 font-mono text-xs">web_sales.ws_sold_time_sk</td><td class="pr-6"><span class="tabular-nums">0.732</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.785</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">40</td><td class="pr-6 font-mono text-xs">web_returns.wr_return_quantity</td><td class="pr-6"><span class="tabular-nums">0.728</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.783</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">41</td><td class="pr-6 font-mono text-xs">web_sales.ws_bill_customer_sk</td><td class="pr-6"><span class="tabular-nums">0.725</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.781</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">42</td><td class="pr-6 font-mono text-xs">web_returns.wr_refunded_cdemo_sk</td><td class="pr-6"><span class="tabular-nums">0.720</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.779</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">43</td><td class="pr-6 font-mono text-xs">web_returns.wr_return_tax</td><td class="pr-6"><span class="tabular-nums">0.703</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.771</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">44</td><td class="pr-6 font-mono text-xs">web_page</td><td class="pr-6"><span class="tabular-nums">0.623</span></td><td class="pr-6"><span class="tabular-nums">0.913</span></td><td><span class="tabular-nums">0.768</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">45</td><td class="pr-6 font-mono text-xs">web_sales.ws_order_number</td><td class="pr-6"><span class="tabular-nums">0.695</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.766</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">46</td><td class="pr-6 font-mono text-xs">web_site.web_country</td><td class="pr-6"><span class="tabular-nums">0.679</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.758</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">47</td><td class="pr-6 font-mono text-xs">web_sales.ws_item_sk</td><td class="pr-6"><span class="tabular-nums">0.678</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.758</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">48</td><td class="pr-6 font-mono text-xs">web_sales.ws_promo_sk</td><td class="pr-6"><span class="tabular-nums">0.676</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.757</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">49</td><td class="pr-6 font-mono text-xs">web_returns.wr_web_page_sk</td><td class="pr-6"><span class="tabular-nums">0.598</span></td><td class="pr-6"><span class="tabular-nums">0.913</span></td><td><span class="tabular-nums">0.755</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">50</td><td class="pr-6 font-mono text-xs">web_site.web_mkt_class</td><td class="pr-6"><span class="tabular-nums">0.665</span></td><td class="pr-6"><span class="tabular-nums">0.838</span></td><td><span class="tabular-nums">0.752</span></td></tr></tbody></table></div></div></details><details data-ask="generated"><summary class="cursor-pointer select-none rounded-md border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50">Generated SQL · validation · timings · cost</summary><div class="rounded-b-md border border-t-0 border-gray-200 bg-white px-4 py-4"><div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2"><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">The SQL that was run</h3><button type="button" class="rounded border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50" data-action="Copy SQL">Copy SQL</button><span class="sr-only" aria-live="polite"></span></div><pre class="mt-2 overflow-x-auto whitespace-pre rounded bg-gray-50 p-3 font-mono text-xs text-gray-900" role="region" aria-label="The SQL" tabindex="0">SELECT cd.cd_gender FROM web_sales AS ws JOIN customer_demographics AS cd ON ws.ws_bill_cdemo_sk = cd.cd_demo_sk JOIN date_dim AS dd ON ws.ws_sold_date_sk = dd.d_date_sk WHERE dd.d_year = 2002 GROUP BY cd.cd_gender ORDER BY SUM(ws.ws_ext_sales_price) DESC NULLS LAST LIMIT 1</pre><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">The model was asked 1 time</h3><ul class="mt-2 space-y-2 text-sm"><li><span class="font-medium">Attempt 1:</span> accepted<span class="text-gray-600"> · gpt-6-luna · 1,967 tokens in, 88 out · $0.000241 · 2.7 s</span></li></ul><p class="mt-2 text-sm"><span class="text-gray-600">Tables the model was shown:</span> <span class="font-mono text-xs">web_sales, web_returns, customer_demographics, web_page, date_dim</span></p><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">Validation</h3><p class="mt-2 text-sm">Parses: <strong>pass</strong> · read-only: <strong>pass</strong> · every table and column exists: <strong>pass</strong> · joins against the plan: <strong>diverged</strong> (the query did not follow the plan)</p><ul class="mt-2 list-disc space-y-1 pl-5 text-sm"><li>joins outside the path: date_dim.d_date_sk = web_sales.ws_sold_date_sk</li><li>an edge of the path is not used: web_returns.wr_item_sk = web_sales.ws_item_sk and web_returns.wr_order_number = web_sales.ws_order_number</li><li>an edge of the path is not used: web_sales.ws_web_page_sk = web_page.wp_web_page_sk</li><li>an edge of the path is not used: web_page.wp_access_date_sk = date_dim.d_date_sk</li></ul><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">Execution</h3><p class="mt-2 text-sm">1 row in 0.4 s. On the read-only connection, limit 30s, at most 1,000 rows.</p><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">The plan, table by table</h3><ul class="mt-2 space-y-2 text-sm"><li><span class="font-mono text-xs">web_sales</span><span class="block text-gray-800">Started from web sales, the table the question matched best.</span></li><li><span class="font-mono text-xs">web_returns</span> <span class="text-gray-600">joined to</span> <span class="font-mono text-xs">web_sales</span><span class="text-gray-600"> · rule: shortest</span><span class="block text-gray-800">79 routes existed; the shortest was used.</span></li><li><span class="font-mono text-xs">customer_demographics</span> <span class="text-gray-600">joined to</span> <span class="font-mono text-xs">web_sales</span><span class="text-gray-600"> · rule: alphabetical</span><span class="block text-gray-800">4 routes of 1 join connect customer demographics to the tables already joined. The overlay declares where a table that could join either is attached: web sales rather than web returns, because: a return refers to its sale, so whatever either could carry is taken to describe the sale (an operator&#x27;s default). Not taken: Each customer demographics row has many web returns rows, through their refunded customer demographics surrogate key. Not taken: Each customer demographics row has many web returns rows, through their returning customer demographics surrogate key. 2 routes were left. The tie was broken alphabetically, so the choice is arbitrary. The wording of the question did not separate them: 0.838 against 0.808, within the 0.107 that could be chance.</span></li><li><span class="font-mono text-xs">web_page</span> <span class="text-gray-600">joined to</span> <span class="font-mono text-xs">web_sales</span><span class="text-gray-600"> · rule: preference</span><span class="block text-gray-800">2 routes of 1 join connect web page to the tables already joined. The overlay declares where a table that could join either is attached: web sales rather than web returns, because: a return refers to its sale, so whatever either could carry is taken to describe the sale (an operator&#x27;s default). Not taken: Each web page row has many web returns rows, through their web page surrogate key.</span></li><li><span class="font-mono text-xs">date_dim</span> <span class="text-gray-600">joined to</span> <span class="font-mono text-xs">web_page</span><span class="text-gray-600"> · rule: alphabetical</span><span class="block text-gray-800">5 routes of 1 join connect date dimension to the tables already joined. The overlay declares where a table that could join either is attached: web sales rather than web returns, because: a return refers to its sale, so whatever either could carry is taken to describe the sale (an operator&#x27;s default). The overlay declares which route between date dimension and web sales is meant, because: a question that names no date means the date of sale (an operator&#x27;s default). Not taken: Each date dimension row has many web returns rows, through their returned date surrogate key. Not taken: Each date dimension row has many web sales rows, through their ship date surrogate key. 3 routes were left. The tie was broken alphabetically, so the choice is arbitrary. The wording of the question did not separate them: 0.747 against 0.729, within the 0.107 that could be chance.</span></li></ul><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">Raised about the plan, and not about this answer</h3><ul class="mt-2 space-y-2 text-sm"><li><span class="text-gray-600">arbitrary_choice · not used:</span> I had no basis for this choice. 2 routes of 1 join connect date dimension and web page, and nothing declares which is meant. Used: Each date dimension row has many web page rows, through their access date surrogate key. Equally valid: Each date dimension row has many web page rows, through their creation date surrogate key.</li></ul><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">Timings</h3><div class="mt-2 max-w-xl"><ul class="space-y-1 text-sm"><li class="flex justify-between gap-6"><span>Finding the tables and the joins between them</span><span class="tabular-nums text-gray-600">5030 ms</span></li><li class="flex justify-between gap-6"><span>Writing out what the model will be shown</span><span class="tabular-nums text-gray-600">0 ms</span></li><li class="flex justify-between gap-6"><span>The model is writing the SQL</span><span class="tabular-nums text-gray-600">2730 ms</span></li><li class="flex justify-between gap-6"><span>Checking the SQL before it runs</span><span class="tabular-nums text-gray-600">8 ms</span></li><li class="flex justify-between gap-6"><span>Running it on the warehouse, read-only</span><span class="tabular-nums text-gray-600">406 ms</span></li></ul><p class="mt-1 flex justify-between gap-6 border-t pt-1 text-sm font-medium"><span>In all</span><span class="tabular-nums">8174 ms</span></p></div><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">Cost and settings</h3><p class="mt-2 text-sm">$0.000241 · 1,967 tokens in, 88 out · model gpt-6-luna at temperature 0</p><p class="mt-1 break-all font-mono text-xs text-gray-600">schema snapshot 1 4e674c8f1628 · preferences ea14d9ad8580 · alpha 0.5 · cut 0.5 · cap 5 · margin 0.10705139708498754 · bound 10 · max joins 3 · query 0eea8a87-85bb-4916-b83e-b8a978324229</p><details class="mt-6"><summary class="cursor-pointer text-sm text-gray-700">The prompt, exactly as it was sent</summary><pre class="mt-2 overflow-x-auto whitespace-pre rounded bg-gray-50 p-3 font-mono text-xs text-gray-900" role="region" aria-label="The prompt&#x27;s system message" tabindex="0">You write one PostgreSQL query that answers a question about a data warehouse.
+
+You are given the tables you may use, as CREATE TABLE statements. The comment above each table and after each column says what it holds.
+
+Rules:
+- Write exactly one SELECT statement. It may begin with WITH. Never write anything that changes data.
+- Use only the tables and columns given. Do not use any other table or column, even one you know of.
+- Qualify every column with its table name or its alias.
+- Do not put comments in the SQL.
+- If the question cannot be answered from the tables given, do not guess and do not answer a different question.
+
+Reply with one JSON object and nothing else:
+  {&quot;status&quot;: &quot;sql&quot;, &quot;sql&quot;: &quot;&lt;the query&gt;&quot;}
+or, when the question cannot be answered from the tables given:
+  {&quot;status&quot;: &quot;not_answerable&quot;, &quot;sql&quot;: &quot;&quot;}
+Do not explain.</pre><pre class="mt-2 overflow-x-auto whitespace-pre rounded bg-gray-50 p-3 font-mono text-xs text-gray-900" role="region" aria-label="The prompt&#x27;s user message" tabindex="0">Tables:
+
+-- web sales
+CREATE TABLE web_sales (
+  ws_sold_date_sk bigint,  -- sold date surrogate key
+  ws_sold_time_sk bigint,  -- sold time surrogate key
+  ws_ship_date_sk bigint,  -- ship date surrogate key
+  ws_item_sk bigint,  -- item surrogate key
+  ws_bill_customer_sk bigint,  -- bill customer surrogate key
+  ws_bill_cdemo_sk bigint,  -- bill customer demographics surrogate key
+  ws_bill_hdemo_sk bigint,  -- bill household demographics surrogate key
+  ws_bill_addr_sk bigint,  -- bill address surrogate key
+  ws_ship_customer_sk bigint,  -- ship customer surrogate key
+  ws_ship_cdemo_sk bigint,  -- ship customer demographics surrogate key
+  ws_ship_hdemo_sk bigint,  -- ship household demographics surrogate key
+  ws_ship_addr_sk bigint,  -- ship address surrogate key
+  ws_web_page_sk bigint,  -- web page surrogate key
+  ws_web_site_sk bigint,  -- web site surrogate key
+  ws_ship_mode_sk bigint,  -- ship mode surrogate key
+  ws_warehouse_sk bigint,  -- warehouse surrogate key
+  ws_promo_sk bigint,  -- promotion surrogate key
+  ws_order_number bigint,  -- order number
+  ws_quantity bigint,  -- quantity
+  ws_wholesale_cost numeric(7,2),  -- wholesale cost
+  ws_list_price numeric(7,2),  -- list price
+  ws_sales_price numeric(7,2),  -- sales price
+  ws_ext_discount_amt numeric(7,2),  -- extended discount amount
+  ws_ext_sales_price numeric(7,2),  -- extended sales price
+  ws_ext_wholesale_cost numeric(7,2),  -- extended wholesale cost
+  ws_ext_list_price numeric(7,2),  -- extended list price
+  ws_ext_tax numeric(7,2),  -- extended tax
+  ws_coupon_amt numeric(7,2),  -- coupon amount
+  ws_ext_ship_cost numeric(7,2),  -- extended ship cost
+  ws_net_paid numeric(7,2),  -- net paid
+  ws_net_paid_inc_tax numeric(7,2),  -- net paid including tax
+  ws_net_paid_inc_ship numeric(7,2),  -- net paid including ship
+  ws_net_paid_inc_ship_tax numeric(7,2),  -- net paid including ship tax
+  ws_net_profit numeric(7,2)  -- net profit
+);
+
+-- web returns
+CREATE TABLE web_returns (
+  wr_returned_date_sk bigint,  -- returned date surrogate key
+  wr_returned_time_sk bigint,  -- returned time surrogate key
+  wr_item_sk bigint,  -- item surrogate key
+  wr_refunded_customer_sk bigint,  -- refunded customer surrogate key
+  wr_refunded_cdemo_sk bigint,  -- refunded customer demographics surrogate key
+  wr_refunded_hdemo_sk bigint,  -- refunded household demographics surrogate key
+  wr_refunded_addr_sk bigint,  -- refunded address surrogate key
+  wr_returning_customer_sk bigint,  -- returning customer surrogate key
+  wr_returning_cdemo_sk bigint,  -- returning customer demographics surrogate key
+  wr_returning_hdemo_sk bigint,  -- returning household demographics surrogate key
+  wr_returning_addr_sk bigint,  -- returning address surrogate key
+  wr_web_page_sk bigint,  -- web page surrogate key
+  wr_reason_sk bigint,  -- reason surrogate key
+  wr_order_number bigint,  -- order number
+  wr_return_quantity bigint,  -- return quantity
+  wr_return_amt numeric(7,2),  -- return amount
+  wr_return_tax numeric(7,2),  -- return tax
+  wr_return_amt_inc_tax numeric(7,2),  -- return amount including tax
+  wr_fee numeric(7,2),  -- fee
+  wr_return_ship_cost numeric(7,2),  -- return ship cost
+  wr_refunded_cash numeric(7,2),  -- refunded cash
+  wr_reversed_charge numeric(7,2),  -- reversed charge
+  wr_account_credit numeric(7,2),  -- account credit
+  wr_net_loss numeric(7,2)  -- net loss
+);
+
+-- customer demographics
+CREATE TABLE customer_demographics (
+  cd_demo_sk bigint,  -- demo surrogate key
+  cd_gender character varying,  -- gender
+  cd_marital_status character varying,  -- marital status
+  cd_education_status character varying,  -- education status
+  cd_purchase_estimate bigint,  -- purchase estimate
+  cd_credit_rating character varying,  -- credit rating
+  cd_dep_count bigint,  -- dependent count
+  cd_dep_employed_count bigint,  -- dependent employed count
+  cd_dep_college_count integer,  -- dependent college count
+  PRIMARY KEY (cd_demo_sk)
+);
+
+-- web page
+CREATE TABLE web_page (
+  wp_web_page_sk bigint,  -- web page surrogate key
+  wp_web_page_id character varying,  -- web page identifier
+  wp_rec_start_date date,  -- record start date
+  wp_rec_end_date date,  -- record end date
+  wp_creation_date_sk bigint,  -- creation date surrogate key
+  wp_access_date_sk bigint,  -- access date surrogate key
+  wp_autogen_flag character varying,  -- automatically generated flag
+  wp_customer_sk bigint,  -- customer surrogate key
+  wp_url character varying,  -- url
+  wp_type character varying,  -- type
+  wp_char_count bigint,  -- character count
+  wp_link_count bigint,  -- link count
+  wp_image_count bigint,  -- image count
+  wp_max_ad_count integer,  -- max advertisement count
+  PRIMARY KEY (wp_web_page_sk)
+);
+
+-- date dimension
+CREATE TABLE date_dim (
+  d_date_sk bigint,  -- date surrogate key
+  d_date_id character varying,  -- date identifier
+  d_date date,  -- date
+  d_month_seq bigint,  -- month sequence
+  d_week_seq bigint,  -- week sequence
+  d_quarter_seq bigint,  -- quarter sequence
+  d_year bigint,  -- year
+  d_dow bigint,  -- day of week
+  d_moy bigint,  -- month of year
+  d_dom bigint,  -- day of month
+  d_qoy bigint,  -- quarter of year
+  d_fy_year bigint,  -- fiscal year
+  d_fy_quarter_seq bigint,  -- fiscal quarter sequence
+  d_fy_week_seq bigint,  -- fiscal week sequence
+  d_day_name character varying,  -- day name
+  d_quarter_name character varying,  -- quarter name
+  d_holiday character varying,  -- holiday
+  d_weekend character varying,  -- weekend
+  d_following_holiday character varying,  -- following holiday
+  d_first_dom bigint,  -- first day of month
+  d_last_dom bigint,  -- last day of month
+  d_same_day_ly bigint,  -- same day last year
+  d_same_day_lq bigint,  -- same day last quarter
+  d_current_day character varying,  -- current day
+  d_current_week character varying,  -- current week
+  d_current_month character varying,  -- current month
+  d_current_quarter character varying,  -- current quarter
+  d_current_year character varying,  -- current year
+  PRIMARY KEY (d_date_sk)
+);
+
+Join conditions. These are the joins selected for this question. Wherever the query joins two of these tables, join them by exactly these conditions; a line with two conditions joined by AND is one join and needs both. Use only the tables the question needs: a table listed above need not appear in the query.
+  web_page.wp_access_date_sk = date_dim.d_date_sk
+  web_returns.wr_item_sk = web_sales.ws_item_sk AND web_returns.wr_order_number = web_sales.ws_order_number
+  web_sales.ws_bill_cdemo_sk = customer_demographics.cd_demo_sk
+  web_sales.ws_web_page_sk = web_page.wp_web_page_sk
+
+Question: Which gender spent more on the web in the year 2002?</pre></details></div></details></div>
+
+{
+  "nodes": [
+    {
+      "id": "web_sales",
+      "readable": "web sales",
+      "anchor": true,
+      "inTree": true,
+      "columns": [
+        {
+          "name": "ws_sold_date_sk",
+          "readable": "web sales — sold date surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "ws_sold_time_sk",
+          "readable": "web sales — sold time surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "ws_ship_date_sk",
+          "readable": "web sales — ship date surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "ws_item_sk",
+          "readable": "web sales — item surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "ws_bill_customer_sk",
+          "readable": "web sales — bill customer surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "ws_bill_cdemo_sk",
+          "readable": "web sales — bill customer demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "ws_bill_hdemo_sk",
+          "readable": "web sales — bill household demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "ws_bill_addr_sk",
+          "readable": "web sales — bill address surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "ws_ship_customer_sk",
+          "readable": "web sales — ship customer surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "ws_ship_cdemo_sk",
+          "readable": "web sales — ship customer demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "ws_ship_hdemo_sk",
+          "readable": "web sales — ship household demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "ws_ship_addr_sk",
+          "readable": "web sales — ship address surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "ws_web_page_sk",
+          "readable": "web sales — web page surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "ws_web_site_sk",
+          "readable": "web sales — web site surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "ws_ship_mode_sk",
+          "readable": "web sales — ship mode surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "ws_warehouse_sk",
+          "readable": "web sales — warehouse surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "ws_promo_sk",
+          "readable": "web sales — promotion surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "ws_order_number",
+          "readable": "web sales — order number",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ws_quantity",
+          "readable": "web sales — quantity",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ws_wholesale_cost",
+          "readable": "web sales — wholesale cost",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ws_list_price",
+          "readable": "web sales — list price",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ws_sales_price",
+          "readable": "web sales — sales price",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ws_ext_discount_amt",
+          "readable": "web sales — extended discount amount",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ws_ext_sales_price",
+          "readable": "web sales — extended sales price",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ws_ext_wholesale_cost",
+          "readable": "web sales — extended wholesale cost",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ws_ext_list_price",
+          "readable": "web sales — extended list price",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ws_ext_tax",
+          "readable": "web sales — extended tax",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ws_coupon_amt",
+          "readable": "web sales — coupon amount",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ws_ext_ship_cost",
+          "readable": "web sales — extended ship cost",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ws_net_paid",
+          "readable": "web sales — net paid",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ws_net_paid_inc_tax",
+          "readable": "web sales — net paid including tax",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ws_net_paid_inc_ship",
+          "readable": "web sales — net paid including ship",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ws_net_paid_inc_ship_tax",
+          "readable": "web sales — net paid including ship tax",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ws_net_profit",
+          "readable": "web sales — net profit",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        }
+      ],
+      "matched": [
+        "ws_bill_hdemo_sk",
+        "ws_net_paid",
+        "ws_net_paid_inc_tax",
+        "ws_net_paid_inc_ship",
+        "ws_net_profit"
+      ]
+    },
+    {
+      "id": "web_returns",
+      "readable": "web returns",
+      "anchor": true,
+      "inTree": true,
+      "columns": [
+        {
+          "name": "wr_returned_date_sk",
+          "readable": "web returns — returned date surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "wr_returned_time_sk",
+          "readable": "web returns — returned time surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "wr_item_sk",
+          "readable": "web returns — item surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "wr_refunded_customer_sk",
+          "readable": "web returns — refunded customer surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "wr_refunded_cdemo_sk",
+          "readable": "web returns — refunded customer demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "wr_refunded_hdemo_sk",
+          "readable": "web returns — refunded household demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "wr_refunded_addr_sk",
+          "readable": "web returns — refunded address surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "wr_returning_customer_sk",
+          "readable": "web returns — returning customer surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "wr_returning_cdemo_sk",
+          "readable": "web returns — returning customer demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "wr_returning_hdemo_sk",
+          "readable": "web returns — returning household demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "wr_returning_addr_sk",
+          "readable": "web returns — returning address surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "wr_web_page_sk",
+          "readable": "web returns — web page surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "wr_reason_sk",
+          "readable": "web returns — reason surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "wr_order_number",
+          "readable": "web returns — order number",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "wr_return_quantity",
+          "readable": "web returns — return quantity",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "wr_return_amt",
+          "readable": "web returns — return amount",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "wr_return_tax",
+          "readable": "web returns — return tax",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "wr_return_amt_inc_tax",
+          "readable": "web returns — return amount including tax",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "wr_fee",
+          "readable": "web returns — fee",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "wr_return_ship_cost",
+          "readable": "web returns — return ship cost",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "wr_refunded_cash",
+          "readable": "web returns — refunded cash",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "wr_reversed_charge",
+          "readable": "web returns — reversed charge",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "wr_account_credit",
+          "readable": "web returns — account credit",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "wr_net_loss",
+          "readable": "web returns — net loss",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        }
+      ],
+      "matched": []
+    },
+    {
+      "id": "customer_demographics",
+      "readable": "customer demographics",
+      "anchor": true,
+      "inTree": true,
+      "columns": [
+        {
+          "name": "cd_demo_sk",
+          "readable": "customer demographics — demo surrogate key",
+          "dataType": "bigint",
+          "primaryKey": true,
+          "foreignKey": false
+        },
+        {
+          "name": "cd_gender",
+          "readable": "customer demographics — gender",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cd_marital_status",
+          "readable": "customer demographics — marital status",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cd_education_status",
+          "readable": "customer demographics — education status",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cd_purchase_estimate",
+          "readable": "customer demographics — purchase estimate",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cd_credit_rating",
+          "readable": "customer demographics — credit rating",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cd_dep_count",
+          "readable": "customer demographics — dependent count",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cd_dep_employed_count",
+          "readable": "customer demographics — dependent employed count",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cd_dep_college_count",
+          "readable": "customer demographics — dependent college count",
+          "dataType": "integer",
+          "primaryKey": false,
+          "foreignKey": false
+        }
+      ],
+      "matched": [
+        "cd_gender"
+      ]
+    },
+    {
+      "id": "web_page",
+      "readable": "web page",
+      "anchor": true,
+      "inTree": true,
+      "columns": [
+        {
+          "name": "wp_web_page_sk",
+          "readable": "web page — web page surrogate key",
+          "dataType": "bigint",
+          "primaryKey": true,
+          "foreignKey": false
+        },
+        {
+          "name": "wp_web_page_id",
+          "readable": "web page — web page identifier",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "wp_rec_start_date",
+          "readable": "web page — record start date",
+          "dataType": "date",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "wp_rec_end_date",
+          "readable": "web page — record end date",
+          "dataType": "date",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "wp_creation_date_sk",
+          "readable": "web page — creation date surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "wp_access_date_sk",
+          "readable": "web page — access date surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "wp_autogen_flag",
+          "readable": "web page — automatically generated flag",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "wp_customer_sk",
+          "readable": "web page — customer surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "wp_url",
+          "readable": "web page — url",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "wp_type",
+          "readable": "web page — type",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "wp_char_count",
+          "readable": "web page — character count",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "wp_link_count",
+          "readable": "web page — link count",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "wp_image_count",
+          "readable": "web page — image count",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "wp_max_ad_count",
+          "readable": "web page — max advertisement count",
+          "dataType": "integer",
+          "primaryKey": false,
+          "foreignKey": false
+        }
+      ],
+      "matched": [
+        "wp_url"
+      ]
+    },
+    {
+      "id": "date_dim",
+      "readable": "date dimension",
+      "anchor": true,
+      "inTree": true,
+      "columns": [
+        {
+          "name": "d_date_sk",
+          "readable": "date — date surrogate key",
+          "dataType": "bigint",
+          "primaryKey": true,
+          "foreignKey": false
+        },
+        {
+          "name": "d_date_id",
+          "readable": "date — date identifier",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_date",
+          "readable": "date — date",
+          "dataType": "date",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_month_seq",
+          "readable": "date — month sequence",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_week_seq",
+          "readable": "date — week sequence",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_quarter_seq",
+          "readable": "date — quarter sequence",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_year",
+          "readable": "date — year",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_dow",
+          "readable": "date — day of week",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_moy",
+          "readable": "date — month of year",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_dom",
+          "readable": "date — day of month",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_qoy",
+          "readable": "date — quarter of year",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_fy_year",
+          "readable": "date — fiscal year",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_fy_quarter_seq",
+          "readable": "date — fiscal quarter sequence",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_fy_week_seq",
+          "readable": "date — fiscal week sequence",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_day_name",
+          "readable": "date — day name",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_quarter_name",
+          "readable": "date — quarter name",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_holiday",
+          "readable": "date — holiday",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_weekend",
+          "readable": "date — weekend",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_following_holiday",
+          "readable": "date — following holiday",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_first_dom",
+          "readable": "date — first day of month",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_last_dom",
+          "readable": "date — last day of month",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_same_day_ly",
+          "readable": "date — same day last year",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_same_day_lq",
+          "readable": "date — same day last quarter",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_current_day",
+          "readable": "date — current day",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_current_week",
+          "readable": "date — current week",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_current_month",
+          "readable": "date — current month",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_current_quarter",
+          "readable": "date — current quarter",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_current_year",
+          "readable": "date — current year",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        }
+      ],
+      "matched": []
+    }
+  ],
+  "edges": [
+    {
+      "id": "web_page.wp_access_date_sk>date_dim.d_date_sk",
+      "kind": "planned",
+      "fromTable": "web_page",
+      "fromColumns": [
+        "wp_access_date_sk"
+      ],
+      "toTable": "date_dim",
+      "toColumns": [
+        "d_date_sk"
+      ],
+      "description": "Each date dimension row has many web page rows, through their access date surrogate key.",
+      "status": null,
+      "source": "catalog",
+      "loud": true
+    },
+    {
+      "id": "web_page.wp_creation_date_sk>date_dim.d_date_sk",
+      "kind": "alternative",
+      "fromTable": "web_page",
+      "fromColumns": [
+        "wp_creation_date_sk"
+      ],
+      "toTable": "date_dim",
+      "toColumns": [
+        "d_date_sk"
+      ],
+      "description": "Each date dimension row has many web page rows, through their creation date surrogate key.",
+      "status": "tied",
+      "source": "catalog",
+      "loud": false
+    },
+    {
+      "id": "web_returns.wr_refunded_cdemo_sk>customer_demographics.cd_demo_sk",
+      "kind": "alternative",
+      "fromTable": "web_returns",
+      "fromColumns": [
+        "wr_refunded_cdemo_sk"
+      ],
+      "toTable": "customer_demographics",
+      "toColumns": [
+        "cd_demo_sk"
+      ],
+      "description": "Each customer demographics row has many web returns rows, through their refunded customer demographics surrogate key.",
+      "status": "withdrawn",
+      "source": "catalog",
+      "loud": false
+    },
+    {
+      "id": "web_returns.wr_returning_cdemo_sk>customer_demographics.cd_demo_sk",
+      "kind": "alternative",
+      "fromTable": "web_returns",
+      "fromColumns": [
+        "wr_returning_cdemo_sk"
+      ],
+      "toTable": "customer_demographics",
+      "toColumns": [
+        "cd_demo_sk"
+      ],
+      "description": "Each customer demographics row has many web returns rows, through their returning customer demographics surrogate key.",
+      "status": "withdrawn",
+      "source": "catalog",
+      "loud": false
+    },
+    {
+      "id": "web_returns.wr_returned_date_sk>date_dim.d_date_sk",
+      "kind": "alternative",
+      "fromTable": "web_returns",
+      "fromColumns": [
+        "wr_returned_date_sk"
+      ],
+      "toTable": "date_dim",
+      "toColumns": [
+        "d_date_sk"
+      ],
+      "description": "Each date dimension row has many web returns rows, through their returned date surrogate key.",
+      "status": "withdrawn",
+      "source": "catalog",
+      "loud": false
+    },
+    {
+      "id": "web_returns.wr_web_page_sk>web_page.wp_web_page_sk",
+      "kind": "alternative",
+      "fromTable": "web_returns",
+      "fromColumns": [
+        "wr_web_page_sk"
+      ],
+      "toTable": "web_page",
+      "toColumns": [
+        "wp_web_page_sk"
+      ],
+      "description": "Each web page row has many web returns rows, through their web page surrogate key.",
+      "status": "withdrawn",
+      "source": "catalog",
+      "loud": false
+    },
+    {
+      "id": "web_sales.ws_bill_cdemo_sk>customer_demographics.cd_demo_sk",
+      "kind": "used",
+      "fromTable": "web_sales",
+      "fromColumns": [
+        "ws_bill_cdemo_sk"
+      ],
+      "toTable": "customer_demographics",
+      "toColumns": [
+        "cd_demo_sk"
+      ],
+      "description": "Each customer demographics row has many web sales rows, through their bill customer demographics surrogate key.",
+      "status": null,
+      "source": "catalog",
+      "loud": true
+    },
+    {
+      "id": "web_sales.ws_sold_date_sk>date_dim.d_date_sk",
+      "kind": "actual",
+      "fromTable": "web_sales",
+      "fromColumns": [
+        "ws_sold_date_sk"
+      ],
+      "toTable": "date_dim",
+      "toColumns": [
+        "d_date_sk"
+      ],
+      "description": "Each date dimension row has many web sales rows, through their sold date surrogate key.",
+      "status": null,
+      "source": "catalog",
+      "loud": true
+    },
+    {
+      "id": "web_sales.ws_ship_cdemo_sk>customer_demographics.cd_demo_sk",
+      "kind": "alternative",
+      "fromTable": "web_sales",
+      "fromColumns": [
+        "ws_ship_cdemo_sk"
+      ],
+      "toTable": "customer_demographics",
+      "toColumns": [
+        "cd_demo_sk"
+      ],
+      "description": "Each customer demographics row has many web sales rows, through their ship customer demographics surrogate key.",
+      "status": "tied",
+      "source": "catalog",
+      "loud": true
+    },
+    {
+      "id": "web_sales.ws_ship_date_sk>date_dim.d_date_sk",
+      "kind": "alternative",
+      "fromTable": "web_sales",
+      "fromColumns": [
+        "ws_ship_date_sk"
+      ],
+      "toTable": "date_dim",
+      "toColumns": [
+        "d_date_sk"
+      ],
+      "description": "Each date dimension row has many web sales rows, through their ship date surrogate key.",
+      "status": "withdrawn",
+      "source": "catalog",
+      "loud": false
+    },
+    {
+      "id": "web_sales.ws_web_page_sk>web_page.wp_web_page_sk",
+      "kind": "planned",
+      "fromTable": "web_sales",
+      "fromColumns": [
+        "ws_web_page_sk"
+      ],
+      "toTable": "web_page",
+      "toColumns": [
+        "wp_web_page_sk"
+      ],
+      "description": "Each web page row has many web sales rows, through their web page surrogate key.",
+      "status": null,
+      "source": "catalog",
+      "loud": false
+    },
+    {
+      "id": "web_returns.wr_item_sk+wr_order_number>web_sales.ws_item_sk+ws_order_number",
+      "kind": "planned",
+      "fromTable": "web_returns",
+      "fromColumns": [
+        "wr_item_sk",
+        "wr_order_number"
+      ],
+      "toTable": "web_sales",
+      "toColumns": [
+        "ws_item_sk",
+        "ws_order_number"
+      ],
+      "description": "Each web returns row has one web sales, through its item surrogate key and order number (asserted in the overlay, not declared by the database).",
+      "status": null,
+      "source": "overlay",
+      "loud": false
+    }
+  ],
+  "undrawn": []
+}

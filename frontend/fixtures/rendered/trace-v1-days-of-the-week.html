@@ -1,0 +1,1301 @@
+<section class="rounded-md border-2 border-amber-400 bg-amber-50 p-6 text-amber-950" role="alert" data-ask="amber"><h2 class="text-base font-semibold">This answer rests on 2 choices the system had no basis for</h2><ul class="mt-2 space-y-2"><li class="text-[15px] leading-relaxed">I had no basis for this choice. 2 routes of 1 join connect customer demographics and catalog sales, and nothing declares which is meant. Used: Each customer demographics row has many catalog sales rows, through their bill customer demographics surrogate key. Equally valid: Each customer demographics row has many catalog sales rows, through their ship customer demographics surrogate key.</li><li class="text-[15px] leading-relaxed">I had no basis for where to join date dimension. It is 1 join from catalog sales and equally from customer, and nothing declares which is meant. Used: Each date dimension row has many catalog sales rows, through their sold date surrogate key. Equally valid: Each date dimension row has many customer rows, through their first sales date surrogate key. Equally valid: Each date dimension row has many customer rows, through their first ship-to date surrogate key. Equally valid: Each date dimension row has many customer rows, through their last review date surrogate key (asserted in the overlay, not declared by the database).</li></ul></section>
+
+<section data-ask="narrative"><h2 class="text-sm font-semibold uppercase tracking-wide text-gray-600">How this answer was reached</h2><dl class="mt-3 space-y-3"><div><dt class="text-xs font-medium uppercase tracking-wide text-gray-500">What your question matched</dt><dd class="mt-0.5 text-[15px] leading-relaxed text-gray-900">Your question matched 5 tables: catalog sales, catalog returns, customer demographics, customer and calendar dates.</dd></div><div><dt class="text-xs font-medium uppercase tracking-wide text-gray-500">How it was linked</dt><dd class="mt-0.5 text-[15px] leading-relaxed text-gray-900">The answer links each catalog sale to the billed customer&#x27;s demographics. A preference declared for this warehouse set aside the catalog return&#x27;s refunded customer&#x27;s demographics and the catalog return&#x27;s returning customer&#x27;s demographics, because a return refers to its sale, so whatever either could carry is taken to describe the sale (an operator&#x27;s default). Each catalog sale also records the shipped-to customer&#x27;s demographics; nothing in your question said which you meant, so the choice was made alphabetically: it is arbitrary. It also links each catalog sale to its date of sale. A preference declared for this warehouse set aside the catalog return&#x27;s date of return and the ship date, because a question that names no date means the date of sale (an operator&#x27;s default). Equally possible: the customer&#x27;s date of first purchase, the customer&#x27;s date of first shipment and the customer&#x27;s date of last review; nothing in your question said which you meant, so the choice was made alphabetically: it is arbitrary. The plan also brought in catalog returns and customer; the query did not use them.</dd></div><div><dt class="text-xs font-medium uppercase tracking-wide text-gray-500">What was not used</dt><dd class="mt-0.5 text-[15px] leading-relaxed text-gray-900">Not used: the shipped-to customer&#x27;s demographics. If you meant the other, the answer may differ; ask again naming it. Set aside by a declared preference: the catalog return&#x27;s refunded customer&#x27;s demographics and the catalog return&#x27;s returning customer&#x27;s demographics. Not used: the customer&#x27;s date of first purchase, the customer&#x27;s date of first shipment and the customer&#x27;s date of last review. If you meant one of those, the answer may differ; ask again naming it. Set aside by a declared preference: the catalog return&#x27;s date of return and the ship date. 732 longer routes also existed; the shortest was used. Other choices were made in the part of the plan the query did not use; they did not affect this answer.</dd></div><div><dt class="text-xs font-medium uppercase tracking-wide text-gray-500">What the query did</dt><dd class="mt-0.5 text-[15px] leading-relaxed text-gray-900">The query followed this plan, using 2 of its 4 joins; catalog returns and customer were not needed.</dd></div></dl></section>
+
+<div class="space-y-3"><details data-ask="retrieved"><summary class="cursor-pointer select-none rounded-md border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50">Tables and columns retrieved, with scores</summary><div class="rounded-b-md border border-t-0 border-gray-200 bg-white px-4 py-4"><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">Tables, by score</h3><div class="mt-2 overflow-x-auto" role="region" aria-label="Tables, by score" tabindex="0"><table class="text-sm"><thead class="text-left text-xs text-gray-500"><tr><th class="pr-6 font-medium">table</th><th class="pr-6 font-medium">score</th><th class="pr-6 font-medium">best element</th><th class="font-medium"> </th></tr></thead><tbody><tr><td class="pr-6 font-mono text-xs">catalog_sales</td><td class="pr-6"><span class="tabular-nums">0.774</span></td><td class="pr-6 font-mono text-xs text-gray-600">catalog_sales.cs_ship_cdemo_sk</td><td class="text-xs text-gray-600">anchor</td></tr><tr><td class="pr-6 font-mono text-xs">catalog_returns</td><td class="pr-6"><span class="tabular-nums">0.735</span></td><td class="pr-6 font-mono text-xs text-gray-600">catalog_returns.cr_returning_cdemo_sk</td><td class="text-xs text-gray-600">anchor</td></tr><tr><td class="pr-6 font-mono text-xs">customer_demographics</td><td class="pr-6"><span class="tabular-nums">0.712</span></td><td class="pr-6 font-mono text-xs text-gray-600">customer_demographics.cd_marital_status</td><td class="text-xs text-gray-600">anchor</td></tr><tr><td class="pr-6 font-mono text-xs">customer</td><td class="pr-6"><span class="tabular-nums">0.711</span></td><td class="pr-6 font-mono text-xs text-gray-600">customer</td><td class="text-xs text-gray-600">anchor</td></tr><tr><td class="pr-6 font-mono text-xs">date_dim</td><td class="pr-6"><span class="tabular-nums">0.647</span></td><td class="pr-6 font-mono text-xs text-gray-600">date_dim</td><td class="text-xs text-gray-600">anchor</td></tr><tr><td class="pr-6 font-mono text-xs">catalog_page</td><td class="pr-6"><span class="tabular-nums">0.567</span></td><td class="pr-6 font-mono text-xs text-gray-600">catalog_page</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">customer_address</td><td class="pr-6"><span class="tabular-nums">0.517</span></td><td class="pr-6 font-mono text-xs text-gray-600">customer_address.ca_county</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">web_sales</td><td class="pr-6"><span class="tabular-nums">0.476</span></td><td class="pr-6 font-mono text-xs text-gray-600">web_sales.ws_ship_cdemo_sk</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">promotion</td><td class="pr-6"><span class="tabular-nums">0.459</span></td><td class="pr-6 font-mono text-xs text-gray-600">promotion.p_channel_catalog</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">web_returns</td><td class="pr-6"><span class="tabular-nums">0.440</span></td><td class="pr-6 font-mono text-xs text-gray-600">web_returns.wr_returning_cdemo_sk</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">store_sales</td><td class="pr-6"><span class="tabular-nums">0.410</span></td><td class="pr-6 font-mono text-xs text-gray-600">store_sales.ss_cdemo_sk</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">store_returns</td><td class="pr-6"><span class="tabular-nums">0.387</span></td><td class="pr-6 font-mono text-xs text-gray-600">store_returns.sr_cdemo_sk</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">web_page</td><td class="pr-6"><span class="tabular-nums">0.351</span></td><td class="pr-6 font-mono text-xs text-gray-600">web_page.wp_customer_sk</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">household_demographics</td><td class="pr-6"><span class="tabular-nums">0.283</span></td><td class="pr-6 font-mono text-xs text-gray-600">household_demographics.hd_buy_potential</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">call_center</td><td class="pr-6"><span class="tabular-nums">0.269</span></td><td class="pr-6 font-mono text-xs text-gray-600">call_center.cc_hours</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">warehouse</td><td class="pr-6"><span class="tabular-nums">0.253</span></td><td class="pr-6 font-mono text-xs text-gray-600">warehouse.w_street_number</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">store</td><td class="pr-6"><span class="tabular-nums">0.243</span></td><td class="pr-6 font-mono text-xs text-gray-600">store.s_hours</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">web_site</td><td class="pr-6"><span class="tabular-nums">0.226</span></td><td class="pr-6 font-mono text-xs text-gray-600">web_site.web_market_manager</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">ship_mode</td><td class="pr-6"><span class="tabular-nums">0.219</span></td><td class="pr-6 font-mono text-xs text-gray-600">ship_mode.sm_contract</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">time_dim</td><td class="pr-6"><span class="tabular-nums">0.185</span></td><td class="pr-6 font-mono text-xs text-gray-600">time_dim.t_meal_time</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">item</td><td class="pr-6"><span class="tabular-nums">0.180</span></td><td class="pr-6 font-mono text-xs text-gray-600">item</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">inventory</td><td class="pr-6"><span class="tabular-nums">0.172</span></td><td class="pr-6 font-mono text-xs text-gray-600">inventory.inv_date_sk</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">reason</td><td class="pr-6"><span class="tabular-nums">0.053</span></td><td class="pr-6 font-mono text-xs text-gray-600">reason.r_reason_id</td><td class="text-xs text-gray-600"></td></tr><tr><td class="pr-6 font-mono text-xs">income_band</td><td class="pr-6"><span class="tabular-nums">0.040</span></td><td class="pr-6 font-mono text-xs text-gray-600">income_band.ib_upper_bound</td><td class="text-xs text-gray-600"></td></tr></tbody></table></div><p class="mt-2 text-sm text-gray-700">A table is an anchor from a score of <span class="tabular-nums">0.500</span>, and at most 5 are taken. The plan may hold 10 tables.</p><p class="mt-2 text-sm"><span class="text-gray-600">Left out by the limit on anchors:</span> <span class="font-mono text-xs">catalog_page, customer_address</span></p><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">What each word of the question was weighed against</h3><ul class="mt-2 space-y-1.5 text-sm"><li><span class="font-medium">“days”</span> <span class="text-gray-600">chose</span> <span class="font-mono text-xs">date_dim</span><span class="text-gray-600"> over date_dim.d_dow 0.827, date_dim.d_dom 0.758, date_dim.d_day_name 0.747, date_dim.d_last_dom 0.721</span></li><li><span class="font-medium">“week”</span> <span class="text-gray-600">chose</span> <span class="font-mono text-xs">date_dim.d_current_week</span><span class="text-gray-600"> over date_dim 0.844, date_dim.d_fy_week_seq 0.841, date_dim.d_week_seq 0.833, date_dim.d_dow 0.774</span></li><li><span class="font-medium">“married”</span> <span class="text-gray-600">chose</span> <span class="font-mono text-xs">customer_demographics.cd_marital_status</span><span class="text-gray-600"> over household_demographics.hd_dep_count 0.395, household_demographics 0.383, customer_demographics 0.378, household_demographics.hd_demo_sk 0.368</span></li><li><span class="font-medium">“customers”</span> <span class="text-gray-600">chose</span> <span class="font-mono text-xs">customer</span><span class="text-gray-600"> over customer.c_login 0.939, customer_demographics 0.914, customer.c_preferred_cust_flag 0.912, customer.c_current_cdemo_sk 0.907</span></li><li><span class="font-medium">“order”</span> <span class="text-gray-600">chose</span> <span class="font-mono text-xs">catalog_sales.cs_order_number</span><span class="text-gray-600"> over web_sales.ws_order_number 0.988, web_returns.wr_order_number 0.986, catalog_returns.cr_order_number 0.963, item 0.470</span></li><li><span class="font-medium">“catalog”</span> <span class="text-gray-600">chose</span> <span class="font-mono text-xs">catalog_page</span><span class="text-gray-600"> over catalog_page.cp_catalog_page_id 0.893, catalog_page.cp_catalog_number 0.869, catalog_returns 0.851, catalog_page.cp_department 0.846</span></li><li><span class="font-medium">“married customers”</span> <span class="text-gray-600">chose</span> <span class="font-mono text-xs">customer_demographics.cd_marital_status</span><span class="text-gray-600"> over customer_demographics 0.793, customer 0.782, customer.c_preferred_cust_flag 0.780, customer.c_current_cdemo_sk 0.779</span></li><li><span class="font-medium">“customers order”</span> <span class="text-gray-600">chose</span> <span class="font-mono text-xs">customer</span><span class="text-gray-600"> over customer.c_preferred_cust_flag 0.852, web_sales.ws_order_number 0.851, customer.c_salutation 0.844, web_returns.wr_order_number 0.836</span></li></ul><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">The 50 best-scored of 449 tables and columns</h3><div class="mt-2 overflow-x-auto" role="region" aria-label="The best-scored tables and columns" tabindex="0"><table class="text-sm"><thead class="text-left text-xs text-gray-500"><tr><th class="pr-6 font-medium">rank</th><th class="pr-6 font-medium">element</th><th class="pr-6 font-medium">by meaning</th><th class="pr-6 font-medium">by wording</th><th class="font-medium">combined</th></tr></thead><tbody><tr><td class="pr-6 tabular-nums text-gray-600">1</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_ship_cdemo_sk</td><td class="pr-6"><span class="tabular-nums">0.786</span></td><td class="pr-6"><span class="tabular-nums">0.762</span></td><td><span class="tabular-nums">0.774</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">2</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_order_number</td><td class="pr-6"><span class="tabular-nums">0.755</span></td><td class="pr-6"><span class="tabular-nums">0.762</span></td><td><span class="tabular-nums">0.759</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">3</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_ship_customer_sk</td><td class="pr-6"><span class="tabular-nums">0.716</span></td><td class="pr-6"><span class="tabular-nums">0.762</span></td><td><span class="tabular-nums">0.739</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">4</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_bill_cdemo_sk</td><td class="pr-6"><span class="tabular-nums">0.716</span></td><td class="pr-6"><span class="tabular-nums">0.762</span></td><td><span class="tabular-nums">0.739</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">5</td><td class="pr-6 font-mono text-xs">catalog_returns.cr_returning_cdemo_sk</td><td class="pr-6"><span class="tabular-nums">0.708</span></td><td class="pr-6"><span class="tabular-nums">0.762</span></td><td><span class="tabular-nums">0.735</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">6</td><td class="pr-6 font-mono text-xs">customer_demographics.cd_marital_status</td><td class="pr-6"><span class="tabular-nums">1.000</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.712</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">7</td><td class="pr-6 font-mono text-xs">customer</td><td class="pr-6"><span class="tabular-nums">0.600</span></td><td class="pr-6"><span class="tabular-nums">0.821</span></td><td><span class="tabular-nums">0.711</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">8</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_bill_customer_sk</td><td class="pr-6"><span class="tabular-nums">0.650</span></td><td class="pr-6"><span class="tabular-nums">0.762</span></td><td><span class="tabular-nums">0.706</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">9</td><td class="pr-6 font-mono text-xs">catalog_returns.cr_order_number</td><td class="pr-6"><span class="tabular-nums">0.625</span></td><td class="pr-6"><span class="tabular-nums">0.762</span></td><td><span class="tabular-nums">0.694</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">10</td><td class="pr-6 font-mono text-xs">catalog_returns.cr_refunded_cdemo_sk</td><td class="pr-6"><span class="tabular-nums">0.607</span></td><td class="pr-6"><span class="tabular-nums">0.762</span></td><td><span class="tabular-nums">0.685</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">11</td><td class="pr-6 font-mono text-xs">customer.c_birth_day</td><td class="pr-6"><span class="tabular-nums">0.597</span></td><td class="pr-6"><span class="tabular-nums">0.762</span></td><td><span class="tabular-nums">0.680</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">12</td><td class="pr-6 font-mono text-xs">catalog_returns.cr_returning_customer_sk</td><td class="pr-6"><span class="tabular-nums">0.590</span></td><td class="pr-6"><span class="tabular-nums">0.762</span></td><td><span class="tabular-nums">0.676</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">13</td><td class="pr-6 font-mono text-xs">date_dim</td><td class="pr-6"><span class="tabular-nums">0.294</span></td><td class="pr-6"><span class="tabular-nums">1.000</span></td><td><span class="tabular-nums">0.647</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">14</td><td class="pr-6 font-mono text-xs">catalog_returns.cr_refunded_customer_sk</td><td class="pr-6"><span class="tabular-nums">0.504</span></td><td class="pr-6"><span class="tabular-nums">0.762</span></td><td><span class="tabular-nums">0.633</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">15</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_ship_hdemo_sk</td><td class="pr-6"><span class="tabular-nums">0.809</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.617</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">16</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_bill_hdemo_sk</td><td class="pr-6"><span class="tabular-nums">0.779</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.601</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">17</td><td class="pr-6 font-mono text-xs">date_dim.d_dow</td><td class="pr-6"><span class="tabular-nums">0.492</span></td><td class="pr-6"><span class="tabular-nums">0.678</span></td><td><span class="tabular-nums">0.585</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">18</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_ship_date_sk</td><td class="pr-6"><span class="tabular-nums">0.724</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.574</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">19</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_catalog_page_sk</td><td class="pr-6"><span class="tabular-nums">0.683</span></td><td class="pr-6"><span class="tabular-nums">0.461</span></td><td><span class="tabular-nums">0.572</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">20</td><td class="pr-6 font-mono text-xs">customer_demographics</td><td class="pr-6"><span class="tabular-nums">0.716</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.570</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">21</td><td class="pr-6 font-mono text-xs">customer_demographics.cd_gender</td><td class="pr-6"><span class="tabular-nums">0.713</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.569</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">22</td><td class="pr-6 font-mono text-xs">catalog_page</td><td class="pr-6"><span class="tabular-nums">0.638</span></td><td class="pr-6"><span class="tabular-nums">0.496</span></td><td><span class="tabular-nums">0.567</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">23</td><td class="pr-6 font-mono text-xs">catalog_returns.cr_returning_hdemo_sk</td><td class="pr-6"><span class="tabular-nums">0.703</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.563</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">24</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_ext_ship_cost</td><td class="pr-6"><span class="tabular-nums">0.694</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.559</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">25</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_ext_wholesale_cost</td><td class="pr-6"><span class="tabular-nums">0.692</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.558</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">26</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_ext_sales_price</td><td class="pr-6"><span class="tabular-nums">0.685</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.554</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">27</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_sold_date_sk</td><td class="pr-6"><span class="tabular-nums">0.684</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.554</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">28</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_ship_addr_sk</td><td class="pr-6"><span class="tabular-nums">0.680</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.552</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">29</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_wholesale_cost</td><td class="pr-6"><span class="tabular-nums">0.679</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.551</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">30</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_quantity</td><td class="pr-6"><span class="tabular-nums">0.678</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.551</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">31</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_ext_list_price</td><td class="pr-6"><span class="tabular-nums">0.667</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.545</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">32</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_ext_discount_amt</td><td class="pr-6"><span class="tabular-nums">0.662</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.543</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">33</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_net_paid_inc_ship</td><td class="pr-6"><span class="tabular-nums">0.650</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.537</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">34</td><td class="pr-6 font-mono text-xs">catalog_sales</td><td class="pr-6"><span class="tabular-nums">0.648</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.536</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">35</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_sold_time_sk</td><td class="pr-6"><span class="tabular-nums">0.643</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.533</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">36</td><td class="pr-6 font-mono text-xs">customer.c_preferred_cust_flag</td><td class="pr-6"><span class="tabular-nums">0.603</span></td><td class="pr-6"><span class="tabular-nums">0.461</span></td><td><span class="tabular-nums">0.532</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">37</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_coupon_amt</td><td class="pr-6"><span class="tabular-nums">0.634</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.529</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">38</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_call_center_sk</td><td class="pr-6"><span class="tabular-nums">0.630</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.527</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">39</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_ship_mode_sk</td><td class="pr-6"><span class="tabular-nums">0.630</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.527</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">40</td><td class="pr-6 font-mono text-xs">customer_demographics.cd_dep_college_count</td><td class="pr-6"><span class="tabular-nums">0.630</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.527</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">41</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_warehouse_sk</td><td class="pr-6"><span class="tabular-nums">0.629</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.526</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">42</td><td class="pr-6 font-mono text-xs">customer_demographics.cd_dep_employed_count</td><td class="pr-6"><span class="tabular-nums">0.629</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.526</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">43</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_bill_addr_sk</td><td class="pr-6"><span class="tabular-nums">0.628</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.526</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">44</td><td class="pr-6 font-mono text-xs">catalog_returns.cr_refunded_hdemo_sk</td><td class="pr-6"><span class="tabular-nums">0.627</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.525</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">45</td><td class="pr-6 font-mono text-xs">catalog_page.cp_catalog_page_id</td><td class="pr-6"><span class="tabular-nums">0.586</span></td><td class="pr-6"><span class="tabular-nums">0.461</span></td><td><span class="tabular-nums">0.524</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">46</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_list_price</td><td class="pr-6"><span class="tabular-nums">0.620</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.522</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">47</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_net_paid_inc_ship_tax</td><td class="pr-6"><span class="tabular-nums">0.617</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.520</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">48</td><td class="pr-6 font-mono text-xs">catalog_page.cp_catalog_number</td><td class="pr-6"><span class="tabular-nums">0.579</span></td><td class="pr-6"><span class="tabular-nums">0.461</span></td><td><span class="tabular-nums">0.520</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">49</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_promo_sk</td><td class="pr-6"><span class="tabular-nums">0.613</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.518</span></td></tr><tr><td class="pr-6 tabular-nums text-gray-600">50</td><td class="pr-6 font-mono text-xs">catalog_sales.cs_net_paid</td><td class="pr-6"><span class="tabular-nums">0.612</span></td><td class="pr-6"><span class="tabular-nums">0.424</span></td><td><span class="tabular-nums">0.518</span></td></tr></tbody></table></div></div></details><details data-ask="generated"><summary class="cursor-pointer select-none rounded-md border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50">Generated SQL · validation · timings · cost</summary><div class="rounded-b-md border border-t-0 border-gray-200 bg-white px-4 py-4"><div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2"><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">The SQL that was run</h3><button type="button" class="rounded border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50" data-action="Copy SQL">Copy SQL</button><span class="sr-only" aria-live="polite"></span></div><pre class="mt-2 overflow-x-auto whitespace-pre rounded bg-gray-50 p-3 font-mono text-xs text-gray-900" role="region" aria-label="The SQL" tabindex="0">SELECT date_dim.d_day_name, SUM(catalog_sales.cs_quantity) AS total_quantity FROM catalog_sales JOIN customer_demographics ON catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk JOIN date_dim ON catalog_sales.cs_sold_date_sk = date_dim.d_date_sk WHERE customer_demographics.cd_marital_status = &#x27;M&#x27; GROUP BY date_dim.d_day_name ORDER BY total_quantity DESC</pre><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">The model was asked 1 time</h3><ul class="mt-2 space-y-2 text-sm"><li><span class="font-medium">Attempt 1:</span> accepted<span class="text-gray-600"> · gpt-6-luna · 2,068 tokens in, 95 out · $0.000068 · 1.8 s</span></li></ul><p class="mt-2 text-sm"><span class="text-gray-600">Tables the model was shown:</span> <span class="font-mono text-xs">catalog_sales, catalog_returns, customer_demographics, customer, date_dim</span></p><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">Validation</h3><p class="mt-2 text-sm">Parses: <strong>pass</strong> · read-only: <strong>pass</strong> · every table and column exists: <strong>pass</strong> · joins against the plan: <strong>incomplete</strong></p><ul class="mt-2 list-disc space-y-1 pl-5 text-sm"><li>an edge of the path is not used: catalog_returns.cr_item_sk = catalog_sales.cs_item_sk and catalog_returns.cr_order_number = catalog_sales.cs_order_number</li><li>an edge of the path is not used: catalog_sales.cs_bill_customer_sk = customer.c_customer_sk</li></ul><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">Execution</h3><p class="mt-2 text-sm">7 rows in 2.4 s. On the read-only connection, limit 30s, at most 1,000 rows.</p><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">The plan, table by table</h3><ul class="mt-2 space-y-2 text-sm"><li><span class="font-mono text-xs">catalog_sales</span><span class="block text-gray-800">Started from catalog sales, the table the question matched best.</span></li><li><span class="font-mono text-xs">catalog_returns</span> <span class="text-gray-600">joined to</span> <span class="font-mono text-xs">catalog_sales</span><span class="text-gray-600"> · rule: shortest</span><span class="block text-gray-800">82 routes existed; the shortest was used.</span></li><li><span class="font-mono text-xs">customer_demographics</span> <span class="text-gray-600">joined to</span> <span class="font-mono text-xs">catalog_sales</span><span class="text-gray-600"> · rule: alphabetical</span><span class="block text-gray-800">4 routes of 1 join connect customer demographics to the tables already joined. The overlay declares where a table that could join either is attached: catalog sales rather than catalog returns, because: a return refers to its sale, so whatever either could carry is taken to describe the sale (an operator&#x27;s default). Not taken: Each customer demographics row has many catalog returns rows, through their refunded customer demographics surrogate key. Not taken: Each customer demographics row has many catalog returns rows, through their returning customer demographics surrogate key. 2 routes were left. The tie was broken alphabetically, so the choice is arbitrary. The wording of the question did not separate them: 0.774 against 0.739, within the 0.107 that could be chance.</span></li><li><span class="font-mono text-xs">customer</span> <span class="text-gray-600">joined to</span> <span class="font-mono text-xs">catalog_sales</span><span class="text-gray-600"> · rule: alphabetical</span><span class="block text-gray-800">5 routes of 1 join connect customer to the tables already joined. The overlay declares where a table that could join either is attached: catalog sales rather than catalog returns, because: a return refers to its sale, so whatever either could carry is taken to describe the sale (an operator&#x27;s default). Not taken: Each customer row has many catalog returns rows, through their refunded customer surrogate key. Not taken: Each customer row has many catalog returns rows, through their returning customer surrogate key. 3 routes were left. The tie was broken alphabetically, so the choice is arbitrary. The wording of the question did not separate them: 0.571 against 0.554, within the 0.107 that could be chance.</span></li><li><span class="font-mono text-xs">date_dim</span> <span class="text-gray-600">joined to</span> <span class="font-mono text-xs">catalog_sales</span><span class="text-gray-600"> · rule: alphabetical</span><span class="block text-gray-800">6 routes of 1 join connect date dimension to the tables already joined. The overlay declares where a table that could join either is attached: catalog sales rather than catalog returns, because: a return refers to its sale, so whatever either could carry is taken to describe the sale (an operator&#x27;s default). The overlay declares which route between catalog sales and date dimension is meant, because: a question that names no date means the date of sale (an operator&#x27;s default). Not taken: Each date dimension row has many catalog returns rows, through their returned date surrogate key. Not taken: Each date dimension row has many catalog sales rows, through their ship date surrogate key. 4 routes were left. The tie was broken alphabetically, so the choice is arbitrary. The wording of the question did not separate them: 0.574 against 0.554, within the 0.107 that could be chance.</span></li></ul><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">Raised about the plan, and not about this answer</h3><ul class="mt-2 space-y-2 text-sm"><li><span class="text-gray-600">arbitrary_choice · not used:</span> I had no basis for this choice. 2 routes of 1 join connect customer and catalog sales, and nothing declares which is meant. Used: Each customer row has many catalog sales rows, through their bill customer surrogate key. Equally valid: Each customer row has many catalog sales rows, through their ship customer surrogate key.</li><li><span class="text-gray-600">multi_anchor · not used:</span> I had no basis for where to join customer. It is 1 join from catalog sales and equally from customer demographics, and nothing declares which is meant. Used: Each customer row has many catalog sales rows, through their bill customer surrogate key. Equally valid: Each customer row has one customer demographics, through its current customer demographics surrogate key.</li></ul><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">Timings</h3><div class="mt-2 max-w-xl"><ul class="space-y-1 text-sm"><li class="flex justify-between gap-6"><span>Finding the tables and the joins between them</span><span class="tabular-nums text-gray-600">286 ms</span></li><li class="flex justify-between gap-6"><span>Writing out what the model will be shown</span><span class="tabular-nums text-gray-600">0 ms</span></li><li class="flex justify-between gap-6"><span>The model is writing the SQL</span><span class="tabular-nums text-gray-600">1825 ms</span></li><li class="flex justify-between gap-6"><span>Checking the SQL before it runs</span><span class="tabular-nums text-gray-600">8 ms</span></li><li class="flex justify-between gap-6"><span>Running it on the warehouse, read-only</span><span class="tabular-nums text-gray-600">2433 ms</span></li></ul><p class="mt-1 flex justify-between gap-6 border-t pt-1 text-sm font-medium"><span>In all</span><span class="tabular-nums">4552 ms</span></p></div><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">Cost and settings</h3><p class="mt-2 text-sm">$0.000068 · 2,068 tokens in, 95 out · model gpt-6-luna at temperature 0</p><p class="mt-1 break-all font-mono text-xs text-gray-600">schema snapshot 1 4e674c8f1628 · preferences ea14d9ad8580 · alpha 0.5 · cut 0.5 · cap 5 · margin 0.10705139708498754 · bound 10 · max joins 3 · query 1ace376e-5910-47f2-a1cf-31681bdd29ff</p><details class="mt-6"><summary class="cursor-pointer text-sm text-gray-700">The prompt, exactly as it was sent</summary><pre class="mt-2 overflow-x-auto whitespace-pre rounded bg-gray-50 p-3 font-mono text-xs text-gray-900" role="region" aria-label="The prompt&#x27;s system message" tabindex="0">You write one PostgreSQL query that answers a question about a data warehouse.
+
+You are given the tables you may use, as CREATE TABLE statements. The comment above each table and after each column says what it holds.
+
+Rules:
+- Write exactly one SELECT statement. It may begin with WITH. Never write anything that changes data.
+- Use only the tables and columns given. Do not use any other table or column, even one you know of.
+- Qualify every column with its table name or its alias.
+- Do not put comments in the SQL.
+- If the question cannot be answered from the tables given, do not guess and do not answer a different question.
+
+Reply with one JSON object and nothing else:
+  {&quot;status&quot;: &quot;sql&quot;, &quot;sql&quot;: &quot;&lt;the query&gt;&quot;}
+or, when the question cannot be answered from the tables given:
+  {&quot;status&quot;: &quot;not_answerable&quot;, &quot;sql&quot;: &quot;&quot;}
+Do not explain.</pre><pre class="mt-2 overflow-x-auto whitespace-pre rounded bg-gray-50 p-3 font-mono text-xs text-gray-900" role="region" aria-label="The prompt&#x27;s user message" tabindex="0">Tables:
+
+-- catalog sales
+CREATE TABLE catalog_sales (
+  cs_sold_date_sk bigint,  -- sold date surrogate key
+  cs_sold_time_sk bigint,  -- sold time surrogate key
+  cs_ship_date_sk bigint,  -- ship date surrogate key
+  cs_bill_customer_sk bigint,  -- bill customer surrogate key
+  cs_bill_cdemo_sk bigint,  -- bill customer demographics surrogate key
+  cs_bill_hdemo_sk bigint,  -- bill household demographics surrogate key
+  cs_bill_addr_sk bigint,  -- bill address surrogate key
+  cs_ship_customer_sk bigint,  -- ship customer surrogate key
+  cs_ship_cdemo_sk bigint,  -- ship customer demographics surrogate key
+  cs_ship_hdemo_sk bigint,  -- ship household demographics surrogate key
+  cs_ship_addr_sk bigint,  -- ship address surrogate key
+  cs_call_center_sk bigint,  -- call center surrogate key
+  cs_catalog_page_sk bigint,  -- catalog page surrogate key
+  cs_ship_mode_sk bigint,  -- ship mode surrogate key
+  cs_warehouse_sk bigint,  -- warehouse surrogate key
+  cs_item_sk bigint,  -- item surrogate key
+  cs_promo_sk bigint,  -- promotion surrogate key
+  cs_order_number bigint,  -- order number
+  cs_quantity bigint,  -- quantity
+  cs_wholesale_cost numeric(7,2),  -- wholesale cost
+  cs_list_price numeric(7,2),  -- list price
+  cs_sales_price numeric(7,2),  -- sales price
+  cs_ext_discount_amt numeric(7,2),  -- extended discount amount
+  cs_ext_sales_price numeric(7,2),  -- extended sales price
+  cs_ext_wholesale_cost numeric(7,2),  -- extended wholesale cost
+  cs_ext_list_price numeric(7,2),  -- extended list price
+  cs_ext_tax numeric(7,2),  -- extended tax
+  cs_coupon_amt numeric(7,2),  -- coupon amount
+  cs_ext_ship_cost numeric(7,2),  -- extended ship cost
+  cs_net_paid numeric(7,2),  -- net paid
+  cs_net_paid_inc_tax numeric(7,2),  -- net paid including tax
+  cs_net_paid_inc_ship numeric(7,2),  -- net paid including ship
+  cs_net_paid_inc_ship_tax numeric(7,2),  -- net paid including ship tax
+  cs_net_profit numeric(7,2)  -- net profit
+);
+
+-- catalog returns
+CREATE TABLE catalog_returns (
+  cr_returned_date_sk bigint,  -- returned date surrogate key
+  cr_returned_time_sk bigint,  -- returned time surrogate key
+  cr_item_sk bigint,  -- item surrogate key
+  cr_refunded_customer_sk bigint,  -- refunded customer surrogate key
+  cr_refunded_cdemo_sk bigint,  -- refunded customer demographics surrogate key
+  cr_refunded_hdemo_sk bigint,  -- refunded household demographics surrogate key
+  cr_refunded_addr_sk bigint,  -- refunded address surrogate key
+  cr_returning_customer_sk bigint,  -- returning customer surrogate key
+  cr_returning_cdemo_sk bigint,  -- returning customer demographics surrogate key
+  cr_returning_hdemo_sk bigint,  -- returning household demographics surrogate key
+  cr_returning_addr_sk bigint,  -- returning address surrogate key
+  cr_call_center_sk bigint,  -- call center surrogate key
+  cr_catalog_page_sk bigint,  -- catalog page surrogate key
+  cr_ship_mode_sk bigint,  -- ship mode surrogate key
+  cr_warehouse_sk bigint,  -- warehouse surrogate key
+  cr_reason_sk bigint,  -- reason surrogate key
+  cr_order_number bigint,  -- order number
+  cr_return_quantity bigint,  -- return quantity
+  cr_return_amount numeric(7,2),  -- return amount
+  cr_return_tax numeric(7,2),  -- return tax
+  cr_return_amt_inc_tax numeric(7,2),  -- return amount including tax
+  cr_fee numeric(7,2),  -- fee
+  cr_return_ship_cost numeric(7,2),  -- return ship cost
+  cr_refunded_cash numeric(7,2),  -- refunded cash
+  cr_reversed_charge numeric(7,2),  -- reversed charge
+  cr_store_credit numeric(7,2),  -- store credit
+  cr_net_loss numeric(7,2)  -- net loss
+);
+
+-- customer demographics
+CREATE TABLE customer_demographics (
+  cd_demo_sk bigint,  -- demo surrogate key
+  cd_gender character varying,  -- gender
+  cd_marital_status character varying,  -- marital status
+  cd_education_status character varying,  -- education status
+  cd_purchase_estimate bigint,  -- purchase estimate
+  cd_credit_rating character varying,  -- credit rating
+  cd_dep_count bigint,  -- dependent count
+  cd_dep_employed_count bigint,  -- dependent employed count
+  cd_dep_college_count integer,  -- dependent college count
+  PRIMARY KEY (cd_demo_sk)
+);
+
+-- customer
+CREATE TABLE customer (
+  c_customer_sk bigint,  -- customer surrogate key
+  c_customer_id character varying,  -- customer identifier
+  c_current_cdemo_sk bigint,  -- current customer demographics surrogate key
+  c_current_hdemo_sk bigint,  -- current household demographics surrogate key
+  c_current_addr_sk bigint,  -- current address surrogate key
+  c_first_shipto_date_sk bigint,  -- first ship-to date surrogate key
+  c_first_sales_date_sk bigint,  -- first sales date surrogate key
+  c_salutation character varying,  -- salutation
+  c_first_name character varying,  -- first name
+  c_last_name character varying,  -- last name
+  c_preferred_cust_flag character varying,  -- preferred customer flag
+  c_birth_day bigint,  -- birth day
+  c_birth_month bigint,  -- birth month
+  c_birth_year bigint,  -- birth year
+  c_birth_country character varying,  -- birth country
+  c_login character varying,  -- login
+  c_email_address character varying,  -- email address
+  c_last_review_date_sk integer,  -- last review date surrogate key
+  PRIMARY KEY (c_customer_sk)
+);
+
+-- date dimension
+CREATE TABLE date_dim (
+  d_date_sk bigint,  -- date surrogate key
+  d_date_id character varying,  -- date identifier
+  d_date date,  -- date
+  d_month_seq bigint,  -- month sequence
+  d_week_seq bigint,  -- week sequence
+  d_quarter_seq bigint,  -- quarter sequence
+  d_year bigint,  -- year
+  d_dow bigint,  -- day of week
+  d_moy bigint,  -- month of year
+  d_dom bigint,  -- day of month
+  d_qoy bigint,  -- quarter of year
+  d_fy_year bigint,  -- fiscal year
+  d_fy_quarter_seq bigint,  -- fiscal quarter sequence
+  d_fy_week_seq bigint,  -- fiscal week sequence
+  d_day_name character varying,  -- day name
+  d_quarter_name character varying,  -- quarter name
+  d_holiday character varying,  -- holiday
+  d_weekend character varying,  -- weekend
+  d_following_holiday character varying,  -- following holiday
+  d_first_dom bigint,  -- first day of month
+  d_last_dom bigint,  -- last day of month
+  d_same_day_ly bigint,  -- same day last year
+  d_same_day_lq bigint,  -- same day last quarter
+  d_current_day character varying,  -- current day
+  d_current_week character varying,  -- current week
+  d_current_month character varying,  -- current month
+  d_current_quarter character varying,  -- current quarter
+  d_current_year character varying,  -- current year
+  PRIMARY KEY (d_date_sk)
+);
+
+Join conditions. These are the joins selected for this question. Wherever the query joins two of these tables, join them by exactly these conditions; a line with two conditions joined by AND is one join and needs both. Use only the tables the question needs: a table listed above need not appear in the query.
+  catalog_returns.cr_item_sk = catalog_sales.cs_item_sk AND catalog_returns.cr_order_number = catalog_sales.cs_order_number
+  catalog_sales.cs_bill_cdemo_sk = customer_demographics.cd_demo_sk
+  catalog_sales.cs_bill_customer_sk = customer.c_customer_sk
+  catalog_sales.cs_sold_date_sk = date_dim.d_date_sk
+
+Question: On which days of the week do married customers order most from the catalog?</pre></details></div></details></div>
+
+{
+  "nodes": [
+    {
+      "id": "catalog_sales",
+      "readable": "catalog sales",
+      "anchor": true,
+      "inTree": true,
+      "columns": [
+        {
+          "name": "cs_sold_date_sk",
+          "readable": "catalog sales — sold date surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_sold_time_sk",
+          "readable": "catalog sales — sold time surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_ship_date_sk",
+          "readable": "catalog sales — ship date surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_bill_customer_sk",
+          "readable": "catalog sales — bill customer surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_bill_cdemo_sk",
+          "readable": "catalog sales — bill customer demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_bill_hdemo_sk",
+          "readable": "catalog sales — bill household demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_bill_addr_sk",
+          "readable": "catalog sales — bill address surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_ship_customer_sk",
+          "readable": "catalog sales — ship customer surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_ship_cdemo_sk",
+          "readable": "catalog sales — ship customer demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_ship_hdemo_sk",
+          "readable": "catalog sales — ship household demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_ship_addr_sk",
+          "readable": "catalog sales — ship address surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_call_center_sk",
+          "readable": "catalog sales — call center surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_catalog_page_sk",
+          "readable": "catalog sales — catalog page surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_ship_mode_sk",
+          "readable": "catalog sales — ship mode surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_warehouse_sk",
+          "readable": "catalog sales — warehouse surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_item_sk",
+          "readable": "catalog sales — item surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_promo_sk",
+          "readable": "catalog sales — promotion surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_order_number",
+          "readable": "catalog sales — order number",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_quantity",
+          "readable": "catalog sales — quantity",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_wholesale_cost",
+          "readable": "catalog sales — wholesale cost",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_list_price",
+          "readable": "catalog sales — list price",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_sales_price",
+          "readable": "catalog sales — sales price",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_ext_discount_amt",
+          "readable": "catalog sales — extended discount amount",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_ext_sales_price",
+          "readable": "catalog sales — extended sales price",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_ext_wholesale_cost",
+          "readable": "catalog sales — extended wholesale cost",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_ext_list_price",
+          "readable": "catalog sales — extended list price",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_ext_tax",
+          "readable": "catalog sales — extended tax",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_coupon_amt",
+          "readable": "catalog sales — coupon amount",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_ext_ship_cost",
+          "readable": "catalog sales — extended ship cost",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_net_paid",
+          "readable": "catalog sales — net paid",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_net_paid_inc_tax",
+          "readable": "catalog sales — net paid including tax",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_net_paid_inc_ship",
+          "readable": "catalog sales — net paid including ship",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_net_paid_inc_ship_tax",
+          "readable": "catalog sales — net paid including ship tax",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_net_profit",
+          "readable": "catalog sales — net profit",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        }
+      ],
+      "matched": [
+        "cs_bill_cdemo_sk",
+        "cs_ship_customer_sk",
+        "cs_ship_cdemo_sk",
+        "cs_order_number"
+      ]
+    },
+    {
+      "id": "catalog_returns",
+      "readable": "catalog returns",
+      "anchor": true,
+      "inTree": true,
+      "columns": [
+        {
+          "name": "cr_returned_date_sk",
+          "readable": "catalog returns — returned date surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cr_returned_time_sk",
+          "readable": "catalog returns — returned time surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cr_item_sk",
+          "readable": "catalog returns — item surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cr_refunded_customer_sk",
+          "readable": "catalog returns — refunded customer surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cr_refunded_cdemo_sk",
+          "readable": "catalog returns — refunded customer demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cr_refunded_hdemo_sk",
+          "readable": "catalog returns — refunded household demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cr_refunded_addr_sk",
+          "readable": "catalog returns — refunded address surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cr_returning_customer_sk",
+          "readable": "catalog returns — returning customer surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cr_returning_cdemo_sk",
+          "readable": "catalog returns — returning customer demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cr_returning_hdemo_sk",
+          "readable": "catalog returns — returning household demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cr_returning_addr_sk",
+          "readable": "catalog returns — returning address surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cr_call_center_sk",
+          "readable": "catalog returns — call center surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cr_catalog_page_sk",
+          "readable": "catalog returns — catalog page surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cr_ship_mode_sk",
+          "readable": "catalog returns — ship mode surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cr_warehouse_sk",
+          "readable": "catalog returns — warehouse surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cr_reason_sk",
+          "readable": "catalog returns — reason surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cr_order_number",
+          "readable": "catalog returns — order number",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cr_return_quantity",
+          "readable": "catalog returns — return quantity",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cr_return_amount",
+          "readable": "catalog returns — return amount",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cr_return_tax",
+          "readable": "catalog returns — return tax",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cr_return_amt_inc_tax",
+          "readable": "catalog returns — return amount including tax",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cr_fee",
+          "readable": "catalog returns — fee",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cr_return_ship_cost",
+          "readable": "catalog returns — return ship cost",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cr_refunded_cash",
+          "readable": "catalog returns — refunded cash",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cr_reversed_charge",
+          "readable": "catalog returns — reversed charge",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cr_store_credit",
+          "readable": "catalog returns — store credit",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cr_net_loss",
+          "readable": "catalog returns — net loss",
+          "dataType": "numeric(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        }
+      ],
+      "matched": [
+        "cr_returning_cdemo_sk"
+      ]
+    },
+    {
+      "id": "customer_demographics",
+      "readable": "customer demographics",
+      "anchor": true,
+      "inTree": true,
+      "columns": [
+        {
+          "name": "cd_demo_sk",
+          "readable": "customer demographics — demo surrogate key",
+          "dataType": "bigint",
+          "primaryKey": true,
+          "foreignKey": false
+        },
+        {
+          "name": "cd_gender",
+          "readable": "customer demographics — gender",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cd_marital_status",
+          "readable": "customer demographics — marital status",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cd_education_status",
+          "readable": "customer demographics — education status",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cd_purchase_estimate",
+          "readable": "customer demographics — purchase estimate",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cd_credit_rating",
+          "readable": "customer demographics — credit rating",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cd_dep_count",
+          "readable": "customer demographics — dependent count",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cd_dep_employed_count",
+          "readable": "customer demographics — dependent employed count",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cd_dep_college_count",
+          "readable": "customer demographics — dependent college count",
+          "dataType": "integer",
+          "primaryKey": false,
+          "foreignKey": false
+        }
+      ],
+      "matched": [
+        "cd_marital_status"
+      ]
+    },
+    {
+      "id": "customer",
+      "readable": "customer",
+      "anchor": true,
+      "inTree": true,
+      "columns": [
+        {
+          "name": "c_customer_sk",
+          "readable": "customer — customer surrogate key",
+          "dataType": "bigint",
+          "primaryKey": true,
+          "foreignKey": false
+        },
+        {
+          "name": "c_customer_id",
+          "readable": "customer — customer identifier",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "c_current_cdemo_sk",
+          "readable": "customer — current customer demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "c_current_hdemo_sk",
+          "readable": "customer — current household demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "c_current_addr_sk",
+          "readable": "customer — current address surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "c_first_shipto_date_sk",
+          "readable": "customer — first ship-to date surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "c_first_sales_date_sk",
+          "readable": "customer — first sales date surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "c_salutation",
+          "readable": "customer — salutation",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "c_first_name",
+          "readable": "customer — first name",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "c_last_name",
+          "readable": "customer — last name",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "c_preferred_cust_flag",
+          "readable": "customer — preferred customer flag",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "c_birth_day",
+          "readable": "customer — birth day",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "c_birth_month",
+          "readable": "customer — birth month",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "c_birth_year",
+          "readable": "customer — birth year",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "c_birth_country",
+          "readable": "customer — birth country",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "c_login",
+          "readable": "customer — login",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "c_email_address",
+          "readable": "customer — email address",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "c_last_review_date_sk",
+          "readable": "customer — last review date surrogate key",
+          "dataType": "integer",
+          "primaryKey": false,
+          "foreignKey": true
+        }
+      ],
+      "matched": []
+    },
+    {
+      "id": "date_dim",
+      "readable": "date dimension",
+      "anchor": true,
+      "inTree": true,
+      "columns": [
+        {
+          "name": "d_date_sk",
+          "readable": "date — date surrogate key",
+          "dataType": "bigint",
+          "primaryKey": true,
+          "foreignKey": false
+        },
+        {
+          "name": "d_date_id",
+          "readable": "date — date identifier",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_date",
+          "readable": "date — date",
+          "dataType": "date",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_month_seq",
+          "readable": "date — month sequence",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_week_seq",
+          "readable": "date — week sequence",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_quarter_seq",
+          "readable": "date — quarter sequence",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_year",
+          "readable": "date — year",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_dow",
+          "readable": "date — day of week",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_moy",
+          "readable": "date — month of year",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_dom",
+          "readable": "date — day of month",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_qoy",
+          "readable": "date — quarter of year",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_fy_year",
+          "readable": "date — fiscal year",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_fy_quarter_seq",
+          "readable": "date — fiscal quarter sequence",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_fy_week_seq",
+          "readable": "date — fiscal week sequence",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_day_name",
+          "readable": "date — day name",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_quarter_name",
+          "readable": "date — quarter name",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_holiday",
+          "readable": "date — holiday",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_weekend",
+          "readable": "date — weekend",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_following_holiday",
+          "readable": "date — following holiday",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_first_dom",
+          "readable": "date — first day of month",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_last_dom",
+          "readable": "date — last day of month",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_same_day_ly",
+          "readable": "date — same day last year",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_same_day_lq",
+          "readable": "date — same day last quarter",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_current_day",
+          "readable": "date — current day",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_current_week",
+          "readable": "date — current week",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_current_month",
+          "readable": "date — current month",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_current_quarter",
+          "readable": "date — current quarter",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "d_current_year",
+          "readable": "date — current year",
+          "dataType": "character varying",
+          "primaryKey": false,
+          "foreignKey": false
+        }
+      ],
+      "matched": [
+        "d_current_week"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "catalog_returns.cr_refunded_customer_sk>customer.c_customer_sk",
+      "kind": "alternative",
+      "fromTable": "catalog_returns",
+      "fromColumns": [
+        "cr_refunded_customer_sk"
+      ],
+      "toTable": "customer",
+      "toColumns": [
+        "c_customer_sk"
+      ],
+      "description": "Each customer row has many catalog returns rows, through their refunded customer surrogate key.",
+      "status": "withdrawn",
+      "source": "catalog",
+      "loud": false
+    },
+    {
+      "id": "catalog_returns.cr_returning_customer_sk>customer.c_customer_sk",
+      "kind": "alternative",
+      "fromTable": "catalog_returns",
+      "fromColumns": [
+        "cr_returning_customer_sk"
+      ],
+      "toTable": "customer",
+      "toColumns": [
+        "c_customer_sk"
+      ],
+      "description": "Each customer row has many catalog returns rows, through their returning customer surrogate key.",
+      "status": "withdrawn",
+      "source": "catalog",
+      "loud": false
+    },
+    {
+      "id": "catalog_returns.cr_refunded_cdemo_sk>customer_demographics.cd_demo_sk",
+      "kind": "alternative",
+      "fromTable": "catalog_returns",
+      "fromColumns": [
+        "cr_refunded_cdemo_sk"
+      ],
+      "toTable": "customer_demographics",
+      "toColumns": [
+        "cd_demo_sk"
+      ],
+      "description": "Each customer demographics row has many catalog returns rows, through their refunded customer demographics surrogate key.",
+      "status": "withdrawn",
+      "source": "catalog",
+      "loud": false
+    },
+    {
+      "id": "catalog_returns.cr_returning_cdemo_sk>customer_demographics.cd_demo_sk",
+      "kind": "alternative",
+      "fromTable": "catalog_returns",
+      "fromColumns": [
+        "cr_returning_cdemo_sk"
+      ],
+      "toTable": "customer_demographics",
+      "toColumns": [
+        "cd_demo_sk"
+      ],
+      "description": "Each customer demographics row has many catalog returns rows, through their returning customer demographics surrogate key.",
+      "status": "withdrawn",
+      "source": "catalog",
+      "loud": false
+    },
+    {
+      "id": "catalog_returns.cr_returned_date_sk>date_dim.d_date_sk",
+      "kind": "alternative",
+      "fromTable": "catalog_returns",
+      "fromColumns": [
+        "cr_returned_date_sk"
+      ],
+      "toTable": "date_dim",
+      "toColumns": [
+        "d_date_sk"
+      ],
+      "description": "Each date dimension row has many catalog returns rows, through their returned date surrogate key.",
+      "status": "withdrawn",
+      "source": "catalog",
+      "loud": false
+    },
+    {
+      "id": "catalog_sales.cs_bill_customer_sk>customer.c_customer_sk",
+      "kind": "planned",
+      "fromTable": "catalog_sales",
+      "fromColumns": [
+        "cs_bill_customer_sk"
+      ],
+      "toTable": "customer",
+      "toColumns": [
+        "c_customer_sk"
+      ],
+      "description": "Each customer row has many catalog sales rows, through their bill customer surrogate key.",
+      "status": null,
+      "source": "catalog",
+      "loud": false
+    },
+    {
+      "id": "catalog_sales.cs_bill_cdemo_sk>customer_demographics.cd_demo_sk",
+      "kind": "used",
+      "fromTable": "catalog_sales",
+      "fromColumns": [
+        "cs_bill_cdemo_sk"
+      ],
+      "toTable": "customer_demographics",
+      "toColumns": [
+        "cd_demo_sk"
+      ],
+      "description": "Each customer demographics row has many catalog sales rows, through their bill customer demographics surrogate key.",
+      "status": null,
+      "source": "catalog",
+      "loud": true
+    },
+    {
+      "id": "catalog_sales.cs_ship_date_sk>date_dim.d_date_sk",
+      "kind": "alternative",
+      "fromTable": "catalog_sales",
+      "fromColumns": [
+        "cs_ship_date_sk"
+      ],
+      "toTable": "date_dim",
+      "toColumns": [
+        "d_date_sk"
+      ],
+      "description": "Each date dimension row has many catalog sales rows, through their ship date surrogate key.",
+      "status": "withdrawn",
+      "source": "catalog",
+      "loud": false
+    },
+    {
+      "id": "catalog_sales.cs_sold_date_sk>date_dim.d_date_sk",
+      "kind": "used",
+      "fromTable": "catalog_sales",
+      "fromColumns": [
+        "cs_sold_date_sk"
+      ],
+      "toTable": "date_dim",
+      "toColumns": [
+        "d_date_sk"
+      ],
+      "description": "Each date dimension row has many catalog sales rows, through their sold date surrogate key.",
+      "status": null,
+      "source": "catalog",
+      "loud": true
+    },
+    {
+      "id": "catalog_sales.cs_ship_customer_sk>customer.c_customer_sk",
+      "kind": "alternative",
+      "fromTable": "catalog_sales",
+      "fromColumns": [
+        "cs_ship_customer_sk"
+      ],
+      "toTable": "customer",
+      "toColumns": [
+        "c_customer_sk"
+      ],
+      "description": "Each customer row has many catalog sales rows, through their ship customer surrogate key.",
+      "status": "tied",
+      "source": "catalog",
+      "loud": false
+    },
+    {
+      "id": "catalog_sales.cs_ship_cdemo_sk>customer_demographics.cd_demo_sk",
+      "kind": "alternative",
+      "fromTable": "catalog_sales",
+      "fromColumns": [
+        "cs_ship_cdemo_sk"
+      ],
+      "toTable": "customer_demographics",
+      "toColumns": [
+        "cd_demo_sk"
+      ],
+      "description": "Each customer demographics row has many catalog sales rows, through their ship customer demographics surrogate key.",
+      "status": "tied",
+      "source": "catalog",
+      "loud": true
+    },
+    {
+      "id": "customer.c_current_cdemo_sk>customer_demographics.cd_demo_sk",
+      "kind": "alternative",
+      "fromTable": "customer",
+      "fromColumns": [
+        "c_current_cdemo_sk"
+      ],
+      "toTable": "customer_demographics",
+      "toColumns": [
+        "cd_demo_sk"
+      ],
+      "description": "Each customer row has one customer demographics, through its current customer demographics surrogate key.",
+      "status": "tied",
+      "source": "catalog",
+      "loud": false
+    },
+    {
+      "id": "customer.c_first_sales_date_sk>date_dim.d_date_sk",
+      "kind": "alternative",
+      "fromTable": "customer",
+      "fromColumns": [
+        "c_first_sales_date_sk"
+      ],
+      "toTable": "date_dim",
+      "toColumns": [
+        "d_date_sk"
+      ],
+      "description": "Each date dimension row has many customer rows, through their first sales date surrogate key.",
+      "status": "tied",
+      "source": "catalog",
+      "loud": true
+    },
+    {
+      "id": "customer.c_first_shipto_date_sk>date_dim.d_date_sk",
+      "kind": "alternative",
+      "fromTable": "customer",
+      "fromColumns": [
+        "c_first_shipto_date_sk"
+      ],
+      "toTable": "date_dim",
+      "toColumns": [
+        "d_date_sk"
+      ],
+      "description": "Each date dimension row has many customer rows, through their first ship-to date surrogate key.",
+      "status": "tied",
+      "source": "catalog",
+      "loud": true
+    },
+    {
+      "id": "customer.c_last_review_date_sk>date_dim.d_date_sk",
+      "kind": "alternative",
+      "fromTable": "customer",
+      "fromColumns": [
+        "c_last_review_date_sk"
+      ],
+      "toTable": "date_dim",
+      "toColumns": [
+        "d_date_sk"
+      ],
+      "description": "Each date dimension row has many customer rows, through their last review date surrogate key (asserted in the overlay, not declared by the database).",
+      "status": "tied",
+      "source": "overlay",
+      "loud": true
+    },
+    {
+      "id": "catalog_returns.cr_item_sk+cr_order_number>catalog_sales.cs_item_sk+cs_order_number",
+      "kind": "planned",
+      "fromTable": "catalog_returns",
+      "fromColumns": [
+        "cr_item_sk",
+        "cr_order_number"
+      ],
+      "toTable": "catalog_sales",
+      "toColumns": [
+        "cs_item_sk",
+        "cs_order_number"
+      ],
+      "description": "Each catalog returns row has one catalog sales, through its item surrogate key and order number (asserted in the overlay, not declared by the database).",
+      "status": null,
+      "source": "overlay",
+      "loud": false
+    }
+  ],
+  "undrawn": []
+}

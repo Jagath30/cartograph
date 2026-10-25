@@ -16,15 +16,34 @@ export type Stage = {
   typicalMs: number;
 };
 
-/** In the order the pipeline runs them. Typical times are the stored
- *  traces' of 10 and 11 October 2026, rounded. */
+/** In the order the pipeline runs them (step 10b, v2.1: linking first,
+ *  then choosing). Typical times are the medians of step 10b's run files,
+ *  rounded; choosing's is its median times the share of questions it ran
+ *  on (1,950 ms on 21%). */
 export const STAGES: Stage[] = [
+  { keys: ["link"], label: "A language model is naming the tables", typicalMs: 1700 },
+  { keys: ["locate"], label: "Finding the joins between them", typicalMs: 250 },
+  { keys: ["choose"], label: "Asking the model about any choice the rules left open", typicalMs: 400 },
+  { keys: ["prompt"], label: "Writing out what the model will be shown", typicalMs: 100 },
+  { keys: ["generate"], label: "The model is writing the SQL", typicalMs: 2300 },
+  { keys: ["validate", "conform"], label: "Checking the SQL before it runs", typicalMs: 200 },
+  { keys: ["execute"], label: "Running it on the warehouse, read-only", typicalMs: Infinity },
+];
+
+/** A trace of version 1 or 2, before linking: its stages, as it was shown.
+ *  Typical times are the stored traces' of 10 and 11 October 2026, rounded. */
+export const STAGES_BEFORE_LINKING: Stage[] = [
   { keys: ["locate"], label: "Finding the tables and the joins between them", typicalMs: 500 },
   { keys: ["prompt"], label: "Writing out what the model will be shown", typicalMs: 100 },
   { keys: ["generate"], label: "The model is writing the SQL", typicalMs: 2500 },
   { keys: ["validate", "conform"], label: "Checking the SQL before it runs", typicalMs: 200 },
   { keys: ["execute"], label: "Running it on the warehouse, read-only", typicalMs: Infinity },
 ];
+
+/** The stages a trace is shown with: a trace before version 3 never linked. */
+export function stagesOf(traceVersion: number): Stage[] {
+  return traceVersion >= 3 ? STAGES : STAGES_BEFORE_LINKING;
+}
 
 /** Which stage the clock says is running. Never past the last. */
 export function stageAt(elapsedMs: number, stages: Stage[] = STAGES): number {
