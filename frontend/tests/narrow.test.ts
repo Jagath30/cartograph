@@ -8,7 +8,7 @@ import { expect, test } from "vitest";
 const read = (path: string) => readFileSync(fileURLToPath(new URL(`../${path}`, import.meta.url)), "utf8");
 
 test("the answer is one column below 1024 px, the account before the results", () => {
-  const page = read("app/ask/page.tsx");
+  const page = read("components/ask/Answer.tsx");
   expect(page).toContain('className="grid items-start gap-8 lg:grid-cols-2"');
   expect(page.indexOf("<Narrative trace={trace} />")).toBeLessThan(page.indexOf('data-ask="results"'));
   expect(page).not.toMatch(/\border-(first|last|\d)/);

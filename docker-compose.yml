@@ -73,9 +73,10 @@ services:
   frontend:
     build: ./frontend
     environment:
-      # Read by the browser, so it must be an address the host can reach --
-      # not the compose service name.
-      NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000/api/v1
+      # Read by next.config's rewrite of /api/v1, on the server: the browser
+      # only ever calls this frontend's own origin (step 11), so this is the
+      # compose service name, not an address the host can reach.
+      BACKEND_ORIGIN: http://backend:8000
     volumes:
       - ./frontend:/app
       - /app/node_modules

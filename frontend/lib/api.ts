@@ -1,16 +1,15 @@
 /**
  * The only module in the frontend that talks to the backend (IR-16).
  *
- * Every request in the application goes through `request` below. That is
- * what makes step 11's session handling a change to one file rather than
- * a sweep through every call site, and it is where T-08's credentials
- * mode is decided once.
+ * Every request in the application goes through `request` below, and
+ * goes to this page's own origin (step 11, T-08): next.config rewrites
+ * /api/v1 to the backend. So the session cookie is first-party, sent with
+ * every call and to nowhere else.
  */
 
-import type { QueryOut } from "./trace/types";
+import type { Outcome, QueryOut, Value } from "./trace/types";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
+const BASE_URL = "/api/v1";
 
 /** How long the browser waits for one answer. A question is one request
  *  and one response (D-05); the warehouse's own limit is 30 seconds and
@@ -55,8 +54,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     response = await fetch(`${BASE_URL}${path}`, {
       ...init,
       headers,
-      // Does nothing today; required once sessions arrive (T-08).
-      credentials: "include",
+      // The session cookie, to this origin only.
+      credentials: "same-origin",
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (cause) {
@@ -83,6 +82,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiError(response.status, code, message, detail, queryId);
   }
 
+  // A 204 has no body: logout.
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
@@ -95,11 +96,50 @@ export type Readiness = {
   checks: Record<string, Check>;
 };
 
+export type Account = { email: string };
+
+/** One row of a history: no trace (DD-17). */
+export type Listed = {
+  query_id: string;
+  question: string;
+  created_at: string;
+  status: Outcome;
+  /** A choice made without a basis touched the answer (DD-21). */
+  had_ambiguity: boolean;
+};
+
+export type History = { queries: Listed[] };
+
+/** A stored answer's SQL run again (item 88): the rows as of `ran_at`. */
+export type RerunOut = {
+  query_id: string;
+  ran_at: string;
+  status: "answered" | "validation_failed" | "execution_failed";
+  code: string | null;
+  message: string | null;
+  columns: string[];
+  rows: Value[][] | null;
+  row_count: number | null;
+  truncated: boolean | null;
+};
+
+const post = (body: unknown): RequestInit => ({ method: "POST", body: JSON.stringify(body) });
+
 export const api = {
   health: () => request<Health>("/health"),
   ready: () => request<Readiness>("/ready"),
   /** IR-02: one question, one response, with its trace. */
-  ask: (question: string) => request<QueryOut>("/queries", { method: "POST", body: JSON.stringify({ question }) }),
-  /** One stored query with its trace. Its rows are not stored (DR-15). */
+  ask: (question: string) => request<QueryOut>("/queries", post({ question })),
+  /** One of the caller's stored queries with its trace. Its rows are not stored (DR-15). */
   query: (id: string) => request<QueryOut>(`/queries/${encodeURIComponent(id)}`),
+  /** IR-08: the caller's newest 100, newest first. */
+  history: () => request<History>("/queries"),
+  /** Item 88: the stored SQL validated again and run now. No body. */
+  rerun: (id: string) => request<RerunOut>(`/queries/${encodeURIComponent(id)}/rerun`, { method: "POST" }),
+  /** IR-09. Registering does not sign in. */
+  register: (email: string, password: string) => request<Account>("/auth/register", post({ email, password })),
+  login: (email: string, password: string) => request<Account>("/auth/login", post({ email, password })),
+  logout: () => request<void>("/auth/logout", { method: "POST" }),
+  /** Who the session is, or a 401. */
+  me: () => request<Account>("/auth/me"),
 };

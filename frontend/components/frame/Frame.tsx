@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Glyph } from "./Glyph";
+import { Account } from "./Session";
 
 export const REPOSITORY = "https://github.com/Jagath30/cartograph";
 
@@ -9,7 +10,8 @@ export const WIDTH = "mx-auto w-full max-w-[1880px] px-5";
 
 const LINK = "rounded-sm underline-offset-4 hover:underline";
 
-/** The frame's top line. Not a heading: each page has its own one h1. */
+/** The frame's top line: the name, who is signed in (step 11), and the
+ *  source. Not a heading: each page has its own one h1. */
 export function Header() {
   return (
     <header className="border-b border-solid border-gray-200">
@@ -18,9 +20,12 @@ export function Header() {
           <Glyph />
           <span className="text-lg font-semibold tracking-tight">Cartograph</span>
         </Link>
-        <a href={REPOSITORY} className={`text-sm text-gray-700 ${LINK}`}>
-          Source
-        </a>
+        <nav aria-label="Account" className="flex items-center gap-x-4">
+          <Account />
+          <a href={REPOSITORY} className={`text-sm text-gray-700 ${LINK}`}>
+            Source
+          </a>
+        </nav>
       </div>
     </header>
   );

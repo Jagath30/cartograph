@@ -1,10 +1,12 @@
 /**
  * IR-16, and the owner's point h at stop 1 of step 9: every request the
- * frontend makes goes through lib/api.ts, straight from the browser.
+ * frontend makes goes through lib/api.ts, from the browser.
  *
- * No route handler and no server action stands between the page and the
- * API: either would run on the host that serves the page, and bring that
- * host's time limit to a question that may take longer than it allows.
+ * Since step 11 it goes to the frontend's own origin, and next.config's
+ * rewrite carries it to the backend (tests/api-client.test.ts). No route
+ * handler, middleware, proxy or server action stands between the page and
+ * the API: each would run as a function on the host that serves the page,
+ * and bring that host's time limit to a question that may take longer.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
