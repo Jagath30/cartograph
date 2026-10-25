@@ -31,6 +31,13 @@ test("each example is one card, a button named by its question, showing what it 
   expect(intro).toContain("aria-label={example.question}");
   expect(intro).toContain("onClick={() => onPick(example.question)}");
   expect(intro).toContain("Shows: {example.shows}");
+  // As asked live at stop F3 of step 10b; the gender question was replaced by the original set's Q3 (ruling 4).
+  expect(EXAMPLES.map((example) => example.question)).toEqual([
+    "Where are our catalog customers located?",
+    "Which five states spent the most on the web?",
+    "How many customers were born in each country?",
+    "Which of our suppliers deliver late most often?",
+  ]);
   expect(EXAMPLES.map((example) => example.shows)).toEqual([
     "a choice made with no basis",
     "a choice made with no basis",

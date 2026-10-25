@@ -9399,6 +9399,44 @@ and 2 answers stay byte for byte as pinned:
 Each pinned by a test; 13 mutations, one survived at first (a generation
 failure after linking succeeded) and got a test; all caught.
 
+### Stop F3: the paid stop — 25 October 2026
+
+Adoption steps 3 (`b65ce70`, the application on chosen) and 4
+(`5e68f86`, the frontend at trace version 3) committed first, each
+checked under CI's command, the suite and its mutations.
+
+**The ledger**, each total read in its own command with a read-only
+script: before F3, 2110 lines and $0.35769527; after, 2128 lines and
+$0.36353241. F3's 18 lines are all model calls (no question needed an
+embedding: each was in the cache). Their uncached cost is $0.00654670
+(recorded $0.00583714) against F3's budget of $0.05. The ceiling refused
+nothing.
+
+**Smoke** (`scripts/smoke.sh`): exit 0, 39 passed, 0 failed, 0 skipped.
+Both paid lines ran in chosen mode, three calls each: linking, choosing
+and generation.
+
+**The examples**, each asked once through `POST /queries`, as the page
+asks:
+1. "How much did each gender spend on the web in the year 2002?"
+   (query `90d690c1`): the model named route A, the billed customer's
+   demographics, so the choice was the model's, with no warning. That is
+   not what the example is there to show ("a choice made with no
+   basis"). By ruling 4 it was replaced by the original set's Q3, and
+   not asked again.
+2. "Which five states spent the most on the web?" (`c09411ce`): the
+   model named neither address; the choice was the alphabet's, loud. Holds.
+3. "How many customers were born in each country?" (`93794b53`): one
+   table named, no choice, no warning. Holds ("a quiet answer").
+4. "Which of our suppliers deliver late most often?" (`a7c2686b`):
+   declined at linking. Holds ("an honest decline").
+5. The replacement, Q3 "Where are our catalog customers located?"
+   (`15665d35`): the model named neither address; the alphabet's choice,
+   loud. Holds.
+The examples are now Q3, states, birth country and suppliers. Each
+example's replies are pinned in `tests/test_examples_chosen.py`, with
+gender's as the reason it left.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:

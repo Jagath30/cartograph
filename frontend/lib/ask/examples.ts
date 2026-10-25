@@ -1,31 +1,28 @@
 /**
- * The example questions (FR-44). Written for the demonstration; none is
- * from the evaluation set or the held-out set.
+ * The example questions (FR-44).
  *
- * The first two raise an arbitrary choice where the two routes give
- * different answers, proved with hand-written read-only SQL on the scale
- * factor 1 warehouse (CHECKPOINTS.md, step 9):
+ * Asked live in chosen mode at stop F3 of step 10b (25 October 2026), each
+ * once; the replies are pinned in backend/tests/test_examples_chosen.py.
  *
- *   gender   by the billed customer's demographics women spent more on
- *            the web in 2002 (183.2M against 178.6M); by the shipped-to
- *            customer's, men (183.2M against 178.7M). Worded to bring back
- *            both totals, not only the larger (stop 3 of step 9, fix 3).
- *            The totals depend on which amount column the model sums,
- *            and nothing flags that (item 90). By the billed customer's
- *            demographics: 183.2M against 178.6M summing
- *            ws_ext_sales_price, as measured above; 164.7M against 160.3M
- *            summing ws_net_paid, as the page's answer of 15 October 2026
- *            did.
- *   states   by billing or by shipping address the same five states lead,
- *            and every amount differs, Virginia's by 7%.
+ *   catalog  the original set's Q3. The model, asked which address the
+ *            question means, named neither, so the choice was the
+ *            alphabet's and is flagged. It replaced the gender question
+ *            (ruling 4 at stop F1): asked at F3, the model named the
+ *            billed customer's demographics, so that question no longer
+ *            showed a choice made with no basis. The gender totals stay
+ *            pinned by hand-written SQL (backend/tests/test_demo_questions.py).
+ *   states   the model named neither address. By billing or by shipping
+ *            address the same five states lead, and every amount
+ *            differs, Virginia's by 7% (CHECKPOINTS.md, step 9).
  *
  * The last two are development questions of step 7: one that needs no
- * join and raises nothing, and one the warehouse cannot answer.
+ * join and raises nothing, and one the warehouse cannot answer, now
+ * declined at linking.
  */
 export type Example = { question: string; shows: string };
 
 export const EXAMPLES: Example[] = [
-  { question: "How much did each gender spend on the web in the year 2002?", shows: "a choice made with no basis" },
+  { question: "Where are our catalog customers located?", shows: "a choice made with no basis" },
   { question: "Which five states spent the most on the web?", shows: "a choice made with no basis" },
   { question: "How many customers were born in each country?", shows: "a quiet answer" },
   { question: "Which of our suppliers deliver late most often?", shows: "an honest decline" },
