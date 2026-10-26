@@ -5,12 +5,17 @@ with a password made at random each run and never printed."""
 import re
 
 from app import smoke_api
+from app.core.credentials import normalise_email
 
 
 def test_the_smoke_account_is_new_each_run_and_named_for_when() -> None:
     first, second = smoke_api.smoke_email(), smoke_api.smoke_email()
     for email in (first, second):
-        assert re.fullmatch(r"smoke-\d{8}T\d{6}Z-[0-9a-f]{8}@cartograph\.invalid", email), email
+        assert re.fullmatch(r"smoke-\d{8}t\d{6}z-[0-9a-f]{8}@cartograph\.invalid", email), email
+        # As the API keeps it: an email is lowercased, and smoke compares
+        # the one it sent with the one the API says it made (the close's
+        # first smoke failed on "T" and "Z").
+        assert normalise_email(email) == email
     assert first != second
 
 

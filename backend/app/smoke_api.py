@@ -50,7 +50,9 @@ FLAGS = {"HttpOnly", "Max-Age=604800", "Path=/", "SameSite=lax"}
 
 
 def smoke_email() -> str:
-    return f"smoke-{datetime.now(UTC):%Y%m%dT%H%M%SZ}-{secrets.token_hex(4)}@cartograph.invalid"
+    """Lowercase, as the API keeps an email: smoke compares the one it sent
+    with the one the API says it made."""
+    return f"smoke-{datetime.now(UTC):%Y%m%dt%H%M%Sz}-{secrets.token_hex(4)}@cartograph.invalid"
 
 
 def smoke_password() -> str:
