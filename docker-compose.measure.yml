@@ -1,0 +1,34 @@
+# A throwaway postgres for measuring candidate scale factors (step 12):
+#
+#     WAREHOUSE_PROJECT=measure ./scripts/warehouse.sh 0.1
+#
+# Its own compose project (cartograph-measure), so the local stack and its
+# scale factor 1 warehouse are never touched. The data lives in memory
+# (tmpfs): no volume is made, and stopping the container leaves nothing
+# behind to delete. Same image, same init script and same .env as the
+# local stack, so the roles, grants and timeout are the same.
+name: cartograph-measure
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    shm_size: 256mb
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${APP_DB_NAME:?set APP_DB_NAME in .env}
+      WAREHOUSE_DB_NAME: ${WAREHOUSE_DB_NAME:?set WAREHOUSE_DB_NAME in .env}
+      WAREHOUSE_RO_USER: ${WAREHOUSE_RO_USER:?set WAREHOUSE_RO_USER in .env}
+      WAREHOUSE_RO_PASSWORD: ${WAREHOUSE_RO_PASSWORD:?set WAREHOUSE_RO_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data:size=3g
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s

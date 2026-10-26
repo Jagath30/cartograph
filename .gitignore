@@ -1,6 +1,10 @@
 .env
 .env.*
 !.env.example
+# Step 12: the deployment's secrets, on the laptop only. Never opened by a
+# session; it reaches commands only through docker run --env-file.
+.env.deploy
+!.env.deploy.example
 __pycache__/
 *.py[cod]
 .venv/

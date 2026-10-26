@@ -5,6 +5,11 @@
 #     ./scripts/warehouse.sh          scale factor 1, the local target
 #     ./scripts/warehouse.sh 0.01     the thirty-second dry run
 #
+#     WAREHOUSE_PROJECT=measure ./scripts/warehouse.sh 0.1
+#         the same load into a throwaway postgres whose data is in memory
+#         (docker-compose.measure.yml, step 12): candidate scale factors are
+#         measured there, and the local warehouse is never touched.
+#
 # The graph is the same at every scale factor -- same tables, same keys,
 # same edges. Only the row volume changes, so the small run proves the whole
 # mechanism before the large one is paid for.
@@ -41,18 +46,27 @@ for tool in docker duckdb python3; do
   command -v "$tool" >/dev/null 2>&1 || { echo "warehouse: $tool not found on PATH" >&2; exit 1; }
 done
 
+if [[ "${WAREHOUSE_PROJECT:-}" == "measure" ]]; then
+  COMPOSE=(docker compose -p cartograph-measure -f docker-compose.measure.yml)
+elif [[ -n "${WAREHOUSE_PROJECT:-}" ]]; then
+  echo "warehouse: WAREHOUSE_PROJECT must be unset or 'measure', got '$WAREHOUSE_PROJECT'" >&2
+  exit 2
+else
+  COMPOSE=(docker compose)
+fi
+
 step() { printf '\n== %s\n' "$1"; }
 
 # psql inside the postgres container, as the warehouse owner. stdin passes
 # through, which is how the CSVs reach COPY without a volume mount.
 wh() {
-  docker compose exec -T postgres sh -c \
+  "${COMPOSE[@]}" exec -T postgres sh -c \
     'PGOPTIONS="-c client_min_messages=warning" exec psql -X -q -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$WAREHOUSE_DB_NAME" "$@"' sh "$@"
 }
 
 # Same, but one failed statement does not stop the ones after it.
 wh_lenient() {
-  docker compose exec -T postgres sh -c \
+  "${COMPOSE[@]}" exec -T postgres sh -c \
     'exec psql -X -q -U "$POSTGRES_USER" -d "$WAREHOUSE_DB_NAME" "$@"' sh "$@"
 }
 
@@ -112,7 +126,7 @@ echo "   $overlay_fks relationships written to $OVERLAY ($expected_fks from tpcd
 
 step "Stack"
 ./scripts/bootstrap.sh >/dev/null
-docker compose up -d --wait postgres
+"${COMPOSE[@]}" up -d --wait postgres
 echo "   postgres healthy"
 
 step "Generate (DuckDB tpcds, scale factor $SF)"
@@ -176,6 +190,10 @@ fi
 
 step "Size"
 echo "   $(wh -Atc "select pg_size_pretty(pg_database_size(current_database()))")  ($(wh -Atc "select pg_database_size(current_database())") bytes)"
+# Per table, keys and indexes included: step 12 chooses the deployed scale
+# factor by measurement, table by table, never by interpolation.
+wh -Atc "select format('   %-24s %10s bytes', relname, pg_total_relation_size(oid)) from pg_class
+         where relkind = 'r' and relnamespace = 'public'::regnamespace order by pg_total_relation_size(oid) desc"
 
 printf '\n== Result\n   WAREHOUSE READY  sf=%s  %s tables  %s rows  %s primary keys  %s/%s foreign keys  %ss\n' \
   "$SF" "${#TABLES[@]}" "$total_rows" "$pks" "$fks" "$expected_fks" "$SECONDS"
