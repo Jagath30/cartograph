@@ -155,12 +155,20 @@ def test_the_row_cap_must_be_positive() -> None:
 # --------------------------------------------------------------------------
 
 
+def held(warehouse_dsn: str, table: str) -> int:
+    """How many rows the warehouse holds: these tests run at any scale
+    factor, and never assume one (item 73)."""
+    with psycopg.connect(warehouse_dsn) as connection:
+        return connection.execute(f"select count(*) from {table}").fetchone()[0]
+
+
 def test_a_query_returns_its_columns_and_rows(warehouse_dsn) -> None:
+    stores = held(warehouse_dsn, "store")
     execution = QueryExecutor(warehouse_dsn).run(
         valid("SELECT s.s_store_sk AS store, s.s_state FROM store AS s ORDER BY s.s_store_sk")
     )
     assert execution.ok and execution.columns == ("store", "s_state")
-    assert execution.row_count == 12 and not execution.truncated
+    assert stores >= 1 and execution.row_count == stores and not execution.truncated
     assert execution.rows[0][0] == 1 and execution.statement_timeout == "30s"
     assert execution.row_cap == DEFAULT_ROW_CAP
 
@@ -171,14 +179,19 @@ def test_a_percent_sign_in_the_sql_reaches_postgres_as_written(warehouse_dsn) ->
 
 
 def test_at_the_cap_exactly_nothing_is_truncated_and_one_over_is(warehouse_dsn) -> None:
-    sql = valid("SELECT s_store_sk FROM store")
-    assert QueryExecutor(warehouse_dsn, row_cap=12).run(sql).truncated is False
-    over = QueryExecutor(warehouse_dsn, row_cap=11).run(sql)
-    assert over.truncated is True and over.row_count == 11
+    # ship_mode, not store: store holds a single row at small scale
+    # factors, and a cap of one less than that is no cap at all.
+    modes = held(warehouse_dsn, "ship_mode")
+    assert modes >= 2
+    sql = valid("SELECT sm_ship_mode_sk FROM ship_mode")
+    assert QueryExecutor(warehouse_dsn, row_cap=modes).run(sql).truncated is False
+    over = QueryExecutor(warehouse_dsn, row_cap=modes - 1).run(sql)
+    assert over.truncated is True and over.row_count == modes - 1
 
 
 def test_stopping_the_stream_early_stops_the_server_sending(warehouse_dsn) -> None:
-    """An unaggregated read of store_sales: 2.9 million rows. Read to the
+    """An unaggregated read of store_sales: 2.9 million rows at scale
+    factor 1. Read to the
     end it takes many seconds. Stopped after the cap it must come back at
     once, and the statement must be gone from the server."""
     began = time.monotonic()
@@ -202,12 +215,13 @@ def test_an_error_in_the_database_is_reported_and_nothing_crashes(warehouse_dsn)
 
 def test_the_database_itself_refuses_a_write_if_validation_is_taken_away(warehouse_dsn) -> None:
     """NFR-07, the second line of defence, shown by refusal."""
+    stores = held(warehouse_dsn, "store")
     for sql in ("DELETE FROM store", "CREATE TABLE smuggled (i int)", "UPDATE store SET s_state = 'XX'"):
         execution = QueryExecutor(warehouse_dsn).run(forged(sql))
         assert execution.failure == "database_error", sql
         assert execution.sqlstate in ("25006", "42501"), (sql, execution.sqlstate)
     with psycopg.connect(warehouse_dsn) as connection:
-        assert connection.execute("select count(*) from store").fetchone()[0] == 12
+        assert connection.execute("select count(*) from store").fetchone()[0] == stores
 
 
 def test_the_database_itself_refuses_two_statements_in_one_text(warehouse_dsn) -> None:
