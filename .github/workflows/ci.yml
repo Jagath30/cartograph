@@ -4,16 +4,22 @@ on:
   push:
   pull_request:
 
+# Item 11, step 12: each action at its current major's newest release that
+# is at least two weeks old and runs on Node 24 (read 27 October 2026):
+# checkout v7.0.1 (20 July), setup-python v7.0.0 (20 July; v7.1.0 of
+# 22 October is too new), setup-node v7.1.0 (8 October). Exact tags, so a
+# newer release is never taken unread. The runner pinned, not "latest".
+
 jobs:
   backend-tests:
     name: backend tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
         with:
           python-version: "3.12"
           cache: pip
@@ -25,13 +31,13 @@ jobs:
 
   frontend-build:
     name: frontend production build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: "22"
           cache: npm

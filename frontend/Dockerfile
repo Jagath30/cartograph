@@ -1,8 +1,9 @@
 FROM node:22-slim
 
-# Development image: `next dev` needs the devDependencies, so NODE_ENV
-# must not be "production" here. Step 12's deployment build is separate.
-ENV NODE_ENV=development
+# Development image. NODE_ENV is left unset (item 109, step 12): npm ci
+# then installs the devDependencies `next dev` needs, `next dev` sets
+# development itself, and `next build` sets production, which its
+# prerender of /_global-error needs. Set to development, the build failed.
 
 WORKDIR /app
 
