@@ -20,6 +20,19 @@ export function backendOrigin(env: Record<string, string | undefined> = process.
  *  itself and does not read this. */
 export const PROXY_TIMEOUT_MS = 120_000;
 
+/** On every response (step 12, the brief's decision 8; each pinned by a
+ *  test): no sniffing, no full referrer to another site, never framed,
+ *  no plugins, no base or form target elsewhere, no camera, microphone or
+ *  location, and HTTPS remembered for two years. */
+export const SECURITY_HEADERS = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Content-Security-Policy", value: "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  { key: "Strict-Transport-Security", value: "max-age=63072000" },
+];
+
 const nextConfig: NextConfig = {
   // Development only. `next dev` serves its own assets to `localhost` and
   // to the host it was started with, which in the container is 0.0.0.0.
@@ -30,6 +43,9 @@ const nextConfig: NextConfig = {
   experimental: { proxyTimeout: PROXY_TIMEOUT_MS },
   // The application is /ask. Temporary (307), not permanent: "/" may
   // become something else.
+  async headers() {
+    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
+  },
   async redirects() {
     return [{ source: "/", destination: "/ask", permanent: false }];
   },
