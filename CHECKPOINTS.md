@@ -9633,6 +9633,76 @@ command; login's rate limit, FR-36); 113 and 114 to the README at step
 
 **Next.** Step 12.
 
+## Step 12 in progress: deployment — opened 26 October 2026
+
+### The hosts, re-verified on 26 October 2026 (the brief)
+
+- Neon Free: 1 GB of storage per project (it was 0.5 GB), 100 CU-hours a
+  month, scale to zero after 5 minutes, 5 GB egress, pgvector supported,
+  no card.
+- Render Hobby: a free web service has 512 MB and 0.1 CPU, 750 instance
+  hours a month, sleeps after 15 minutes idle and takes about a minute to
+  wake. Since 1 August 2026 the workspace includes 5 GB of outbound
+  bandwidth and 500 build minutes; without a card, going over suspends
+  the services for the month. One free Key Value, in memory only. No
+  persistent disk: what the container writes is lost on a restart or a
+  deploy.
+- Vercel Hobby: a rewrite to an external origin is a proxied request,
+  limited to 120 seconds. No functions are used.
+- Render's Blueprint spec, read 27 October 2026: runtime docker, region
+  singapore, plan free, autoDeployTrigger checksPass (autoDeploy is
+  deprecated), buildFilter; a Key Value requires ipAllowList, and an
+  empty list blocks every connection from outside Render.
+
+### The owner's rulings at the plan stop — 26 October 2026
+
+The plan approved, with these. The passwords are 40 letters and digits,
+made inside a container that writes the URLs into the mounted
+.env.deploy itself, its output discarded; success judged only by exit
+status, a count of each key (grep -c, the one read of that file allowed)
+and psql printing current_user and current_database(); on any failure,
+stop. The gender totals stay pinned at scale factor 1, only local tests
+reading them; three examples' SQL is checked on Neon, suppliers' decline
+being a model's. The pipeline opens in the background at start. Scale
+factors 0.1, 0.2, 0.3, 0.5 in turn, stopping at the first over 500 MB,
+then the halfway point; free memory read before each load (the owner,
+27 October: the "available" column). All three schema tables copied.
+The backend's memory measured after one question, 400 MB the line.
+
+### The scale factor, measured — 27 October 2026
+
+Each candidate loaded by scripts/warehouse.sh into a throwaway postgres
+(WAREHOUSE_PROJECT=measure: its own compose project, data in tmpfs), the
+same schema, keys and constraints as locally: 24 tables, 17 primary
+keys, 102 of 102 foreign keys applied at every factor. pg_database_size,
+keys and indexes included; per table in the logs. Measured, not
+interpolated.
+
+- sf=0.1: 216,127,155 bytes (206 MB); CSV 111 MB; 1,175,873 rows.
+- sf=0.2: 385,562,291 bytes (368 MB); CSV 209 MB; 2,175,181 rows.
+- sf=0.3: 555,660,979 bytes (530 MB); CSV 306 MB; 3,173,370 rows. Over.
+- sf=0.5: not loaded: 0.3 was the first over.
+- sf=0.25, halfway: 471,299,763 bytes (449 MB); CSV 258 MB; 2,674,258
+  rows. Under.
+
+**Chosen: scale factor 0.25, 449 MB.** Its largest tables: store_sales
+139 MB, catalog_sales 105 MB, customer_demographics 58 MB, web_sales
+53 MB, inventory 36 MB, date_dim 18 MB. Inventory is not what it is at
+scale factor 1 (673 MB alone, step 2): dsdgen scales it far below
+linearly at fractional factors.
+
+At sf=0.25, with no model: the snapshot hash is the local one,
+4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4302547; the
+executor tests (item 73, now counting what the warehouse holds) 16 of
+16 pass; the three examples' pinned SQL returns rows, run as the
+read-only role: catalog customers 5,349, the five states 5, customers by
+birth country 212. Suppliers is a decline and has no SQL. The demo
+question totals of tests/test_demo_questions.py are scale factor 1
+figures and are not expected to hold here.
+
+Roughly what reaches Neon: the COPY text, about the CSV's 258 MB, plus
+the app database's three schema tables, about 3 MB.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
