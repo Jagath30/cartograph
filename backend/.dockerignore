@@ -1,0 +1,8 @@
+# Kept out of the image (step 12). Local state: the spend ledger and the
+# vector cache are this laptop's, and a host builds from git, where they
+# never are. Python's own caches.
+eval/.spend/
+eval/.cache/
+__pycache__/
+**/__pycache__/
+.pytest_cache/

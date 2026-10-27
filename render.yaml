@@ -1,0 +1,62 @@
+# Render Blueprint (step 12): the API and its Key Value, both on the free
+# plan in Singapore, the same region as the Neon project. Read by Render
+# from main on GitHub. No secret is written here: each is `sync: false`,
+# typed by the owner into Render's dashboard when the Blueprint is first
+# applied, and never put on the laptop's command line.
+#
+# Every variable app/config.py's Settings reads is named below, except
+# those left at their code defaults on purpose: SESSION_COOKIE_SECURE
+# (true), EMBEDDING_MODEL, EMBEDDING_PRICE_PER_MILLION, SQL_MODEL and the
+# other model settings.
+services:
+  - type: web
+    name: cartograph-nl2sql-api
+    runtime: docker
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    region: singapore
+    plan: free
+    # No dockerCommand: the Dockerfile's CMD migrates to head, then runs
+    # uvicorn on $PORT, with no --reload (DR-14).
+    healthCheckPath: /api/v1/health
+    # Deploy only once CI's checks on main have passed.
+    autoDeployTrigger: checksPass
+    # Only a change to the backend redeploys it.
+    buildFilter:
+      paths:
+        - backend/**
+    envVars:
+      # Neon, direct connection strings, never the pooled ones: the app
+      # role's (it owns the app database and nothing else) and the
+      # reader's (SELECT only on the warehouse; NFR-07).
+      - key: APP_DATABASE_URL
+        sync: false
+      - key: WAREHOUSE_DATABASE_URL
+        sync: false
+      # Typed by the owner into Render; it never touches the laptop.
+      - key: OPENAI_API_KEY
+        sync: false
+      # The Vercel production domain, as Vercel shows it.
+      - key: FRONTEND_ORIGINS
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: cartograph-nl2sql-kv
+          property: connectionString
+      # Relative to /app, the image's working directory.
+      - key: WAREHOUSE_OVERLAY_PATH
+        value: overlays/tpcds.yaml
+      # NFR-25, the owner's choice: $2 a calendar month (UTC), and at most
+      # 30 questions a user a UTC day.
+      - key: DEMO_MONTHLY_BUDGET_USD
+        value: "2.00"
+      - key: DAILY_QUESTIONS_PER_USER
+        value: "30"
+
+  - type: keyvalue
+    name: cartograph-nl2sql-kv
+    region: singapore
+    plan: free
+    # Empty: no connection from outside Render, only the API's.
+    ipAllowList: []

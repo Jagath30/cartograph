@@ -15,5 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 EXPOSE 8000
-# Migrate, then serve, as in docker-compose.yml (DR-14).
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000"]
+# Migrate, then serve, as in docker-compose.yml (DR-14). On the port the
+# host names in $PORT (Render, step 12), 8000 when none is named. No
+# --reload: that is the compose file's, for local development.
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:create_app --factory --host 0.0.0.0 --port ${PORT:-8000}"]
