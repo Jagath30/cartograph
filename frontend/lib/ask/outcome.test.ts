@@ -123,6 +123,22 @@ describe("when no trace comes back", () => {
     });
   });
 
+  test("503 budget_spent: the month's budget, not a system that is not ready", () => {
+    expect(endingOfError(new ApiError(503, "budget_spent", "The demo's budget for this month is spent."))).toEqual({
+      tone: "refused",
+      title: "The demo's budget for this month is spent",
+      lines: ["The demo's budget for this month is spent."],
+    });
+  });
+
+  test("429 daily_limit: the account's questions for the day", () => {
+    expect(endingOfError(new ApiError(429, "daily_limit", "You have asked 30 questions today."))).toEqual({
+      tone: "refused",
+      title: "Today's questions are used up",
+      lines: ["You have asked 30 questions today."],
+    });
+  });
+
   test("500 trace_not_persisted: the answer is not shown, and the query is named", () => {
     const error = new ApiError(500, "trace_not_persisted", "The trace could not be stored.", null, "abc-123");
     expect(endingOfError(error)).toEqual({

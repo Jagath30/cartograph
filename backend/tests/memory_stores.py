@@ -37,6 +37,14 @@ class Memory:
         mine = sorted((d for d in documents if d.user_id == owner), key=lambda d: d.created_at, reverse=True)
         return [Listed(d.query_id, d.question, d.created_at, d.outcome, d.had_ambiguity) for d in mine[:limit]]
 
+    def spent_since(self, since: datetime) -> float:
+        documents = [TraceDocument.model_validate_json(body) for body in self.bodies.values()]
+        return sum(d.cost_usd for d in documents if d.created_at >= since)
+
+    def asked_since(self, owner: int, since: datetime) -> int:
+        documents = [TraceDocument.model_validate_json(body) for body in self.bodies.values()]
+        return sum(1 for d in documents if d.user_id == owner and d.created_at >= since)
+
 
 class MemoryAccounts:
     """Users and sessions as the real store keeps them: the hash of a

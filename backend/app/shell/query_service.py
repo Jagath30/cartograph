@@ -26,16 +26,35 @@ TWO QUESTIONS AT ONCE (NFR-06). Opening is guarded by a lock. After that
 nothing is shared that a question changes: the orchestrator keeps a
 question's state in the call, and the index, the executor and the store
 each open a connection of their own for each use.
+
+THE ALLOWANCE (NFR-25, step 12). Given one, a question is admitted only
+if app.core.budget says so: this month's spend as the store records it,
+the questions running now, and how many the user has asked today. The
+check and the count of questions running share a lock of their own, so
+two questions asked at once cannot both take the month's last room.
+Refused, it is OverAllowance, before the pipeline is opened. A rerun
+calls no model and is never checked.
+
+OPENED AT START (step 12, the owner's ruling 3). `warm` opens the
+pipeline, and the application calls it in the background once the
+server has started, so a host's wake-up includes the opening and the
+first question does not. A question that comes first waits on the same
+lock. If the opening is not ready, nothing is kept and the next question
+tries again, as before.
 """
 
+import logging
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
 import psycopg
 
+from app.core.budget import BUDGET_SPENT, Allowance, Refusal, daily_limit_message, day_start, month_start, refusal
 from app.core.snapshot import SchemaSnapshot
 from app.core.sql_reading import schema_of
 from app.core.sql_validator import validate
@@ -48,9 +67,21 @@ from app.shell.snapshot_store import NoCurrentSnapshot, SnapshotStore, StoredSna
 from app.shell.trace_store import Listed, TraceStore
 
 
+log = logging.getLogger("cartograph.api")
+
+
 class NotReady(RuntimeError):
     """Something a request needs is not there yet: a key, a stored
     schema, a database."""
+
+
+class OverAllowance(Exception):
+    """The question is not run: the month's budget, or the user's day."""
+
+    def __init__(self, refused: Refusal, message: str) -> None:
+        super().__init__(message)
+        self.refused = refused
+        self.message = message
 
 
 _UNREACHABLE = "a database the request needs could not be reached"
@@ -81,7 +112,7 @@ def stored_sql(document: TraceDocument) -> str | None:
 class QueryService:
     def __init__(
         self, open_orchestrator: Callable[[], Orchestrator], traces: TraceStore, snapshots: SnapshotStore,
-        rerun_executor: Executor | None = None,
+        rerun_executor: Executor | None = None, allowance: Allowance | None = None,
     ) -> None:  # fmt: skip
         self._open = open_orchestrator
         self._traces = traces
@@ -89,6 +120,10 @@ class QueryService:
         self._rerun = rerun_executor
         self._orchestrator: Orchestrator | None = None
         self._lock = threading.Lock()
+        self._allowance = allowance
+        # Questions running now, by user.
+        self._running: dict[int, int] = {}
+        self._admitting = threading.Lock()
 
     def _pipeline(self) -> Orchestrator:
         with self._lock:
@@ -105,12 +140,49 @@ class QueryService:
                     raise NotReady(_UNREACHABLE) from None
             return self._orchestrator
 
-    def ask(self, question: str, user_id: int) -> Kept:
-        orchestrator = self._pipeline()
+    def warm(self) -> None:
+        """Open the pipeline now, if it can be. Never raises: what was not
+        ready is said again to the question that needs it."""
         try:
-            return orchestrator.answer_and_keep(question, user_id=user_id)
-        except EmbeddingKeyMissing as missing:
-            raise NotReady(str(missing)) from None
+            self._pipeline()
+        except NotReady as missing:
+            log.warning("the pipeline was not opened at start: %s", missing)
+        except Exception as error:
+            log.error("the pipeline was not opened at start: %s", type(error).__name__)
+
+    def ask(self, question: str, user_id: int, at: datetime | None = None) -> Kept:
+        with self._admitted(user_id, at or datetime.now(UTC)):
+            orchestrator = self._pipeline()
+            try:
+                return orchestrator.answer_and_keep(question, user_id=user_id)
+            except EmbeddingKeyMissing as missing:
+                raise NotReady(str(missing)) from None
+
+    @contextmanager
+    def _admitted(self, user_id: int, at: datetime) -> Iterator[None]:
+        if self._allowance is None:
+            yield
+            return
+        with self._admitting:
+            try:
+                spent = self._traces.spent_since(month_start(at))
+                asked = self._traces.asked_since(user_id, day_start(at))
+            except psycopg.OperationalError:
+                raise NotReady(_UNREACHABLE) from None
+            running = sum(self._running.values())
+            said = refusal(spent, running, asked + self._running.get(user_id, 0), self._allowance)
+            if said == "budget_spent":
+                raise OverAllowance(said, BUDGET_SPENT)
+            if said == "daily_limit":
+                raise OverAllowance(said, daily_limit_message(self._allowance.daily_questions))
+            self._running[user_id] = self._running.get(user_id, 0) + 1
+        try:
+            yield
+        finally:
+            with self._admitting:
+                self._running[user_id] -= 1
+                if not self._running[user_id]:
+                    del self._running[user_id]
 
     def fetch(self, query_id: UUID, owner: int) -> TraceDocument | None:
         try:
@@ -154,10 +226,10 @@ class QueryService:
             raise NotReady(_UNREACHABLE) from None
 
 
-def make_service(app_database_url: str, warehouse_database_url: str) -> QueryService:
+def make_service(app_database_url: str, warehouse_database_url: str, allowance: Allowance | None = None) -> QueryService:
     """The real one: the pipeline as the commands open it, with a store,
     and for a rerun the executor an answer runs on: the warehouse's
-    read-only role, the default row cap."""
+    read-only role, the default row cap. The API gives it the allowance."""
     from app.shell.pipeline_session import APPLICATION_MODE, open_pipeline
 
     traces = TraceStore(app_database_url)
@@ -166,4 +238,5 @@ def make_service(app_database_url: str, warehouse_database_url: str) -> QuerySer
         traces,
         SnapshotStore(app_database_url),
         QueryExecutor(warehouse_database_url),
+        allowance,
     )

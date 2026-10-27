@@ -56,7 +56,7 @@ class Ticking:
 
 
 def service(script, anchors=ADDRESS, executor=None, traces=None, snapshots=None, opened=None, clock=None,
-            rerun_executor=None, **tree_arguments) -> QueryService:  # fmt: skip
+            rerun_executor=None, allowance=None, **tree_arguments) -> QueryService:  # fmt: skip
     traces = traces if traces is not None else Memory()
 
     def open_orchestrator() -> Orchestrator:
@@ -65,7 +65,7 @@ def service(script, anchors=ADDRESS, executor=None, traces=None, snapshots=None,
         keep = Keep(traces, CONTEXT, user_id=1, now=clock or Ticking())
         return orchestrator(script, located(*anchors, **tree_arguments), executor, keep=keep)
 
-    return QueryService(open_orchestrator, traces, snapshots or NoSchema(), rerun_executor)
+    return QueryService(open_orchestrator, traces, snapshots or NoSchema(), rerun_executor, allowance)
 
 
 def client(made: QueryService, user: SignedIn | None = ADA) -> TestClient:

@@ -8,6 +8,9 @@ test scaffolding.
 """
 
 import logging
+import threading
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -15,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
-from app.api import router
+from app.api import get_service, router
 from app.api_models import ErrorOut, Refused
 from app.auth import RequestGuard
 from app.config import Settings, get_settings
@@ -69,10 +72,26 @@ def _errors(app: FastAPI) -> None:
         return _error(500, code="internal_error", message="The server failed while handling this request.")
 
 
+@asynccontextmanager
+async def _opened_in_the_background(app: FastAPI) -> AsyncIterator[None]:
+    """Once the server has started, the pipeline is opened in a thread of
+    its own (step 12, the owner's ruling 3): a host waking from sleep
+    then opens it as part of waking, and the first question does not wait
+    for it unless it arrives first. Serving never waits for it, and it
+    never stops the server: what is not ready is said to the question."""
+    try:
+        service = app.dependency_overrides.get(get_service, get_service)()
+    except Exception as error:
+        log.error("the pipeline was not opened at start: %s", type(error).__name__)
+    else:
+        threading.Thread(target=service.warm, name="open-pipeline", daemon=True).start()
+    yield
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     resolved = settings or get_settings()
 
-    app = FastAPI(title="Cartograph", version="0.1.0")
+    app = FastAPI(title="Cartograph", version="0.1.0", lifespan=_opened_in_the_background)
 
     origins = resolved.allowed_origins()
     # Inside CORS: a change from another site is refused before any route

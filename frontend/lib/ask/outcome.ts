@@ -74,6 +74,14 @@ export function endingOfError(error: ApiError): Ending {
   if (error.status === 404) {
     return { tone: "declined", title: "No such stored query", lines: said([error.message]) };
   }
+  // The deployed demo's allowance (NFR-25, step 12): the API's message
+  // says when asking opens again.
+  if (error.code === "budget_spent") {
+    return { tone: "refused", title: "The demo's budget for this month is spent", lines: said([error.message]) };
+  }
+  if (error.code === "daily_limit") {
+    return { tone: "refused", title: "Today's questions are used up", lines: said([error.message]) };
+  }
   if (error.status === 503) {
     return { tone: "failed", title: "The system is not ready to answer", lines: said([error.message, ...detail]) };
   }

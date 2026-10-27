@@ -56,6 +56,13 @@ class Settings(BaseSettings):
     # http does.
     session_cookie_secure: bool = True
 
+    # The deployed demonstration's allowance (NFR-25, step 12; the owner's
+    # choice, $2 a month): what the API lets questions spend in a calendar
+    # month, UTC, and how many one user may ask in a UTC day. The commands
+    # and the evaluation keep their own ceiling and never read these.
+    demo_monthly_budget_usd: float = 2.00
+    daily_questions_per_user: int = 30
+
     def allowed_origins(self) -> list[str]:
         """The origins CORS names and the origin check takes. Never "*": a
         wildcard would let any site send a request that carries the

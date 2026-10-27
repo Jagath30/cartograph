@@ -23,6 +23,7 @@ from tracing import Runs, reply
 
 from app.auth import now
 from app.config import Settings
+from app.core.budget import Allowance
 from app.core.sql_validator import ValidatedSql
 from app.shell import model_client, pipeline_session, query_service
 from app.shell.query_executor import DEFAULT_ROW_CAP, QueryExecutor
@@ -226,10 +227,15 @@ def test_the_api_builds_the_real_service_with_both_databases(monkeypatch) -> Non
 
     built: list = []
     monkeypatch.setattr(api, "make_service", lambda *urls: built.append(urls) or "service")
-    monkeypatch.setattr(api, "get_settings", lambda: Settings(app_database_url="a", warehouse_database_url="w", redis_url="r"))
+    monkeypatch.setattr(
+        api, "get_settings",
+        lambda: Settings(app_database_url="a", warehouse_database_url="w", redis_url="r",
+                         demo_monthly_budget_usd=2.5, daily_questions_per_user=7),
+    )  # fmt: skip
     api.get_service.cache_clear()
     try:
-        assert api.get_service() == "service" and built == [("a", "w")]
+        # And the deployed demonstration's allowance, from the settings (step 12).
+        assert api.get_service() == "service" and built == [("a", "w", Allowance(2.5, 7))]
     finally:
         api.get_service.cache_clear()
 

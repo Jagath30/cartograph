@@ -31,7 +31,8 @@ from app.auth import COOKIE, AccountsDep, NowDep, UserDep, clear_session, set_se
 from app.config import Settings, get_settings
 from app.shell.accounts import EmailTaken
 from app.shell.probes import check_postgres, check_redis
-from app.shell.query_service import NothingToRerun, QueryService, make_service
+from app.core.budget import Allowance
+from app.shell.query_service import NothingToRerun, OverAllowance, QueryService, make_service
 
 router = APIRouter(prefix="/api/v1")
 
@@ -43,7 +44,8 @@ def get_service() -> QueryService:
     """One for the process. Built on first use and opens nothing until a
     request needs it, so that importing the application needs nothing."""
     settings = get_settings()
-    return make_service(settings.app_database_url, settings.warehouse_database_url)
+    allowance = Allowance(settings.demo_monthly_budget_usd, settings.daily_questions_per_user)
+    return make_service(settings.app_database_url, settings.warehouse_database_url, allowance)
 
 
 ServiceDep = Annotated[QueryService, Depends(get_service)]
@@ -57,6 +59,12 @@ ERRORS = {
     500: {"model": ErrorOut, "description": "A fault; `trace_not_persisted` when the trace could not be written."},
     503: {"model": ErrorOut, "description": "Something the request needs is not there yet."},
 }
+# What asking may answer besides (NFR-25, step 12).
+OVER_ALLOWANCE = {
+    429: {"model": ErrorOut, "description": "`daily_limit`: this account has asked its questions for the UTC day."},
+    503: {"model": ErrorOut, "description": "`budget_spent`: the demo's budget for the month is spent; or `not_ready`."},
+}
+OVER_ALLOWANCE_STATUS = {"budget_spent": 503, "daily_limit": 429}
 
 
 @router.get("/health")
@@ -137,14 +145,18 @@ def me(user: UserDep) -> AccountOut:
 # --------------------------------------------------------------------------
 
 
-@router.post("/queries", response_model=QueryOut, responses=ERRORS)
-def ask(body: QuestionIn, service: ServiceDep, user: UserDep) -> QueryOut:
+@router.post("/queries", response_model=QueryOut, responses=ERRORS | OVER_ALLOWANCE)
+def ask(body: QuestionIn, service: ServiceDep, user: UserDep, at: NowDep) -> QueryOut:
     """IR-02, IR-03. One question, one response, synchronously (D-05).
     EVERY outcome of the pipeline is a 200 with its trace: an answer, a
     decline and a failure alike, the last two with IR-05's code and
     message. The trace is stored before this returns (NFR-13), under the
-    user who asked."""
-    kept = service.ask(body.question, user.user_id)
+    user who asked. A question past the month's budget or the user's day
+    is not run (NFR-25): 503 or 429, and nothing is stored."""
+    try:
+        kept = service.ask(body.question, user.user_id, at)
+    except OverAllowance as over:
+        raise Refused(OVER_ALLOWANCE_STATUS[over.refused], over.refused, over.message) from None
     return query_out(kept.document, kept.trace.execution.rows if kept.trace.execution else None)
 
 

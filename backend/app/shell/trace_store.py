@@ -106,3 +106,20 @@ class TraceStore:
                 (owner, limit),
             ).fetchall()
         return [Listed(*row) for row in rows]
+
+    def spent_since(self, since: datetime) -> float:
+        """Every stored query's cost since `since`, in US dollars: what the
+        demonstration's monthly budget counts (NFR-25, step 12)."""
+        with psycopg.connect(self._dsn) as connection:
+            row = connection.execute(
+                "select coalesce(sum(cost_estimate), 0) from queries where created_at >= %s", (since,)
+            ).fetchone()
+        return float(row[0])
+
+    def asked_since(self, owner: int, since: datetime) -> int:
+        """How many questions `owner` has asked since `since`."""
+        with psycopg.connect(self._dsn) as connection:
+            row = connection.execute(
+                "select count(*) from queries where user_id = %s and created_at >= %s", (owner, since)
+            ).fetchone()
+        return row[0]

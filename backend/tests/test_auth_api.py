@@ -384,7 +384,7 @@ def test_no_log_line_carries_a_password_a_token_or_a_cookie(accounts, caplog) ->
     caplog.set_level(logging.DEBUG)
 
     class Broken:
-        def ask(self, question, user_id):
+        def ask(self, question, user_id, at=None):
             raise RuntimeError("a fault")
 
         def history(self, owner):

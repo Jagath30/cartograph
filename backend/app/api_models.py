@@ -27,6 +27,8 @@ ErrorCode = Literal[
     "invalid_request", "not_found", "not_ready", "trace_not_persisted", "internal_error",
     # step 11
     "not_signed_in", "invalid_credentials", "email_taken", "origin_refused", "json_only", "nothing_to_rerun",
+    # step 12
+    "budget_spent", "daily_limit",
 ]  # fmt: skip
 
 Value = str | int | float | bool | None

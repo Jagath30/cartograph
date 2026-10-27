@@ -212,3 +212,36 @@ def test_history_lists_at_most_100(scratch_database) -> None:
     listed = store.history(ada)
     assert len(listed) == HISTORY_LIMIT == 100
     assert (listed[0].question, listed[-1].question) == ("Q102?", "Q3?")
+
+
+# --------------------------------------------------------------------------
+# What the demonstration's allowance reads (NFR-25, step 12)
+# --------------------------------------------------------------------------
+
+UTC = datetime.timezone.utc
+OCTOBER = datetime.datetime(2026, 10, 1, tzinfo=UTC)
+
+
+def at(day: int, hour: int = 12) -> datetime.datetime:
+    return datetime.datetime(2026, 10, day, hour, tzinfo=UTC)
+
+
+def test_the_months_spend_is_every_query_since_its_first_instant(scratch_database) -> None:
+    store = TraceStore(scratch_database)
+    local = store.local_user_id()
+    for when, cost in ((datetime.datetime(2026, 9, 30, 23, 59, tzinfo=UTC), 0.5), (at(1, 0), 0.25), (at(26), 0.000125)):
+        store.save(made(user=local).model_copy(update={"created_at": when, "cost_usd": cost}))
+    assert store.spent_since(OCTOBER) == pytest.approx(0.250125)
+    assert store.spent_since(at(27)) == 0.0
+
+
+def test_a_users_day_counts_only_their_own_questions_since_midnight(scratch_database) -> None:
+    store = TraceStore(scratch_database)
+    local = store.local_user_id()
+    with psycopg.connect(scratch_database) as connection:
+        (other,) = connection.execute("insert into users (email) values ('other@example.com') returning id").fetchone()
+    for user, when in ((local, at(25, 23)), (local, at(26, 0)), (local, at(26, 9)), (other, at(26, 10))):
+        store.save(made(user=user).model_copy(update={"created_at": when}))
+    midnight = at(26, 0)
+    assert store.asked_since(local, midnight) == 2
+    assert store.asked_since(other, midnight) == 1
