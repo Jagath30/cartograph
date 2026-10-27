@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { Footer, Header, SkipLink } from "@/components/frame/Frame";
 import { SessionProvider } from "@/components/frame/Session";
+import { WakingNotice } from "@/components/frame/Waking";
 
 // Inter, self-hosted: the variable latin face of @fontsource-variable/inter
 // 5.3.0 (OFL-1.1, licence beside it in app/fonts/OFL.txt). Served from our
@@ -31,6 +32,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* Who is signed in, for the header and for every page. */}
         <SessionProvider>
           <Header />
+          {/* The free host's cold start (step 12): said when health is slow. */}
+          <WakingNotice />
           {/* tabIndex -1: the skip link moves focus here, not only the view. */}
           <main id="main" tabIndex={-1} className="flex-1 pb-8">
             {children}
