@@ -9703,6 +9703,42 @@ figures and are not expected to hold here.
 Roughly what reaches Neon: the COPY text, about the CSV's 258 MB, plus
 the app database's three schema tables, about 3 MB.
 
+### Neon's collation is not the local one — 1 November 2026
+
+Neon made both databases with the builtin locale provider, collation
+C.UTF-8; locally they are libc, en_US.utf8. A sort on text may order
+differently on Neon, so an answer's rows can come back in another order
+where its SQL orders by text. The snapshot hash and the row counts are
+unaffected: neither depends on collation. **For the README's deployment
+notes at step 13** (the owner's ruling).
+
+### Neon set up, loaded and checked — 1 November 2026
+
+The project is in AWS Asia Pacific (Singapore). By scripts/neon.sh,
+each step its own command, rehearsed first against a local stand-in:
+
+- roles: exit 0, no output (as ruled); each of the five keys in
+  .env.deploy counted 1 by grep -c.
+- databases: exit 0. warehouse owned by Neon's owner, app owned by
+  cartograph_app, vector created in app by the owner; CONNECT taken from
+  PUBLIC on both. Neon refused nothing the stand-in allowed.
+- whoami: exit 0; cartograph_app|app and cartograph_reader|warehouse.
+- load: exit 0; 24 tables, 467,886,080 bytes (446 MB).
+- revoke-temp (the owner's ruling, after load): TEMP on warehouse taken
+  from PUBLIC; databases now does it too.
+- app: exit 0; alembic at 0003 (head); 1 snapshot, current; 449
+  elements, each with a vector; 110 edges; each id sequence set to its
+  highest id. Nothing was embedded.
+- check: exit 0. warehouse 468,230,144 bytes (447 MB), app 12,591,104,
+  neondb 7,716,864. All 24 row counts match DuckDB's. As the reader:
+  DELETE, CREATE TABLE and CREATE TEMPORARY TABLE refused read-only;
+  with read-only switched off by the reader, DELETE refused ("permission
+  denied for table store") and the temporary table refused ("permission
+  denied to create temporary tables"). statement_timeout 30s;
+  pg_sleep(31) cancelled after 30 s (NFR-11). Both hashes
+  4e674c8f...4302547. The examples' pinned SQL: 5,349, 5 and 212 rows;
+  suppliers a decline.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:

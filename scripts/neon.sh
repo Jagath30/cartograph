@@ -6,6 +6,7 @@
 #
 #     ./scripts/neon.sh roles       the two roles, their passwords and URLs   (prints nothing)
 #     ./scripts/neon.sh databases   warehouse and app, vector, the grants     (output shown)
+#     ./scripts/neon.sh revoke-temp no temporary tables in the warehouse for PUBLIC (run once after databases)
 #     ./scripts/neon.sh whoami      each new URL: current_user, current_database()
 #     ./scripts/neon.sh load        the sf=0.25 warehouse, from the measurement database
 #     ./scripts/neon.sh app         migrations to head, then the three schema tables copied
@@ -102,6 +103,7 @@ SQL
     psql -X -v ON_ERROR_STOP=1 -d "$(owner_on warehouse)" <<SQL
 select current_user as owner \gset
 revoke connect on database warehouse from public;
+revoke temp on database warehouse from public;
 grant connect on database warehouse to '"$READER"';
 grant usage on schema public to '"$READER"';
 -- No tables yet: the default privileges do the work for what the load makes.
@@ -115,6 +117,12 @@ grant connect on database app to '"$APP_ROLE"';
 SQL
     psql -X -v ON_ERROR_STOP=1 -d "$NEON_OWNER_URL" -c "\l+ (warehouse|app)" -c "\du (cartograph_app|cartograph_reader)"
   '
+  ;;
+
+revoke-temp)
+  # Added after databases had run on Neon (the owner's ruling, 1 November
+  # 2026); databases now does it too.
+  in_pg 'psql -X -v ON_ERROR_STOP=1 -d "$(owner_on warehouse)" -c "revoke temp on database warehouse from public" -c "\l warehouse"'
   ;;
 
 whoami)
@@ -184,6 +192,8 @@ check)
     if psql -X -At -d "$WAREHOUSE_DATABASE_URL" -c "create table smuggled (i int)" > /tmp/out 2>&1; then echo "CREATE ALLOWED"; else echo "create refused: $(grep -o "ERROR: .*" /tmp/out)"; fi
     # Read-only switched off by the reader itself: the missing grant is the second line (NFR-07).
     if psql -X -At -d "$WAREHOUSE_DATABASE_URL" -c "set default_transaction_read_only = off" -c "delete from store" > /tmp/out 2>&1; then echo "WRITE ALLOWED READ-WRITE"; else echo "write refused read-write: $(grep -o "ERROR: .*" /tmp/out)"; fi
+    if psql -X -At -d "$WAREHOUSE_DATABASE_URL" -c "create temporary table scratch (i int)" > /tmp/out 2>&1; then echo "TEMP ALLOWED"; else echo "temp refused: $(grep -o "ERROR: .*" /tmp/out)"; fi
+    if psql -X -At -d "$WAREHOUSE_DATABASE_URL" -c "set default_transaction_read_only = off" -c "create temporary table scratch (i int)" > /tmp/out 2>&1; then echo "TEMP ALLOWED READ-WRITE"; else echo "temp refused read-write: $(grep -o "ERROR: .*" /tmp/out)"; fi
     psql -X -At -d "$WAREHOUSE_DATABASE_URL" -c "show statement_timeout" -c "show default_transaction_read_only"
     start=$(date +%s)
     if psql -X -At -d "$WAREHOUSE_DATABASE_URL" -c "select pg_sleep(31)" > /tmp/out 2>&1; then echo "SLEEP RAN TO THE END"; else echo "pg_sleep(31) cancelled after $(( $(date +%s) - start ))s: $(grep -o "ERROR: .*" /tmp/out)"; fi
@@ -196,7 +206,7 @@ check)
   ;;
 
 *)
-  echo "usage: $0 roles|databases|whoami|load|app|check" >&2
+  echo "usage: $0 roles|databases|revoke-temp|whoami|load|app|check" >&2
   exit 2
   ;;
 esac
