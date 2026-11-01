@@ -9927,6 +9927,42 @@ limits say Cartograph explains joins, not measures, with the example),
 113 and 114 (said in the known limits). 112 is said there too and stays
 for step 14. New: 116.
 
+### The owner's review, and the history scan — 1 November 2026
+
+**The scan over every commit** (`git log -p --all`, heldout2.yaml
+excluded, counts only): 4 matches, the owner's fix 10 stopping the step
+until they were known. Located and classified without printing any
+matched text, by what is now scripts/secret_history_scan.py: two
+`postgres_url_password` (tests/test_api.py line 283, added in
+dccad095; tests/test_orchestrator_keep.py line 113, added in 4c927be9;
+both still at HEAD) and two `openai_key` (tests/test_embedder.py line
+30, added in ad86f834 and removed in e3630d9f; a dummy key, one repeated
+character or a dummy word). The first two were classed "real?": their
+password is not a variable or on the dummy list. **The owner read both
+lines himself: the password is "hunter2"**, a made-up value in tests
+that a connection error never leaks its URL. All 4 are placeholders.
+"hunter2" is now on the script's dummy list; rerun, it classes all 4
+placeholder. "No credential is in the repository or its history" stays.
+
+**The fixes, in one commit:** the diagram's decline says "no table in
+this schema holds the answer"; "In version 2.1" for "Since step 10b";
+"The no-basis warning" (other warnings exist); "A typical text-to-SQL
+system ... does not say which"; the gender question's totals as
+tests/test_demo_questions.py pins them (ws_ext_sales_price, 2002, scale
+factor 1: billed F 183224441.98, M 178618746.26; shipped-to F
+178673143.87, M 183166052.93; both "answered"); the bound "at most
+$0.023246" (budget.py's comment, printed by
+tests/test_question_cost_bound.py), not the brief's "$0.023", which is
+below it; the three roles of the deployment; Security qualified: Secure
+only on the deployed site (docker-compose.yml sets
+SESSION_COOKIE_SECURE false), no temporary tables only on the deployment
+(TEMP revoked on Neon at step 12, not locally); the production key
+sentence; the clip.exe bullet gone from the README (kept here, in
+checkpoint-12-deploy); "Developed and tested on"; a CI badge; "Built
+with", each part found in requirements.txt, package.json,
+docker-compose.yml or render.yaml. DuckDB and GitHub Actions are in
+none of those four and are not in that line.
+
 **Next.** Step 14.
 
 ### Carried forward

@@ -1,5 +1,7 @@
 # Cartograph
 
+[![CI](https://github.com/Jagath30/cartograph/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Jagath30/cartograph/actions/workflows/ci.yml)
+
 Ask a question about a data warehouse in plain English: Cartograph writes the SQL, runs it read-only, and says how each join in that SQL was chosen.
 
 **Live:** [cartograph-nl2sql.vercel.app](https://cartograph-nl2sql.vercel.app). The server sleeps after 15 minutes without visitors, so the first question after a quiet spell can take up to a minute; the page says so while it wakes.
@@ -8,16 +10,18 @@ Ask a question about a data warehouse in plain English: Cartograph writes the SQ
 
 ## The problem
 
-In a real warehouse, two tables can often be joined more than one way. A catalog sale holds a billing address and a shipping address; a web sale, the customer billed and the customer it was shipped to. "How much did each gender spend on the web?" gives one total by the billed customer and another by the shipped-to customer, and both queries run. A text-to-SQL system picks one route and says nothing about it.
+In a real warehouse, two tables can often be joined more than one way. A catalog sale holds a billing address and a shipping address; a web sale holds the demographics of the customer billed and of the customer it was shipped to. Ask "How much did each gender spend on the web in the year 2002?" of the scale factor 1 warehouse, summing the sales price (`ws_ext_sales_price`). By the billed customer's demographics, women spent 183224441.98 and men 178618746.26: women spent more. By the shipped-to customer's, women spent 178673143.87 and men 183166052.93: men spent more. Both queries run without error. A typical text-to-SQL system picks one route and does not say which.
 
 Cartograph says how each join was chosen: by a rule (the only route, the shortest, the question's own wording, or a default this warehouse declares), by a language model reading the question, or with no basis at all, in which case the choice was made alphabetically. That last kind is flagged on the page, with the routes that were not taken, so the reader knows the answer rests on a guess and can ask again more precisely.
+
+Built with: Python, FastAPI, Pydantic, psycopg, SQLAlchemy and Alembic, sqlglot, networkx, argon2-cffi; PostgreSQL with pgvector, and Redis; TypeScript, Next.js, React, React Flow and Tailwind CSS; Docker Compose; OpenAI's API for the language model and the embeddings; hosted on Vercel, Render and Neon.
 
 ## How it works
 
 ```mermaid
 flowchart TD
   Q["Question"] --> L["Linking: a model, shown every table and key, names the tables needed"]
-  L -->|names none| LD["Declined: the warehouse holds no answer"]
+  L -->|names none| LD["Declined: no table in this schema holds the answer"]
   L --> T["Join tree, by rule: the only route, the shortest, the question's wording, a declared default"]
   T -->|a tie the rules leave to the alphabet| C["Choosing: the model reads the question"]
   C -->|names none| A["Alphabet: arbitrary, and flagged"]
@@ -93,7 +97,7 @@ These figures do not measure Cartograph's other claim, which is a property rathe
 
 The design documents are in [docs/](docs/); each decision there records the option it was chosen against. The ones that shape what you see:
 
-**Join rules, and flagging the arbitrary choice.** Between two tables the shortest route wins; a tie goes to the question's wording, then to a default the warehouse declares, then to the alphabet. Set aside: heuristics about cardinality or what a column means, which would be confident without being right, and refusing to answer a tie, which would refuse most questions. A warning fires only when the alphabet decided, not whenever another route existed: this schema has 107 keys, and a warning on every question is no warning. Since step 10b a model reading the question is asked before the alphabet, and the trace says which of the two decided.
+**Join rules, and flagging the arbitrary choice.** Between two tables the shortest route wins; a tie goes to the question's wording, then to a default the warehouse declares, then to the alphabet. Set aside: heuristics about cardinality or what a column means, which would be confident without being right, and refusing to answer a tie, which would refuse most questions. The no-basis warning fires only when the alphabet decided, not whenever another route existed: this schema has 107 keys, and a warning on every question is no warning. In version 2.1, a model reading the question is asked before the alphabet, and the trace says which of the two decided.
 
 **Linking replaced retrieval.** Version 1 found tables by embedding the schema and scoring the question against it, then growing a connected set along the graph. On the fresh held-out set the tables it chose held 67.6% of those the questions needed, and it scored 36.7% on tables. At 24 tables the whole schema fits in one prompt, so a model shown every table now names the ones needed, and on the same set it named all of them. Retrieval's scores are kept to order the named tables and as evidence for the wording rule. On a warehouse too large for one prompt the trade would be different.
 
@@ -105,17 +109,17 @@ The design documents are in [docs/](docs/); each decision there records the opti
 
 **One origin, a first-party cookie.** The browser only ever talks to the frontend's address; Next.js rewrites `/api/v1` to the backend. The session cookie is therefore first-party: HttpOnly, SameSite=Lax, Secure. Set aside: calling the backend's own address from the browser, which would need a cross-site cookie and credentialed CORS, a well-known source of breakage; and proxying through server functions, which run under a host's function time limit. A rewrite is a proxied request with no function in it.
 
-**A spend ceiling that survives a restart.** The public demo has a monthly model budget, $2.00, counted from the costs stored with each answer in the database since the first of the month. Before a question runs, the most it could cost, worked out from the code at $0.03, is reserved, along with the same for any question already running; if that would pass the budget, the question is refused. Set aside: the development ceiling, a ledger file inside the container, which a free host's disk does not keep and which counted every call since the project began.
+**A spend ceiling that survives a restart.** The public demo has a monthly model budget, $2.00, counted from the costs stored with each answer in the database since the first of the month. Before a question runs, the most it could cost, worked out from the code (at most $0.023246) and rounded up to $0.03, is reserved, along with the same for any question already running; if that would pass the budget, the question is refused. Set aside: the development ceiling, a ledger file inside the container, which a free host's disk does not keep and which counted every call since the project began.
 
-**The hosting.** The design runs one Postgres server with two databases and two roles, the warehouse's read-only; the deployment keeps that shape. Postgres is on Neon, whose free database does not expire and has pgvector; a public demo must stay up, and the free alternative considered expires after 30 days. The API is on Render, from the same Dockerfile used locally, on a free tier that does not expire; the price is the sleep after 15 minutes. A faster-waking host needed a card on file, and the model API is meant to be the only paid part. Render's Key Value sits beside the API, in memory only, which fits a cache; no answer cache is built yet, and the API only checks that it answers. The frontend is on Vercel: the page runs in the browser and its API calls go through the rewrite, a CDN proxy allowed 120 seconds, so no function and no function time limit is involved.
+**The hosting.** The design runs one Postgres server with two databases, the warehouse read through a role that can only read it. The deployment keeps the one server and the two databases, with three roles: Neon's owner, used only from the development machine to set up and load; the application's own, which owns the app database; and the read-only reader of the warehouse. Postgres is on Neon, whose free database does not expire and has pgvector; a public demo must stay up, and the free alternative considered expires after 30 days. The API is on Render, from the same Dockerfile used locally, on a free tier that does not expire; the price is the sleep after 15 minutes. A faster-waking host needed a card on file, and the model API is meant to be the only paid part. Render's Key Value sits beside the API, in memory only, which fits a cache; no answer cache is built yet, and the API only checks that it answers. The frontend is on Vercel: the page runs in the browser and its API calls go through the rewrite, a CDN proxy allowed 120 seconds, so no function and no function time limit is involved.
 
 ## Security
 
-A question can do one thing: run one validated SELECT against the warehouse, as a role that holds SELECT and nothing else, under a 30-second timeout, fetching at most 1,000 rows. It cannot write, lock, call a function known for a side effect, create a temporary table, or reach the application's own database, which is a separate connection the query path never holds.
+A question can do one thing: run one validated SELECT against the warehouse, as a role that holds SELECT and nothing else, under a 30-second timeout, fetching at most 1,000 rows. It cannot write, lock, call a function known for a side effect, or reach the application's own database, which is a separate connection the query path never holds. On the deployment the role cannot create a temporary table either, even with read-only switched off.
 
-Passwords are hashed with argon2id. A session is a random token in a cookie (HttpOnly, SameSite=Lax, Secure, seven days from login, never extended); the server keeps only its sha256, and logging out revokes it. Any request that changes something is refused, 403, if it comes from another site's origin, and refused, 415, if its body is not JSON. Every page carries six security headers, among them a policy that it is never framed. Each account sees only its own history.
+Passwords are hashed with argon2id. A session is a random token in a cookie (HttpOnly, SameSite=Lax, seven days from login, never extended; Secure on the deployed site, not on the local http stack); the server keeps only its sha256, and logging out revokes it. Any request that changes something is refused, 403, if it comes from another site's origin, and refused, 415, if its body is not JSON. Every page carries six security headers, among them a policy that it is never framed. Each account sees only its own history.
 
-No credential is in the repository or its history. Locally, `bootstrap.sh` generates the passwords; deployed, each secret is set in the host's settings and never written to a file in the repository. The production model key has never been on the development machine.
+No credential is in the repository or its history. Locally, `bootstrap.sh` generates the passwords; deployed, each secret is set in the host's settings and never written to a file in the repository. The production model key was never written to a file or a command on the development machine; it was entered only in the host's settings.
 
 ## Deployment notes
 
@@ -126,11 +130,10 @@ No credential is in the repository or its history. Locally, `bootstrap.sh` gener
 - The first request after 15 minutes without visitors wakes the server, which can take up to a minute. After 3 seconds the page says: "Waking the server. Free hosting sleeps after 15 minutes without visitors; the first request can take up to a minute."
 - The month's model budget is $2.00; when it is spent, a question is refused with 503 and a plain message, and stored answers can still be opened and run again. Each account may ask 30 questions a UTC day; past that, 429. A rerun calls no model and is not counted.
 - Neon made the databases with the collation C.UTF-8; locally they are en_US.utf8. Rows ordered by text can come back in a different order than locally.
-- When a database URL is copied into a host's settings with a command such as `clip.exe`: run the command, then paste what it copied. Pasting the command itself fails the deploy (it happened once here).
 
 ## Running it locally
 
-Requires Docker Desktop with the WSL2 backend. In order:
+Developed and tested on Docker Desktop with the WSL2 backend. In order:
 
     ./scripts/bootstrap.sh
     docker compose up
