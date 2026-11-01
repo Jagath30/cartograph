@@ -89,13 +89,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export type Health = { status: string };
 
-export type Check = { ok: boolean; detail: string };
-
-export type Readiness = {
-  status: "ready" | "not_ready";
-  checks: Record<string, Check>;
-};
-
 export type Account = { email: string };
 
 /** One row of a history: no trace (DD-17). */
@@ -127,7 +120,6 @@ const post = (body: unknown): RequestInit => ({ method: "POST", body: JSON.strin
 
 export const api = {
   health: () => request<Health>("/health"),
-  ready: () => request<Readiness>("/ready"),
   /** IR-02: one question, one response, with its trace. */
   ask: (question: string) => request<QueryOut>("/queries", post({ question })),
   /** One of the caller's stored queries with its trace. Its rows are not stored (DR-15). */

@@ -72,16 +72,20 @@ def flags_hold(flags: str) -> bool:
 class Browser:
     """Holds the session cookie, as a browser's jar would, and sends it."""
 
-    def __init__(self) -> None:
+    def __init__(self, api: str = API) -> None:
+        self.api = api
         self.cookie: str | None = None
         self.set_cookie: str | None = None
 
-    def call(self, path: str, body: dict | None = None, method: str | None = None) -> tuple[int, dict]:
+    def call(self, path: str, body: dict | None = None, method: str | None = None, origin: str | None = None) -> tuple[int, dict]:
         headers = {"content-type": "application/json"} if body is not None else {}
+        headers["user-agent"] = "cartograph-smoke"
+        if origin:
+            headers["origin"] = origin
         if self.cookie:
             headers["cookie"] = f"{COOKIE}={self.cookie}"
         request = urllib.request.Request(
-            API + path,
+            self.api + path,
             data=json.dumps(body).encode() if body is not None else None,
             headers=headers,
             method=method or ("POST" if body is not None else "GET"),
@@ -89,11 +93,17 @@ class Browser:
         try:
             with urllib.request.urlopen(request, timeout=120) as response:
                 self.set_cookie = response.headers.get("set-cookie")
-                raw = response.read()
-                return response.status, json.loads(raw) if raw else {}
+                return response.status, body_of(response.read())
         except urllib.error.HTTPError as error:
-            raw = error.read()
-            return error.code, json.loads(raw) if raw else {}
+            return error.code, body_of(error.read())
+
+
+def body_of(raw: bytes) -> dict:
+    """JSON, or, from a proxy's error page, its first characters."""
+    try:
+        return json.loads(raw) if raw else {}
+    except ValueError:
+        return {"text": raw[:200].decode("utf-8", "replace")}
 
 
 def canonical(value) -> str:
