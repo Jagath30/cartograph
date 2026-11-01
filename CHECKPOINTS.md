@@ -20,8 +20,9 @@ questions a day for each account (DAILY_QUESTIONS_PER_USER), then 429.
 The backend sleeps after 15 minutes idle; the page says so after 3 s.
 The deployed smoke (`python -m app.smoke_deployed`) passed once, 13 of 13.
 
-**What exists.** Steps 1 to 12 and a retrieval pass, tagged
-`checkpoint-01-stack` to `checkpoint-12-deploy`. Step 12: deployment
+**What exists.** Steps 1 to 13 and a retrieval pass, tagged
+`checkpoint-01-stack` to `checkpoint-13-readme`. Step 13: the README
+(criterion 10). Step 12: deployment
 (criterion 8), with the spend ceiling (NFR-25). Step 11: Step 11: accounts and
 history (criterion 12). Register, log in, log out; a session is an
 opaque token in an HttpOnly, SameSite=Lax cookie, kept in the store as
@@ -40,8 +41,8 @@ with the tables named, who decided each join and the choices put to the
 model. Step 10's evaluation, then step 10b's: four modes, five runs, a
 protocol frozen before any run; v2.1 matches full-schema prompting on
 heldout2's tables (100.0%) and misses its path by one answer in sixty
-(98.3%). README "Evaluation". Smoke 48, 0, 0. Backend: CI's command 1763
-pass, 201 skip; the suite 1962 pass, 2 skip; frontend 301. `next` 16.4.1.
+(98.3%). README "Evaluation". Smoke 48, 0, 0. Backend: CI's command 1764
+pass, 202 skip; the suite 1962 pass, 2 skip; frontend 301. `next` 16.4.1.
 
 **Rules every session follows.**
 - `OPENAI_API_KEY` is never printed, displayed or read; `.env` is never
@@ -96,14 +97,13 @@ before the change. Step 10b's manifest records the code its runs used;
 it is checked at the commits they ran on (`a6a6aac` to `587cd61`), not
 on main.
 
-**Next.** Step 13: the README, with the deployment notes (the
-checkpoint-12-deploy entry, "For the README at step 13"), and the Design
-owed (step 12's list, carried: DD-01, 06, 07, 12 to 16, 19, 21, FR-13,
-IR-05, section 04, step 10b's, step 11's sessions table and build-time
-BACKEND_ORIGIN, and step 12's hosts). Step 13: 86, 90, 113, 114. Step
-14: 75, 111, 112. Open, not done at step 12: 8, 9, 41. Future work: 53,
-55, 56, 98, 99, 100. Known limits: 62, 68, 69, 78, 87, 91, 113. Left
-behind: 79. **Resume:** read this, the newest entry and the
+**Next.** Step 14: 75, 111, 112, 116 (caching, FR-35, with NFR-25's
+cached answers). Owed to the Design (carried, not done at step 13: the
+brief was the README): DD-01, 06, 07, 12 to 16, 19, 21, FR-13, IR-05,
+section 04, step 10b's, step 11's sessions table and build-time
+BACKEND_ORIGIN, step 12's hosts. Open: 8, 9, 41. Future work: 53, 55,
+56, 98, 99, 100. Known limits: 62, 68, 69, 78, 87, 91, 113. Left behind:
+79. **Resume:** read this, the newest entry and the
 items named; `git status`; `./scripts/smoke.sh` (two paid calls).
 
 ## checkpoint-01-stack — 12 September 2026
@@ -9860,6 +9860,75 @@ each step its own command, rehearsed first against a local stand-in:
   4e674c8f...4302547. The examples' pinned SQL: 5,349, 5 and 212 rows;
   suppliers a decline.
 
+## checkpoint-13-readme — 1 November 2026
+
+**What works now that did not before.** Criterion 10: the README says
+what Cartograph is, how it works, and its decisions with the
+alternatives set aside. In the brief's order: the title, the live link
+and the cold start, the screenshot (docs/images/answer.png, taken by the
+owner from the live site); the problem; how it works, with one Mermaid
+diagram that shows the two declines (linking names no table; validation
+refuses), and the owner's second screenshot, docs/images/graph.png, the
+graph of the same answer: the route used, the equally valid route set
+aside, and the choice made with no basis. Both images looked at before
+the commit: no email, URL bar or tab in either; the Evaluation section, unchanged; eight decisions; security;
+deployment notes; running it locally (four commands, in order, each
+with what it needs); known limits; the repository; TPC-DS; contact.
+"Reading the schema", "Finding join paths" and "Retrieval" left the
+README by the owner's ruling 7; their commands are one line each.
+frontend/README.md is a pointer and how the frontend runs (item 86).
+
+**The Evaluation section is pinned.** backend/tests/test_readme_evaluation.py
+holds its sha256, 03851d51...99dda9f, from its heading to the next `##`
+heading. It runs where the whole repository is checked out (GitHub's
+CI) and skips under the local CI command, which mounts only backend/.
+Run with the repository mounted: 2 passed. By hand, with awk and
+sha256sum: the same hash now and at checkpoint-12-deploy.
+
+**Where each fact came from** (every figure checked, none from memory):
+- The problem: Design DD-21 (billing and shipping address on
+  catalog_sales); item 73 (the gender totals by the billed and the
+  shipped-to customer).
+- How it works: app/core linking.py (24 tables and 107 keys shown),
+  join_tree.py and trace_document.py (DecidedBy: only_path, shortest,
+  wording, declared_default, model_reading, alphabet), choosing.py
+  (ruling 5's order), sql_validator.py (terminal and retryable),
+  orchestrator.py (MAX_RETRIES 2; the linking decline's words),
+  conformance.py, shell/query_executor.py (DEFAULT_ROW_CAP 1000; the
+  timeout is the role's), the 30 s checked on Neon at step 12.
+- Decisions: Design DD-02, 03, 06, 07, 12, 13, 15, 20, 21; SRS T-08;
+  the README's Evaluation (67.6%, 36.7%); core/budget.py ($0.03 bound;
+  the ledger set aside, items 77 and 108); next.config.ts; the owner's
+  hosting reasons (ruling 3, the planning chat's record of 12 September,
+  re-verified 26 October).
+- Security: auth.py, budget.py, next.config.ts SECURITY_HEADERS,
+  scripts/neon.sh check (temporary tables refused).
+- Deployment notes: the checkpoint-12-deploy entry; frontend/lib/waking.ts;
+  core/budget.py's messages.
+- Running locally: scripts/bootstrap.sh, warehouse.sh, docker-compose.yml,
+  .env.example (OPENAI_API_KEY); the close of step 12 (smoke, $0.00123).
+- Known limits: items 112, 113, 114, 90, 116; the Evaluation's limits.
+**Found while checking:** Redis (Render's Key Value) is only probed by
+/ready; nothing caches. The README says so rather than claim a cache.
+
+**Checks.** Relative links: every target exists. Public URLs: the site
+and GitHub answer 200; LinkedIn answers 999, its refusal of scripted
+requests, so the owner checks that link by hand. No Markdown or Mermaid
+renderer is in either image and none was installed: code fences counted
+(2), the diagram's every line checked against flowchart grammar by a
+script, every node defined once and every edge's ends defined. GitHub's
+own rendering is the owner's check after the push. Hostnames: only the
+two public URLs, GitHub and LinkedIn, and the local addresses in
+"Running it locally" (ruling 4). No email address. No tool or assistant
+used to build it is named.
+
+**Items.** Closed: 86 (frontend/README.md), 90 (the README's known
+limits say Cartograph explains joins, not measures, with the example),
+113 and 114 (said in the known limits). 112 is said there too and stays
+for step 14. New: 116.
+
+**Next.** Step 14.
+
 ### Carried forward
 
 Deliberate deferrals, recorded while the reasoning is fresh:
@@ -10642,3 +10711,8 @@ Deliberate deferrals, recorded while the reasoning is fresh:
      a Vercel build without it fails). FRONTEND_ORIGINS names the Vercel
      URL; SESSION_COOKIE_SECURE stays at its default, true. Owed to the
      Design with the sessions table.
+116. **NFR-25's "beyond it, cached answers only" is unbuilt** (step 13,
+     the owner's ruling 1). Over the month's budget a question is refused,
+     503 `budget_spent`, with a plain message; no answer cache exists
+     (FR-35). The README says what is built. **Carried forward to step
+     14**, with caching (FR-35).

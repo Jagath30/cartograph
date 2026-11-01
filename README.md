@@ -1,6 +1,48 @@
 # Cartograph
 
-Natural-language querying of complex data warehouses with schema-graph retrieval and explainable join-path selection.
+Ask a question about a data warehouse in plain English: Cartograph writes the SQL, runs it read-only, and says how each join in that SQL was chosen.
+
+**Live:** [cartograph-nl2sql.vercel.app](https://cartograph-nl2sql.vercel.app). The server sleeps after 15 minutes without visitors, so the first question after a quiet spell can take up to a minute; the page says so while it wakes.
+
+![An answer on the live site: the rows, how the answer was reached, and a join chosen with no basis, flagged](docs/images/answer.png)
+
+## The problem
+
+In a real warehouse, two tables can often be joined more than one way. A catalog sale holds a billing address and a shipping address; a web sale, the customer billed and the customer it was shipped to. "How much did each gender spend on the web?" gives one total by the billed customer and another by the shipped-to customer, and both queries run. A text-to-SQL system picks one route and says nothing about it.
+
+Cartograph says how each join was chosen: by a rule (the only route, the shortest, the question's own wording, or a default this warehouse declares), by a language model reading the question, or with no basis at all, in which case the choice was made alphabetically. That last kind is flagged on the page, with the routes that were not taken, so the reader knows the answer rests on a guess and can ask again more precisely.
+
+## How it works
+
+```mermaid
+flowchart TD
+  Q["Question"] --> L["Linking: a model, shown every table and key, names the tables needed"]
+  L -->|names none| LD["Declined: the warehouse holds no answer"]
+  L --> T["Join tree, by rule: the only route, the shortest, the question's wording, a declared default"]
+  T -->|a tie the rules leave to the alphabet| C["Choosing: the model reads the question"]
+  C -->|names none| A["Alphabet: arbitrary, and flagged"]
+  T --> G["Generation: the model writes the SQL"]
+  C --> G
+  A --> G
+  G --> V["Validation: one read-only SELECT over known names; slips retried, at most twice"]
+  V -->|refused| VD["Refused: nothing runs"]
+  V --> K["Conformance: the joins the SQL makes against the joins selected"]
+  K --> X["Execution: a read-only role, a 30 s timeout, 1,000 rows at most"]
+  X --> R["Trace: stored once, with its plain-English account"]
+```
+
+![The graph of an answer: web sales joined to customer address](docs/images/graph.png)
+
+*The graph drawn for "Which five states spent the most on the web?": the route used (solid, the billing address), the equally valid route set aside (dashed, the shipping address), and the choice made with no basis (the highlight on both).*
+
+1. **Linking.** One model call is shown all 24 tables and all 107 keys between them, with the question, and names the tables the question needs. If it names none, Cartograph says so: "This cannot be answered from this schema: shown every table, the model named none that holds the answer." No query is written.
+2. **The join tree.** The named tables are joined into one tree over the schema graph, built from the database's own foreign keys plus five relationships declared by hand, each with a note on its evidence. Where two tables can be joined more than one way, rules decide in order: the only route; the shortest; the route the question's wording points to; a default this warehouse declares. What is left is a tie, which the alphabet would break.
+3. **Choosing.** Before the alphabet decides anything, a second model call is shown the question and each remaining tie, its routes listed in an order that does not favour the alphabet's pick, and asked which route the question means. If it names none, the alphabet chooses, and that choice is flagged as arbitrary.
+4. **Generation.** The model that writes the query is shown the tables and the joins selected, as explicit join conditions.
+5. **Validation.** The SQL is parsed and refused unless it is one SELECT over tables and columns the schema holds, calling only allowed functions. A syntax error or an unknown name is fed back and the model tries again, at most twice per question. A write, or a function known for a side effect, ends the question at once: the model is not asked again, and nothing runs.
+6. **Conformance.** The joins the SQL really makes are read out of it, in `ON` clauses or as equalities in `WHERE`, and compared with the joins selected. If they differ the query still runs and the trace says **diverged**, naming the joins. A model that takes another route is reported, not corrected.
+7. **Execution.** The SQL that runs is byte for byte the SQL that was checked. It runs as a role that can only read the warehouse, under the database's 30-second statement timeout, and at most 1,000 rows are fetched.
+8. **The trace.** Every step's facts, every attempt and what each call cost are assembled into one document, with a plain-English account, and stored once. History reopens it exactly as it was first shown. The rows are not stored; "Run this SQL again" reruns the stored SQL, validated again, with no model call.
 
 ## Evaluation
 
@@ -47,137 +89,91 @@ At 24 tables the whole schema fits easily in the model's context, and full-schem
 
 These figures do not measure Cartograph's other claim, which is a property rather than a result: it says when a join choice had no basis, and it checks that the SQL that ran joined the way its explanation says.
 
+## Decisions and alternatives
+
+The design documents are in [docs/](docs/); each decision there records the option it was chosen against. The ones that shape what you see:
+
+**Join rules, and flagging the arbitrary choice.** Between two tables the shortest route wins; a tie goes to the question's wording, then to a default the warehouse declares, then to the alphabet. Set aside: heuristics about cardinality or what a column means, which would be confident without being right, and refusing to answer a tie, which would refuse most questions. A warning fires only when the alphabet decided, not whenever another route existed: this schema has 107 keys, and a warning on every question is no warning. Since step 10b a model reading the question is asked before the alphabet, and the trace says which of the two decided.
+
+**Linking replaced retrieval.** Version 1 found tables by embedding the schema and scoring the question against it, then growing a connected set along the graph. On the fresh held-out set the tables it chose held 67.6% of those the questions needed, and it scored 36.7% on tables. At 24 tables the whole schema fits in one prompt, so a model shown every table now names the ones needed, and on the same set it named all of them. Retrieval's scores are kept to order the named tables and as evidence for the wording rule. On a warehouse too large for one prompt the trade would be different.
+
+**A fair baseline.** The comparison is full-schema prompting: the same model, given all 24 tables and every key, with no plan. The two prompts differ only in what Cartograph adds, and a test pins that. Set aside: comparing intermediate steps, such as the tables retrieved, which the baseline does not have. A frozen judge reads the generated SQL in both modes instead, and the protocol and predictions were committed before any run.
+
+**The trace is one document, written once.** Each stage returns its part and the orchestrator writes the whole trace once, so a failure still leaves a trace and nothing is half-written. It is stored as a document with a few columns extracted for listing and counting. Set aside: five normalised tables, for something written once, read whole and never joined; and bare JSON, which cannot be listed cheaply. Its plain-English account is composed when the trace is written, not each time it is read, so history shows what was shown.
+
+**Defence in depth on SQL.** No single guard is trusted. The validator refuses anything but one read-only SELECT over known names; the conformance check compares the joins made with the joins selected, and reports a difference rather than rejecting it, since rejecting would hide what the model did; the warehouse role can only read and cannot make temporary tables; the database itself stops a statement at 30 seconds. A refused write is never retried: retrying would coach the model past a safety check.
+
+**One origin, a first-party cookie.** The browser only ever talks to the frontend's address; Next.js rewrites `/api/v1` to the backend. The session cookie is therefore first-party: HttpOnly, SameSite=Lax, Secure. Set aside: calling the backend's own address from the browser, which would need a cross-site cookie and credentialed CORS, a well-known source of breakage; and proxying through server functions, which run under a host's function time limit. A rewrite is a proxied request with no function in it.
+
+**A spend ceiling that survives a restart.** The public demo has a monthly model budget, $2.00, counted from the costs stored with each answer in the database since the first of the month. Before a question runs, the most it could cost, worked out from the code at $0.03, is reserved, along with the same for any question already running; if that would pass the budget, the question is refused. Set aside: the development ceiling, a ledger file inside the container, which a free host's disk does not keep and which counted every call since the project began.
+
+**The hosting.** The design runs one Postgres server with two databases and two roles, the warehouse's read-only; the deployment keeps that shape. Postgres is on Neon, whose free database does not expire and has pgvector; a public demo must stay up, and the free alternative considered expires after 30 days. The API is on Render, from the same Dockerfile used locally, on a free tier that does not expire; the price is the sleep after 15 minutes. A faster-waking host needed a card on file, and the model API is meant to be the only paid part. Render's Key Value sits beside the API, in memory only, which fits a cache; no answer cache is built yet, and the API only checks that it answers. The frontend is on Vercel: the page runs in the browser and its API calls go through the rewrite, a CDN proxy allowed 120 seconds, so no function and no function time limit is involved.
+
+## Security
+
+A question can do one thing: run one validated SELECT against the warehouse, as a role that holds SELECT and nothing else, under a 30-second timeout, fetching at most 1,000 rows. It cannot write, lock, call a function known for a side effect, create a temporary table, or reach the application's own database, which is a separate connection the query path never holds.
+
+Passwords are hashed with argon2id. A session is a random token in a cookie (HttpOnly, SameSite=Lax, Secure, seven days from login, never extended); the server keeps only its sha256, and logging out revokes it. Any request that changes something is refused, 403, if it comes from another site's origin, and refused, 415, if its body is not JSON. Every page carries six security headers, among them a policy that it is never framed. Each account sees only its own history.
+
+No credential is in the repository or its history. Locally, `bootstrap.sh` generates the passwords; deployed, each secret is set in the host's settings and never written to a file in the repository. The production model key has never been on the development machine.
+
+## Deployment notes
+
+- The page: [cartograph-nl2sql.vercel.app](https://cartograph-nl2sql.vercel.app), on Vercel, with `BACKEND_ORIGIN` set at build time for the rewrite.
+- The API: a Render free web service and a free Key Value, both from [render.yaml](render.yaml), in Singapore. `FRONTEND_ORIGINS` names the page's address.
+- The data: Neon free, in Singapore, two databases: `warehouse` and `app`. [scripts/neon.sh](scripts/neon.sh) makes the roles and databases, loads the warehouse and checks it.
+- The deployed warehouse is TPC-DS at scale factor 0.25, measured at 447 MB on Neon; locally it is scale factor 1, 2.2 GB. The schema, and so the snapshot's hash, is the same at both; the numbers in an answer are not.
+- The first request after 15 minutes without visitors wakes the server, which can take up to a minute. After 3 seconds the page says: "Waking the server. Free hosting sleeps after 15 minutes without visitors; the first request can take up to a minute."
+- The month's model budget is $2.00; when it is spent, a question is refused with 503 and a plain message, and stored answers can still be opened and run again. Each account may ask 30 questions a UTC day; past that, 429. A rerun calls no model and is not counted.
+- Neon made the databases with the collation C.UTF-8; locally they are en_US.utf8. Rows ordered by text can come back in a different order than locally.
+- When a database URL is copied into a host's settings with a command such as `clip.exe`: run the command, then paste what it copied. Pasting the command itself fails the deploy (it happened once here).
+
 ## Running it locally
 
-Requires Docker Desktop with the WSL2 backend.
+Requires Docker Desktop with the WSL2 backend. In order:
 
     ./scripts/bootstrap.sh
     docker compose up
-
-`bootstrap.sh` writes a `.env` with generated passwords if one does not
-already exist, and never overwrites an existing file. The repository
-contains no credentials of any kind, in the working tree or in its
-history, so this step is what makes `docker compose up` work on a clean
-clone.
-
-Once up:
-
-- Frontend: http://localhost:3000
-- API: http://127.0.0.1:8000/api/v1/health and /api/v1/ready
-
-## Loading the warehouse
-
-The stack comes up with an empty warehouse. One command builds it:
-
-    ./scripts/warehouse.sh          # TPC-DS at scale factor 1, about five minutes
-    ./scripts/warehouse.sh 0.01     # the same mechanism in thirty seconds
-
-It needs the `duckdb` CLI and `python3` on the host. It generates TPC-DS
-with DuckDB's `tpcds` extension, loads the 24 tables with `COPY`, adds the
-17 primary keys, and applies the 102 foreign keys from the TPC toolkit's
-`tpcds_ri.sql` — which is also parsed into `backend/overlays/tpcds.yaml`,
-the source the schema graph is built from. Running it again drops and
-rebuilds the warehouse tables; it never touches the application database.
-
-`tpcds_ri.sql` belongs to the TPC and is not in this repository. The first
-run downloads it with `curl` from a commit-pinned mirror of the toolkit and
-checks its sha256; a failed download or a different file stops the build
-before anything is changed. The overlay generated from it is committed.
-
-At scale factor 1 the loaded warehouse measures 2.2 GB.
-
-## Reading the schema
-
-Once a warehouse is loaded, this prints what the application makes of it:
-
-    docker compose exec backend python -m app.show_schema
-
-It connects as the SELECT-only role, reads tables, columns and keys from
-`pg_catalog`, merges the overlay (catalog first, with the source recorded
-on every edge), and builds the schema graph: 24 tables and 425 columns as
-nodes, 107 foreign keys as edges. 102 of those the database declares. The
-other 5 are relationships the TPC's constraint file omits, including the
-two-column keys that tie a return to its sale; they are asserted in the
-overlay, marked `source: overlay`, and each carries a note saying what
-evidence it rests on.
-
-Column names such as `ss_ext_sales_price` are given readable names from the
-overlay's `naming` section. That section is written by hand in
-`backend/overlays/tpcds.naming.yaml`, and the hand-declared relationships
-in `backend/overlays/tpcds.relationships.yaml`;
-`backend/overlays/tpcds.yaml` is generated from them and never edited.
-After changing either file:
-
-    python3 backend/warehouse/ri.py write-overlay
-
-## Finding join paths
-
-    docker compose exec backend python -m app.show_paths catalog_sales customer_address
-
-prints every route of up to three joins between two tables, the one
-selected, and why. The rule is shortest first; a tie is broken by a
-preference declared in the overlay if there is one, and alphabetically if
-not. An alphabetical choice is reported as arbitrary, and the warning names
-the routes that were not taken. A selected route that joins two "many"
-sides through one table says so, and says what it does to the rows.
-`--all` lists every alternative; `--max-joins 4` raises the limit.
-
-## Retrieval: from a question to the tables that answer it
-
+    ./scripts/warehouse.sh
     docker compose exec backend python -m app.ingest_schema
-    docker compose exec backend python -m app.show_retrieval "How much did each store sell last year?"
 
-The first stores the warehouse's schema in the application database and
-embeds it, once; it needs `OPENAI_API_KEY` in `.env`. The second puts one
-question through retrieval: what its words matched, which tables became
-anchors and which were set aside or cut, the tree that joins them and how
-each was attached, every warning, and the close calls. A question that has
-not been asked before is embedded, which is a paid call of a few dozen
-tokens; the last line says what the run cost.
+1. `bootstrap.sh` writes a `.env` with generated passwords if there is none, and never overwrites one. Put your OpenAI key in `.env` as `OPENAI_API_KEY`.
+2. `docker compose up` starts Postgres, Redis, the backend and the frontend: http://localhost:3000, and the API at http://127.0.0.1:8000/api/v1/health.
+3. `warehouse.sh` builds TPC-DS at scale factor 1, about five minutes (`./scripts/warehouse.sh 0.01` takes thirty seconds). It needs the `duckdb` CLI and `python3` on the host. It downloads the TPC toolkit's constraint file from a commit-pinned mirror and checks its sha256 before changing anything.
+4. `ingest_schema` reads the schema into the application database and embeds it once. It needs the key, and the embedding is the one paid call of setup.
 
-    docker compose exec backend python -m app.show_eval --step6
+Then:
 
-runs the sixteen questions of the frozen evaluation set
-(`backend/eval/questions.yaml`) and reports where retrieval agrees with
-them and where it does not. At the settings in use it holds every expected
-table for 11 of 15 questions and brings 34 tables too many; it agrees
-strictly with none. `CHECKPOINTS.md` has the whole record.
+- Ask from the command line: `docker compose exec backend python -m app.ask "Which five states spent the most on the web?"`. It prints the answer and the trace; two or three paid model calls.
+- See the schema graph, or every route between two tables: `docker compose exec backend python -m app.show_schema`, and `docker compose exec backend python -m app.show_paths catalog_sales customer_address`.
+- The smoke check, the one command every checkpoint is measured against: `./scripts/smoke.sh`. It asks two questions through the model, about a tenth of a cent.
+- The tests: `docker compose exec backend pytest` for the backend against the running stack; `docker compose exec frontend npm test` for the frontend. CI's backend run, as reproduced locally, with no network and no `.env`: `docker run --rm --network none -v "$PWD/backend:/app" -w /app cartograph-backend pytest`. Tests that need the key or a database skip without them.
 
-## Asking a question
+Without a key, everything but ingestion, asking and smoke's question lines works.
 
-    docker compose exec backend python -m app.ask "How do purchases on the web split by the buyer's level of education?"
+## Known limits
 
-puts one question through the whole pipeline and prints its answer and its
-trace: the tables a language model, shown every table, named for it; each
-choice the rules left open and what the model named for it; the tables
-the model writing the query was shown and the joins selected for it, each
-attempt, the SQL that ran, the joins that SQL really made beside the ones
-selected, and the first rows. It makes two or three paid calls to the
-model (`gpt-6-luna`): naming the tables, choosing when the rules leave a
-choice open, and writing the SQL. Together they cost about a tenth of a
-cent, written to a spend ledger; the last line gives the running total.
+- No email verification and no password reset.
+- Login has no rate limit yet. The limit of 30 questions a day is not a rate limit.
+- History lists the newest 100 answers, with no paging.
+- A copied answer link opens only for the answer's owner; anyone else gets "not found".
+- Cartograph explains joins, not measures. Which amount column the model sums is not flagged: for "How much did each gender spend on the web in the year 2002?", summing the sales price and summing the net paid give totals millions apart, and nothing says which was used.
+- Over the budget the demo refuses; it does not yet serve cached answers to repeated questions.
+- The evaluation's own limits are stated in it: small sets, one model, a judge that checks tables and path and not the rows, one warehouse.
 
-What the pipeline guarantees, and what it only reports:
+## The repository
 
-- The SQL is parsed and refused unless it is one read-only SELECT over
-  tables and columns the schema holds. A write, or a function known for a
-  side effect, ends the question; the model is not asked again. The
-  warehouse role could not write in any case.
-- The SQL that runs is byte for byte the SQL that was checked.
-- The joins the SQL makes are read out of it and compared with the joins
-  selected. If they differ the query still runs and the trace says
-  **diverged**, naming the joins. A model that takes another route is
-  reported, not corrected.
-- When the model, shown every table, names none that holds the answer,
-  the question ends there, and the reply is "This cannot be answered from
-  this schema: shown every table, the model named none that holds the
-  answer." No query is written.
-- When the model writing the query says the tables it was shown do not
-  hold the answer, the reply is "This cannot be answered from the tables
-  found for it: the model writing the query, shown those tables, said
-  they do not hold the answer." That is a statement about the tables it
-  was shown, not about the warehouse.
+- [backend/app/core/](backend/app/core/): the pure parts, no I/O: the graph, the join rules, linking and choosing, validation, conformance, the trace and its narrative, the budget.
+- [backend/app/shell/](backend/app/shell/): what touches a database or the model; [backend/app/](backend/app/) also holds the API and the commands.
+- [backend/eval/](backend/eval/): the question sets, protocols, runs and reports of both evaluations.
+- [backend/overlays/](backend/overlays/): what this warehouse's catalog cannot say: readable names, the hand-declared relationships, the declared defaults.
+- [frontend/](frontend/): the Next.js page. [scripts/](scripts/): setup, the warehouse, Neon and smoke. [docs/](docs/): the charter, requirements, design and stack.
+- [CHECKPOINTS.md](CHECKPOINTS.md): the working record, step by step: every ruling, measurement, prediction and mistake, and what was carried forward.
 
-The trace is stored, as the API stores it: the query's id is printed, and
-`GET /api/v1/queries/<id>` returns the trace with its plain-English
-account. The rows are not stored.
+## TPC-DS
+
+The warehouse's data is generated with TPC-DS tooling (DuckDB's `tpcds` extension, and the TPC toolkit's constraint file, which is not in this repository). Nothing here is a TPC-DS benchmark result, and nothing here is endorsed by the TPC.
+
+## Contact
+
+Built by Jagath S Manjunath: [GitHub](https://github.com/Jagath30) · [LinkedIn](https://www.linkedin.com/in/jagath-manjunath)
