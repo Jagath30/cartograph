@@ -7,10 +7,22 @@ to explain, and what the next single deliverable is.
 
 ---
 
-## Current state — 26 October 2026, kept current at every close
+## Current state — 1 November 2026, kept current at every close
 
-**What exists.** Steps 1 to 11 and a retrieval pass, tagged
-`checkpoint-01-stack` to `checkpoint-11-auth`. Step 11: accounts and
+**Live.** https://cartograph-nl2sql.vercel.app (Vercel Hobby, project
+`cartograph-nl2sql`, root `frontend`), its /api/v1 rewritten to
+https://cartograph-nl2sql-api.onrender.com (Render free, Singapore, from
+`render.yaml`, with the free Key Value `cartograph-nl2sql-kv`). The data
+on Neon Free, AWS Singapore: `warehouse`, TPC-DS at scale factor 0.25,
+447 MB, read by `cartograph_reader`; `app`, owned by `cartograph_app`.
+$2.00 a month for the model (DEMO_MONTHLY_BUDGET_USD), then 503; 30
+questions a day for each account (DAILY_QUESTIONS_PER_USER), then 429.
+The backend sleeps after 15 minutes idle; the page says so after 3 s.
+The deployed smoke (`python -m app.smoke_deployed`) passed once, 13 of 13.
+
+**What exists.** Steps 1 to 12 and a retrieval pass, tagged
+`checkpoint-01-stack` to `checkpoint-12-deploy`. Step 12: deployment
+(criterion 8), with the spend ceiling (NFR-25). Step 11: Step 11: accounts and
 history (criterion 12). Register, log in, log out; a session is an
 opaque token in an HttpOnly, SameSite=Lax cookie, kept in the store as
 its sha256, seven days from login and never extended; each user sees only
@@ -28,8 +40,8 @@ with the tables named, who decided each join and the choices put to the
 model. Step 10's evaluation, then step 10b's: four modes, five runs, a
 protocol frozen before any run; v2.1 matches full-schema prompting on
 heldout2's tables (100.0%) and misses its path by one answer in sixty
-(98.3%). README "Evaluation". Smoke 48, 0, 0. Backend: CI's command 1737
-pass, 198 skip; the suite 1933 pass, 2 skip; frontend 289. `next` 16.4.1.
+(98.3%). README "Evaluation". Smoke 48, 0, 0. Backend: CI's command 1763
+pass, 201 skip; the suite 1962 pass, 2 skip; frontend 301. `next` 16.4.1.
 
 **Rules every session follows.**
 - `OPENAI_API_KEY` is never printed, displayed or read; `.env` is never
@@ -84,13 +96,14 @@ before the change. Step 10b's manifest records the code its runs used;
 it is checked at the commits they ran on (`a6a6aac` to `587cd61`), not
 on main.
 
-**Next.** Step 12.
-Step 12: 1, 8, 9, 10, 11, 14, 18, 41, 73, 77, 80, 85, 108, 109, 115; owed to the Design:
-DD-01, 06, 07, 12 to 16, 19, 21, FR-13, IR-05, section 04, step 10b's
-(the checkpoint-10b-v2.1 entry), and step 11's: the sessions table, and
-the build-time BACKEND_ORIGIN (the checkpoint-11-auth entry). Step 13: 86,
-90, 113, 114. Step 14: 75, 111, 112. Future work: 53, 55, 56, 98, 99, 100. Known limits:
-62, 68, 69, 78, 87, 91, 113. Left behind: 79. **Resume:** read this, the newest entry and the
+**Next.** Step 13: the README, with the deployment notes (the
+checkpoint-12-deploy entry, "For the README at step 13"), and the Design
+owed (step 12's list, carried: DD-01, 06, 07, 12 to 16, 19, 21, FR-13,
+IR-05, section 04, step 10b's, step 11's sessions table and build-time
+BACKEND_ORIGIN, and step 12's hosts). Step 13: 86, 90, 113, 114. Step
+14: 75, 111, 112. Open, not done at step 12: 8, 9, 41. Future work: 53,
+55, 56, 98, 99, 100. Known limits: 62, 68, 69, 78, 87, 91, 113. Left
+behind: 79. **Resume:** read this, the newest entry and the
 items named; `git status`; `./scripts/smoke.sh` (two paid calls).
 
 ## checkpoint-01-stack — 12 September 2026
@@ -9633,7 +9646,115 @@ command; login's rate limit, FR-36); 113 and 114 to the README at step
 
 **Next.** Step 12.
 
-## Step 12 in progress: deployment — opened 26 October 2026
+## checkpoint-12-deploy — 1 November 2026
+
+**What works now that did not before.** Criterion 8: Cartograph is live
+at https://cartograph-nl2sql.vercel.app, and the spend ceiling shipped
+with it (NFR-25).
+- The hosts. Vercel: project `cartograph-nl2sql`, root directory
+  `frontend`, BACKEND_ORIGIN https://cartograph-nl2sql-api.onrender.com
+  for Production and Preview; the production domain
+  https://cartograph-nl2sql.vercel.app. Render: `cartograph-nl2sql-api`
+  from `render.yaml` (docker, singapore, free, health check
+  /api/v1/health, autoDeployTrigger checksPass, buildFilter backend/**),
+  and `cartograph-nl2sql-kv` (free, ipAllowList empty); FRONTEND_ORIGINS
+  https://cartograph-nl2sql.vercel.app. Neon: one project, AWS Singapore;
+  `warehouse` and `app`, `neondb` left alone; owner (laptop only),
+  `cartograph_app`, `cartograph_reader`; direct connections.
+- The warehouse: TPC-DS at scale factor 0.25, measured, not
+  interpolated; 447 MB on Neon (468,230,144 bytes), the local snapshot
+  hash, every row count DuckDB's. The app database migrated to 0003 and
+  given the three schema tables from local: nothing was re-embedded.
+- The budget (C4). $2.00 a month (DEMO_MONTHLY_BUDGET_USD), read as the
+  stored traces' cost since the month began, with each running question
+  held at its bound ($0.03, the derived bound $0.023246): past it, 503
+  `budget_spent`. 30 questions a day for each account
+  (DAILY_QUESTIONS_PER_USER): past it, 429 `daily_limit`. Both before
+  any model call. Items 77 and 108 closed by it.
+- The cold start. When /api/v1/health has not answered in 3 s the page
+  says "Waking the server. Free hosting sleeps after 15 minutes without
+  visitors; the first request can take up to a minute." The pipeline
+  opens in the background at start, so health answers first.
+- The six security headers on every page (next.config); CI on Node 24
+  actions and `ubuntu-24.04` (item 11); the frontend image no longer
+  sets NODE_ENV=development (item 109): the production build passes in
+  it without an override.
+- Measured: the backend's memory after one question, 146.2 MiB of
+  Render's 512 MB (the line was 400).
+
+**The deployed smoke**, run once, alone, at `d4fb29a`'s code against the
+live site (`python -m app.smoke_deployed`, exit 0), 13 lines:
+- WAKE PASS: health answered through the rewrite after 1 s (awake).
+- HEADERS PASS: /ask, http 200, the six.
+- SIGNEDOUT PASS: 401. SCHEMA PASS: 24 nodes, 107 edges, 425 columns;
+  snapshot 4e674c8f1628.
+- REGISTER PASS: smoke-20261101t133317z-dc8fa6eb@cartograph.invalid.
+- LOGIN PASS: HttpOnly, Max-Age=604800, Path=/, SameSite=lax, Secure.
+- FOREIGN PASS: signed in, Origin https://not-cartograph.example, 403
+  origin_refused.
+- POST PASS: answered; 7 rows; conformance conforms; $0.000971, on the
+  production key.
+- HISTORY PASS. READBACK PASS: identical, 39,933 characters; no rows
+  stored. RERUN PASS: 7 rows, the same columns.
+- LOGOUT PASS. REFUSED PASS: 2 reads 401.
+The live app store now holds two accounts: the local user copied from
+local, and that smoke account (item 111).
+
+**What went wrong.**
+- **The first Render deploy failed, the owner's slip.** alembic could not
+  parse APP_DATABASE_URL: the clip.exe command itself had been pasted
+  into Render, not its output, in both database fields. No secret was
+  exposed. Both values were replaced with the URLs, checked in words to
+  start postgresql:// and to name /app and /warehouse, and the second
+  deploy went Live.
+- Mine: Docker made root-owned empty directories under the repository
+  when the rehearsal mounted an absolute path as relative (fixed with
+  realpath in scripts/neon.sh); the owner removes them. Earlier, in C4,
+  the core imported app.config, caught by CI.
+
+**For the README at step 13** (the owner's rulings):
+- Deployment notes: run each clip.exe command in a terminal, then paste
+  what it copied; never paste the command.
+- Neon's collation is builtin C.UTF-8, not en_US.utf8: rows ordered by
+  text may come back in another order than locally.
+- The deployed warehouse is scale factor 0.25; the local one is 1. The
+  demonstration's gender totals (tests/test_demo_questions.py) are
+  scale factor 1 figures.
+- The cold start, up to a minute; the $2 month and 30 questions a day.
+
+**The spend.** The deployed smoke's one question, $0.000971, on the
+production key (not in the local ledger). Locally: C4's memory check
+$0.000971 earlier; the close's smoke 6 lines, $0.00123324. The ledger
+at the close: 2150 lines, $0.36820453.
+
+**The checks at the close**, each exit status read: CI's command exit
+0, 1763 passed, 201 skipped; the suite exit 0, 1962 passed, 2 skipped;
+frontend tests exit 0, 301 in 25 files; tsc, lint, the production build
+(in a throwaway container from the image, no NODE_ENV set) and `npm
+audit --omit=dev` (0 vulnerabilities) each exit 0; secret-pattern lines
+0 in the commits since origin/main and in the diff; the frozen files
+unchanged since checkpoint-11-auth; heldout2.yaml not opened. After a
+clean restart, every service healthy by `docker compose ps`; the
+provider reachable with no key (401); smoke once: 48 passed, 0 failed,
+0 skipped.
+
+**Items.** Closed: 1 for the deployment (the app connects as
+`cartograph_app`, not a superuser; locally it still does), 10
+(superseded by BACKEND_ORIGIN at step 11), 11, 14, 18, 73 (the
+executor's tests count what the warehouse holds; the gender totals stay
+at scale factor 1, by ruling), 77, 80, 85 (`ready()`, `Check`,
+`Readiness` removed, unused), 108, 109, 115. **Open, not done at step
+12:** 8 (no non-root user in either Dockerfile), 9 (pytest and httpx in
+the runtime image), 41 (the five hand-declared relationships not
+re-measured at scale factor 0.25).
+
+**What was built that is not yet understood well enough to explain.**
+The cold start was not measured: the deployed smoke found the backend
+awake. Render's "about a minute" is the host's figure, not ours.
+
+**Next.** Step 13.
+
+### The working record of step 12 — opened 26 October 2026
 
 ### The hosts, re-verified on 26 October 2026 (the brief)
 
