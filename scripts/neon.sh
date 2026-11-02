@@ -11,6 +11,9 @@
 #     ./scripts/neon.sh load        the sf=0.25 warehouse, from the measurement database
 #     ./scripts/neon.sh app         migrations to head, then the three schema tables copied
 #     ./scripts/neon.sh check       sizes, row counts, the hash, the examples, the refusals
+#     ./scripts/neon.sh accounts    the smoke accounts, counted: a dry run (step 14, item 111)
+#     ./scripts/neon.sh accounts --yes   deletes them: ONLY after the owner's ruling on the counts
+#     ./scripts/neon.sh declared    the five hand-declared relationships measured, read-only, as the reader (item 41)
 #
 # THE SECRETS (the owner's ruling 1 at the plan stop). .env.deploy is never
 # opened, read or printed here: it reaches a container only through
@@ -205,8 +208,17 @@ check)
     -v "$(pwd)/backend:/app" -w /app cartograph-backend python -m app.check_deploy
   ;;
 
+accounts)
+  # As the application's role, which owns the app database. Counts only,
+  # unless --yes; app.clean_accounts matches two exact patterns and never
+  # the local user.
+  case "${2:-}" in ""|--yes) ;; *) echo "usage: $0 accounts [--yes]" >&2; exit 2 ;; esac
+  docker run --rm --network "$NETWORK" --env-file "$ENV_FILE" -e REDIS_URL=redis://unused \
+    -v "$(pwd)/backend:/app" -w /app cartograph-backend python -m app.clean_accounts ${2:+"$2"}
+  ;;
+
 *)
-  echo "usage: $0 roles|databases|revoke-temp|whoami|load|app|check" >&2
+  echo "usage: $0 roles|databases|revoke-temp|whoami|load|app|check|accounts|declared" >&2
   exit 2
   ;;
 esac
