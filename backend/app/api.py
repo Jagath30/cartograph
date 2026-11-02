@@ -4,10 +4,13 @@ Holds no logic (DD-01). If a decision is being made in this file, it
 belongs somewhere else.
 """
 
+from collections.abc import Callable
 from functools import lru_cache
 from typing import Annotated
 from uuid import UUID
 
+import psycopg
+import redis
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 
@@ -27,14 +30,15 @@ from app.api_models import (
     rerun_out,
     schema_out,
 )
-from app.auth import COOKIE, AccountsDep, NowDep, UserDep, clear_session, set_session
+from app.auth import COOKIE, AccountsDep, NowDep, UserDep, admin_allowed, clear_session, set_session
 from app.config import Settings, get_settings
 from app.core.limits import EVERYONE, LOGIN_CEILING, LOGIN_FAILURES, QUESTIONS, REGISTRATIONS, RERUNS, email_subject, user_subject
 from app.shell.counters import Counters, Reached
+from app.shell.reingest import SchemaRead, read_schema
 from app.shell.accounts import EmailTaken
 from app.shell.probes import check_postgres, check_redis
 from app.core.budget import Allowance
-from app.shell.query_service import NothingToRerun, OverAllowance, QueryService, make_service
+from app.shell.query_service import NothingToRerun, NotReady, OverAllowance, QueryService, make_service
 
 router = APIRouter(prefix="/api/v1")
 
@@ -243,3 +247,52 @@ def schema(service: ServiceDep) -> SchemaOut:
     their columns inside (DD-18)."""
     stored, snapshot = service.schema()
     return schema_out(stored.id, stored.hash, snapshot)
+
+
+# --------------------------------------------------------------------------
+# Re-ingest (IR-07, FR-05; step 14, the owner's ruling 2)
+# --------------------------------------------------------------------------
+
+REINGEST_KEY = "cartograph:admin:reingest"
+REINGEST_EVERY_SECONDS = 10 * 60
+SCHEMA_CHANGED = (
+    "The warehouse's schema is not the one this deployment's retrieval was calibrated on, so it cannot be served. "
+    "A changed schema needs a new calibration first, an offline step (python -m app.ingest_schema, then python -m "
+    "app.calibrate). Nothing was stored."
+)
+
+
+def get_schema_reader() -> Callable[[], SchemaRead]:
+    return lambda: read_schema(get_settings())
+
+
+@router.post("/admin/reingest", include_in_schema=False)
+def reingest(
+    request: Request, settings: SettingsDep, service: ServiceDep, counters: CountersDep,
+    read: Annotated[Callable[[], SchemaRead], Depends(get_schema_reader)],
+) -> dict:  # fmt: skip
+    """Exists only for a request carrying ADMIN_TOKEN as its bearer token;
+    to any other, it is 404, as a path never routed. Once in 10 minutes;
+    without Redis, never. Reads the live catalog and the overlay, and
+    compares the snapshot's hash with the calibration's: the same is 200
+    `unchanged`, and the pipeline is reopened only if it is not open; a
+    different one is 409 `schema_changed`. Nothing is stored, and no model
+    or embedder is called, on either path."""
+    if not admin_allowed(settings.admin_token, request.headers.get("authorization")):
+        raise HTTPException(status_code=404, detail="Not Found")
+    try:
+        held = counters.claim(REINGEST_KEY, REINGEST_EVERY_SECONDS)
+    except redis.RedisError:
+        raise Refused(503, "not_ready", "Re-ingest needs Redis, which did not answer, so nothing was done.") from None
+    if held is not None:
+        message = f"Re-ingest runs at most once in 10 minutes. It can run again in {held} seconds."
+        raise Refused(429, "reingest_limit", message, {"Retry-After": str(held)})
+    try:
+        schema = read()
+    except psycopg.OperationalError:
+        raise NotReady("the warehouse could not be reached, so its schema could not be read") from None
+    if not schema.unchanged:
+        raise Refused(409, "schema_changed", SCHEMA_CHANGED)
+    reopened = service.reopen_if_not_ready()
+    return {"status": "unchanged", "hash": schema.live, "pipeline_reopened": reopened}
+

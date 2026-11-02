@@ -21,12 +21,14 @@ change something (any method but GET, HEAD and OPTIONS):
 Nothing here logs: not a header, not a token, not a password.
 """
 
+import hmac
 from datetime import UTC, datetime
 from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends, Request, Response
 from fastapi.responses import JSONResponse
+from pydantic import SecretStr
 
 from app.api_models import ErrorOut, Refused
 from app.config import Settings, get_settings
@@ -34,6 +36,8 @@ from app.core.credentials import SESSION_LIFETIME
 from app.shell.accounts import Accounts, SignedIn
 
 COOKIE = "cartograph_session"
+# The shortest ADMIN_TOKEN that turns the re-ingest endpoint on (step 14).
+ADMIN_TOKEN_MIN = 32
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 
@@ -102,3 +106,16 @@ class RequestGuard:
             if kind != b"application/json":
                 return 415, "json_only", "This endpoint takes a JSON body."
         return None
+
+
+def admin_allowed(token: SecretStr | None, authorization: str | None) -> bool:
+    """The re-ingest endpoint exists for this request only if ADMIN_TOKEN
+    is set, at least 32 characters, and the request sends it as a bearer
+    token. Compared in constant time. Nothing here logs."""
+    if token is None or len(token.get_secret_value()) < ADMIN_TOKEN_MIN or not authorization:
+        return False
+    scheme, _, sent = authorization.partition(" ")
+    if scheme.lower() != "bearer":
+        return False
+    return hmac.compare_digest(sent.strip().encode(), token.get_secret_value().encode())
+

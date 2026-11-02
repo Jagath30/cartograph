@@ -31,6 +31,8 @@ ErrorCode = Literal[
     "budget_spent", "daily_limit",
     # step 14: the rate limits (app.core.limits)
     "login_limit", "login_ceiling", "register_limit", "minute_limit", "rerun_limit",
+    # step 14: the re-ingest endpoint
+    "reingest_limit", "schema_changed",
 ]  # fmt: skip
 
 

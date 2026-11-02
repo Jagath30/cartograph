@@ -63,6 +63,12 @@ class Settings(BaseSettings):
     demo_monthly_budget_usd: float = 2.00
     daily_questions_per_user: int = 30
 
+    # The re-ingest endpoint's bearer token (IR-07, step 14). Unset, or
+    # shorter than 32 characters, and the endpoint does not exist: every
+    # call to it is 404, as to a path that was never routed. A SecretStr,
+    # so it is never printed with the settings.
+    admin_token: SecretStr | None = None
+
     def allowed_origins(self) -> list[str]:
         """The origins CORS names and the origin check takes. Never "*": a
         wildcard would let any site send a request that carries the

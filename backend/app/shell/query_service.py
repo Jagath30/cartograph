@@ -186,6 +186,16 @@ class QueryService:
         except Exception as error:
             log.error("the pipeline was not opened at start: %s", type(error).__name__)
 
+    def reopen_if_not_ready(self) -> bool:
+        """The re-ingest's reopen (step 14, the owner's ruling 2): only when
+        the pipeline is not open, it is opened now, as at start. An open
+        pipeline is left as it is. True when an opening was tried."""
+        with self._lock:
+            if self._orchestrator is not None:
+                return False
+        self.warm()
+        return True
+
     def answer(self, question: str, user_id: int, at: datetime | None = None) -> Asked:
         """`ask`, through the answer cache when there is one."""
         at = at or datetime.now(UTC)
