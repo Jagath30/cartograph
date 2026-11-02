@@ -1,0 +1,9 @@
+# The tests' packages, on top of the application's (item 9, step 14): in the
+# dev image and in GitHub's CI, never in the runtime image. pytest needs the
+# other four; nothing under app/ imports any of them.
+-r requirements.txt
+iniconfig==2.3.0
+packaging==26.3
+pluggy==1.6.0
+Pygments==2.21.0
+pytest==9.1.1

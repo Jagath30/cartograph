@@ -16,7 +16,6 @@ Prints counts, hashes and the role's settings; never a URL.
 import sys
 
 import psycopg
-from test_examples_chosen import LIVE
 
 from app.config import get_settings
 from app.core.sql_reading import schema_of
@@ -39,6 +38,11 @@ LOCAL = "4e674c8f16283c81f47a62b3976aa19b1e42a81e2d29ad3726a13023e4302547"
 
 
 def main() -> int:
+    # Read here, not at import: the pinned SQL lives with the tests, which
+    # import pytest, and the runtime image has neither (item 9, step 14).
+    # This command runs from the laptop's dev image (scripts/neon.sh check).
+    from test_examples_chosen import LIVE
+
     settings = get_settings()
     failed = 0
 

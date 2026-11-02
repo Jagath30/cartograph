@@ -38,7 +38,11 @@ services:
       retries: 12
 
   backend:
-    build: ./backend
+    # The dev stage: the tests' packages, root (items 8 and 9, step 14).
+    # Render builds the Dockerfile's last stage, the runtime one.
+    build:
+      context: ./backend
+      target: dev
     environment:
       APP_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${APP_DB_NAME}
       WAREHOUSE_DATABASE_URL: postgresql://${WAREHOUSE_RO_USER}:${WAREHOUSE_RO_PASSWORD}@postgres:5432/${WAREHOUSE_DB_NAME}

@@ -1,5 +1,7 @@
 FROM node:22-slim
 
+# The dev stage is for the laptop only, and stays root because of the bind mount and the root-owned files already in it (item 8, the owner's ruling 1 at step 14).
+
 # Development image. NODE_ENV is left unset (item 109, step 12): npm ci
 # then installs the devDependencies `next dev` needs, `next dev` sets
 # development itself, and `next build` sets production, which its
