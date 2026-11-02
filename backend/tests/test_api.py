@@ -18,6 +18,7 @@ from decimal import Decimal
 
 import pytest
 from api_client import ADDRESS, SETTINGS, NoSchema, ask, client, service
+from fake_redis import DownRedis
 from memory_stores import Memory
 from samples import SMALL
 from tracing import CONTEXT, SCHEMA_REF, SNAPSHOT, Runs, located, orchestrator, reply
@@ -328,7 +329,10 @@ def test_two_questions_in_flight_each_get_their_own_answer() -> None:
             SNAPSHOT, SCHEMA_REF, lambda question: plans[question][0], Slow(), Tells(), keep=Keep(traces, CONTEXT, 1)
         )
 
-    served = client(QueryService(open_orchestrator, traces, NoSchema()))
+    # Twelve questions from one user inside a minute: the minute's limit
+    # (step 14) is not what this test is about, so its Redis is down and
+    # the limit is not applied.
+    served = client(QueryService(open_orchestrator, traces, NoSchema()), redis=DownRedis())
     results: list[tuple[str, int, dict]] = []
 
     def go(question: str) -> None:

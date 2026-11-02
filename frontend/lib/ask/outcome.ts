@@ -82,6 +82,14 @@ export function endingOfError(error: ApiError): Ending {
   if (error.code === "daily_limit") {
     return { tone: "refused", title: "Today's questions are used up", lines: said([error.message]) };
   }
+  // The rate limits (FR-36, step 14): the API's message says which limit
+  // and when it lifts.
+  if (error.code === "minute_limit") {
+    return { tone: "refused", title: "Too many questions this minute", lines: said([error.message]) };
+  }
+  if (error.code === "rerun_limit") {
+    return { tone: "refused", title: "Too many runs of stored SQL this hour", lines: said([error.message]) };
+  }
   if (error.status === 503) {
     return { tone: "failed", title: "The system is not ready to answer", lines: said([error.message, ...detail]) };
   }

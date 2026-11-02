@@ -29,6 +29,8 @@ from app.api_models import (
 )
 from app.auth import COOKIE, AccountsDep, NowDep, UserDep, clear_session, set_session
 from app.config import Settings, get_settings
+from app.core.limits import EVERYONE, LOGIN_CEILING, LOGIN_FAILURES, QUESTIONS, REGISTRATIONS, RERUNS, email_subject, user_subject
+from app.shell.counters import Counters, Reached
 from app.shell.accounts import EmailTaken
 from app.shell.probes import check_postgres, check_redis
 from app.core.budget import Allowance
@@ -50,6 +52,24 @@ def get_service() -> QueryService:
 
 ServiceDep = Annotated[QueryService, Depends(get_service)]
 
+
+@lru_cache
+def get_counters() -> Counters:
+    """The rate limits' counters, in Redis (FR-36, step 14). Connects on
+    first use, never at import."""
+    return Counters.from_url(get_settings().redis_url)
+
+
+CountersDep = Annotated[Counters, Depends(get_counters)]
+
+
+def limited(reached: Reached | None) -> None:
+    """A limit reached is 429, with its own code, Retry-After, and words
+    saying which limit and when it lifts (app.core.limits)."""
+    if reached is not None:
+        limit, seconds = reached.limit, reached.retry_after
+        raise Refused(429, limit.code, limit.message(seconds), {"Retry-After": str(seconds)})
+
 # What every route below may answer besides its own body (IR-05).
 ERRORS = {
     401: {"model": ErrorOut, "description": "`not_signed_in`: the route needs a session, and there is none."},
@@ -65,6 +85,11 @@ OVER_ALLOWANCE = {
     503: {"model": ErrorOut, "description": "`budget_spent`: the demo's budget for the month is spent; or `not_ready`."},
 }
 OVER_ALLOWANCE_STATUS = {"budget_spent": 503, "daily_limit": 429}
+# The rate limits (FR-36, step 14). Each carries Retry-After.
+LOGIN_LIMITED = {429: {"model": ErrorOut, "description": "`login_limit` or `login_ceiling`, with Retry-After."}}
+REGISTER_LIMITED = {429: {"model": ErrorOut, "description": "`register_limit`, with Retry-After."}}
+ASK_LIMITED = {429: {"model": ErrorOut, "description": "`daily_limit`; or `minute_limit`, with Retry-After."}}
+RERUN_LIMITED = {429: {"model": ErrorOut, "description": "`rerun_limit`, with Retry-After."}}
 
 
 @router.get("/health")
@@ -102,9 +127,11 @@ async def ready(settings: SettingsDep) -> JSONResponse:
 FAILED_LOGIN = "The email or password is not right."
 
 
-@router.post("/auth/register", status_code=201, response_model=AccountOut, responses=ERRORS | {409: {"model": ErrorOut}})
-def register(body: RegisterIn, accounts: AccountsDep) -> AccountOut:
-    """An account. It does not sign in: the page logs in after."""
+@router.post("/auth/register", status_code=201, response_model=AccountOut, responses=ERRORS | {409: {"model": ErrorOut}} | REGISTER_LIMITED)
+def register(body: RegisterIn, accounts: AccountsDep, counters: CountersDep) -> AccountOut:
+    """An account. It does not sign in: the page logs in after. Every
+    attempt counts towards the hour's 30."""
+    limited(counters.count(REGISTRATIONS, EVERYONE))
     try:
         made = accounts.register(body.email, body.password)
     except EmailTaken:
@@ -112,12 +139,22 @@ def register(body: RegisterIn, accounts: AccountsDep) -> AccountOut:
     return AccountOut(email=made.email)
 
 
-@router.post("/auth/login", response_model=AccountOut, responses=ERRORS)
-def login(body: LoginIn, response: Response, accounts: AccountsDep, at: NowDep, settings: SettingsDep) -> AccountOut:
-    """A session, in the cookie. One answer for every failure."""
+@router.post("/auth/login", response_model=AccountOut, responses=ERRORS | LOGIN_LIMITED)
+def login(
+    body: LoginIn, response: Response, accounts: AccountsDep, at: NowDep, settings: SettingsDep, counters: CountersDep
+) -> AccountOut:
+    """A session, in the cookie. One answer for every failure. Every
+    attempt counts towards the hour's ceiling; an email at its five
+    failures is refused before any password is hashed, the same for an
+    email no account holds; a success clears its failures."""
+    limited(counters.count(LOGIN_CEILING, EVERYONE))
+    subject = email_subject(body.email)
+    limited(counters.reached(LOGIN_FAILURES, subject))
     opened = accounts.log_in(body.email, body.password, at)
     if opened is None:
+        counters.count(LOGIN_FAILURES, subject)
         raise Refused(401, "invalid_credentials", FAILED_LOGIN)
+    counters.clear(LOGIN_FAILURES, subject)
     token, signed = opened
     set_session(response, token, settings)
     return AccountOut(email=signed.email)
@@ -145,14 +182,16 @@ def me(user: UserDep) -> AccountOut:
 # --------------------------------------------------------------------------
 
 
-@router.post("/queries", response_model=QueryOut, responses=ERRORS | OVER_ALLOWANCE)
-def ask(body: QuestionIn, service: ServiceDep, user: UserDep, at: NowDep) -> QueryOut:
+@router.post("/queries", response_model=QueryOut, responses=ERRORS | OVER_ALLOWANCE | ASK_LIMITED)
+def ask(body: QuestionIn, service: ServiceDep, user: UserDep, at: NowDep, counters: CountersDep) -> QueryOut:
     """IR-02, IR-03. One question, one response, synchronously (D-05).
     EVERY outcome of the pipeline is a 200 with its trace: an answer, a
     decline and a failure alike, the last two with IR-05's code and
     message. The trace is stored before this returns (NFR-13), under the
     user who asked. A question past the month's budget or the user's day
-    is not run (NFR-25): 503 or 429, and nothing is stored."""
+    is not run (NFR-25): 503 or 429, and nothing is stored. Every ask
+    counts towards the minute's 10 (FR-36)."""
+    limited(counters.count(QUESTIONS, user_subject(user.user_id)))
     try:
         kept = service.ask(body.question, user.user_id, at)
     except OverAllowance as over:
@@ -179,12 +218,14 @@ def fetch(query_id: UUID, service: ServiceDep, user: UserDep) -> QueryOut:
 
 
 @router.post(
-    "/queries/{query_id}/rerun", response_model=RerunOut, responses=ERRORS | {404: {"model": ErrorOut}, 409: {"model": ErrorOut}}
-)
-def rerun(query_id: UUID, service: ServiceDep, user: UserDep, at: NowDep) -> RerunOut:
+    "/queries/{query_id}/rerun", response_model=RerunOut,
+    responses=ERRORS | {404: {"model": ErrorOut}, 409: {"model": ErrorOut}} | RERUN_LIMITED,
+)  # fmt: skip
+def rerun(query_id: UUID, service: ServiceDep, user: UserDep, at: NowDep, counters: CountersDep) -> RerunOut:
     """Item 88: one of the caller's stored answers, its SQL validated
     again and run now. No model is called; the rows are returned and not
-    stored. Anyone else's is 404."""
+    stored. Anyone else's is 404. Every rerun counts towards the hour's 30."""
+    limited(counters.count(RERUNS, user_subject(user.user_id)))
     try:
         done = service.rerun(query_id, user.user_id)
     except NothingToRerun:

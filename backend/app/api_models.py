@@ -29,6 +29,8 @@ ErrorCode = Literal[
     "not_signed_in", "invalid_credentials", "email_taken", "origin_refused", "json_only", "nothing_to_rerun",
     # step 12
     "budget_spent", "daily_limit",
+    # step 14: the rate limits (app.core.limits)
+    "login_limit", "login_ceiling", "register_limit", "minute_limit", "rerun_limit",
 ]  # fmt: skip
 
 Value = str | int | float | bool | None
@@ -104,11 +106,13 @@ class QueryOut(Body):
 class Refused(Exception):
     """A request the API says no to, with IR-05's code and a message."""
 
-    def __init__(self, status: int, code: ErrorCode, message: str) -> None:
+    def __init__(self, status: int, code: ErrorCode, message: str, headers: dict[str, str] | None = None) -> None:
         super().__init__(message)
         self.status = status
         self.code = code
         self.message = message
+        # Retry-After on every 429 of a rate limit (step 14).
+        self.headers = headers
 
 
 class RerunOut(Body):

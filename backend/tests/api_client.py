@@ -4,16 +4,18 @@ Shared by the API's tests."""
 
 from datetime import UTC, datetime, timedelta
 
+from fake_redis import FakeRedis
 from fastapi.testclient import TestClient
 from memory_stores import Memory, MemoryAccounts
 from tracing import CONTEXT, located, orchestrator
 
-from app.api import get_service
+from app.api import get_counters, get_service
 from app.auth import current_user, get_accounts, now
 from app.config import Settings
 from app.main import create_app
 from app.orchestrator import Keep, Orchestrator
 from app.shell.accounts import SignedIn
+from app.shell.counters import Counters
 from app.shell.query_service import QueryService
 from app.shell.snapshot_store import NoCurrentSnapshot, StoredSnapshot
 
@@ -68,20 +70,28 @@ def service(script, anchors=ADDRESS, executor=None, traces=None, snapshots=None,
     return QueryService(open_orchestrator, traces, snapshots or NoSchema(), rerun_executor, allowance)
 
 
-def client(made: QueryService, user: SignedIn | None = ADA) -> TestClient:
+def client(made: QueryService, user: SignedIn | None = ADA, redis=None) -> TestClient:
     """Signed in as `user` without going through the door; the tests of
-    the door itself use `served`."""
+    the door itself use `served`. The rate limits count in `redis`, a
+    fresh FakeRedis when none is given."""
     app = create_app(SETTINGS)
     app.dependency_overrides[get_service] = lambda: made
+    counters = Counters(redis if redis is not None else FakeRedis())
+    app.dependency_overrides[get_counters] = lambda: counters
     if user is not None:
         app.dependency_overrides[current_user] = lambda: user
     return TestClient(app, raise_server_exceptions=False)
 
 
-def served(made: QueryService | None = None, accounts=None, secure: bool = False, at=None, **settings) -> TestClient:
+def served(
+    made: QueryService | None = None, accounts=None, secure: bool = False, at=None, redis=None, **settings
+) -> TestClient:
     """The real door: sessions from `accounts`, the clock from `at` (a
-    one-item list, so that a test can move it)."""
+    one-item list, so that a test can move it), the rate limits counted in
+    `redis` (a fresh FakeRedis when none is given)."""
     app = create_app(Settings(**URLS, session_cookie_secure=secure, **settings))
+    counters = Counters(redis if redis is not None else FakeRedis())
+    app.dependency_overrides[get_counters] = lambda: counters
     app.dependency_overrides[get_service] = lambda: made or service([])
     app.dependency_overrides[get_accounts] = lambda: accounts if accounts is not None else MemoryAccounts()
     if at is not None:

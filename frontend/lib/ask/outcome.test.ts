@@ -139,6 +139,24 @@ describe("when no trace comes back", () => {
     });
   });
 
+  test("429 minute_limit: its own title, the API's words with when it lifts", () => {
+    const message = "You have asked 10 questions in the last minute, the most one account may ask in a minute. You can ask again in 42 seconds.";
+    expect(endingOfError(new ApiError(429, "minute_limit", message))).toEqual({
+      tone: "refused",
+      title: "Too many questions this minute",
+      lines: [message],
+    });
+  });
+
+  test("429 rerun_limit: its own title, not the day's", () => {
+    const message = "You have run stored SQL again 30 times this hour, the most one account may in an hour. You can run SQL again in 12 minutes.";
+    expect(endingOfError(new ApiError(429, "rerun_limit", message))).toEqual({
+      tone: "refused",
+      title: "Too many runs of stored SQL this hour",
+      lines: [message],
+    });
+  });
+
   test("500 trace_not_persisted: the answer is not shown, and the query is named", () => {
     const error = new ApiError(500, "trace_not_persisted", "The trace could not be stored.", null, "abc-123");
     expect(endingOfError(error)).toEqual({

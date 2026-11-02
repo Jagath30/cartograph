@@ -13,15 +13,17 @@ import uuid
 from datetime import UTC, datetime
 
 from api_client import ADA, SETTINGS, NoSchema, client, service
+from fake_redis import FakeRedis
 from fastapi.testclient import TestClient
 from memory_stores import Memory
 from tracing import document, reply
 
-from app.api import get_service
+from app.api import get_counters, get_service
 from app.auth import current_user, now
 from app.core.budget import BUDGET_SPENT, Allowance, daily_limit_message
 from app.main import create_app
 from app.shell.accounts import SignedIn
+from app.shell.counters import Counters
 from app.shell.model_client import ModelKeyMissing
 from app.shell.query_service import QueryService
 
@@ -151,6 +153,7 @@ def started(made: QueryService) -> TestClient:
     app = create_app(SETTINGS)
     app.dependency_overrides[get_service] = lambda: made
     app.dependency_overrides[current_user] = lambda: ADA
+    app.dependency_overrides[get_counters] = lambda: Counters(FakeRedis())
     return TestClient(app, raise_server_exceptions=False)
 
 

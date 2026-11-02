@@ -28,8 +28,9 @@ from app.shell.query_service import NotReady
 log = logging.getLogger("cartograph.api")
 
 
-def _error(status: int, **fields) -> JSONResponse:
-    return JSONResponse(status_code=status, content=ErrorOut(**fields).model_dump(mode="json", exclude_none=True))
+def _error(status: int, headers: dict[str, str] | None = None, **fields) -> JSONResponse:
+    content = ErrorOut(**fields).model_dump(mode="json", exclude_none=True)
+    return JSONResponse(status_code=status, content=content, headers=headers)
 
 
 def _errors(app: FastAPI) -> None:
@@ -51,7 +52,7 @@ def _errors(app: FastAPI) -> None:
 
     @app.exception_handler(Refused)
     async def said_no(request: Request, error: Refused) -> JSONResponse:
-        return _error(error.status, code=error.code, message=error.message)
+        return _error(error.status, error.headers, code=error.code, message=error.message)
 
     @app.exception_handler(NotReady)
     async def not_ready(request: Request, error: NotReady) -> JSONResponse:
