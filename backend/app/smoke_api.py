@@ -83,6 +83,8 @@ class Browser:
         self.api = api
         self.cookie: str | None = None
         self.set_cookie: str | None = None
+        # The last response's headers: Retry-After on a 429 (step 14).
+        self.headers: dict[str, str] = {}
 
     def call(self, path: str, body: dict | None = None, method: str | None = None, origin: str | None = None) -> tuple[int, dict]:
         headers = {"content-type": "application/json"} if body is not None else {}
@@ -100,8 +102,10 @@ class Browser:
         try:
             with urllib.request.urlopen(request, timeout=120) as response:
                 self.set_cookie = response.headers.get("set-cookie")
+                self.headers = {name.lower(): value for name, value in response.headers.items()}
                 return response.status, body_of(response.read())
         except urllib.error.HTTPError as error:
+            self.headers = {name.lower(): value for name, value in error.headers.items()}
             return error.code, body_of(error.read())
 
 

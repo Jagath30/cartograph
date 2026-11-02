@@ -20,13 +20,25 @@ nor the session cookie's value is printed.
              seven days, no Domain.
   FOREIGN    with that session, POST /queries from another site's Origin
              is refused, 403 origin_refused, before the body is read. Free.
-  POST       the smoke question is answered, with rows. PAID.
-  HISTORY    the account's history is that question, and only it.
+  POST       the smoke question is answered, with rows. PAID, unless
+             the same question was answered within 24 hours on the same
+             code and schema: then it is served from the answer cache at
+             $0 (step 14), and the line says which. Either passes.
+  CACHED     the same question again is served from the cache: $0, the
+             same rows, a new query id. No model is called.
+  HISTORY    the account's history is those two askings, newest first,
+             and only them.
   READBACK   the stored trace is identical to the returned one; no rows.
   RERUN      its SQL run again: answered, the same columns and row count.
              No model is called.
   LOGOUT     204, and the cookie cleared.
   REFUSED    with the old cookie, the reads are 401.
+  REINGEST   POST /admin/reingest is 404, as a path never routed: no
+             ADMIN_TOKEN is set on the deployment. Free.
+  LOCKOUT    last: six logins to this run's own account with a wrong
+             password; the first five 401, the sixth 429 login_limit
+             with Retry-After. The account is locked for 15 minutes,
+             and nothing else is. Free: no model is called.
 
 Exit: 0 all pass; 1 any fails; 3 the server answered 503 not_ready.
 """
@@ -36,7 +48,7 @@ import time
 import urllib.error
 import urllib.request
 
-from app.smoke_api import COOKIE, Browser, canonical, session_cookie, smoke_email, smoke_password
+from app.smoke_api import COOKIE, Browser, cached_again, canonical, session_cookie, smoke_email, smoke_password
 from app.smoke_api import FLAGS as LOCAL_FLAGS
 from app.smoke_pipeline import NO_KEY_EXIT, QUESTION
 
@@ -167,19 +179,23 @@ def main() -> int:
     else:
         trace = asked["trace"]
         if asked["status"] == "answered" and asked["row_count"] and len(asked["rows"]) == asked["row_count"]:
-            print(f"POST PASS  answered; {asked['row_count']} rows; conformance {trace['validation']['conformance']}; "
+            how = "served from the cache" if trace.get("served_from_cache") else "computed"
+            print(f"POST PASS  answered, {how}; {asked['row_count']} rows; conformance {trace['validation']['conformance']}; "
                   f"${trace['cost_usd']:.6f}; query {query_id}")  # fmt: skip
         else:
             failed = True
             print(f"POST FAIL  status {asked['status']} ({asked.get('message')}); rows {asked.get('row_count')}")
 
+        again_id, again_ok = cached_again(web, asked)
+        failed = failed or not again_ok
+
         status, history = web.call("/queries")
         listed = [row["query_id"] for row in history.get("queries", [])] if status == 200 else []
-        if listed == [query_id]:
-            print("HISTORY PASS  the question is in this account's history, and is all of it")
+        if again_id and listed == [again_id, query_id]:
+            print("HISTORY PASS  both askings are in this account's history, newest first, and are all of it")
         else:
             failed = True
-            print(f"HISTORY FAIL  http {status}; listed {len(listed)}; the question first: {listed[:1] == [query_id]}")
+            print(f"HISTORY FAIL  http {status}; listed {len(listed)}; the two askings, newest first: {listed == [again_id, query_id]}")
 
         status, read = web.call(f"/queries/{query_id}")
         if status == 200 and canonical(read["trace"]) == canonical(trace) and read["rows"] is None:
@@ -214,9 +230,33 @@ def main() -> int:
         failed = True
         print(f"REFUSED FAIL  with the revoked session: http {after}")
 
+    status, hidden = web.call("/admin/reingest", method="POST")
+    if status == 404 and hidden.get("code") == "not_found":
+        print("REINGEST PASS  POST /admin/reingest is 404, as a path never routed")
+    else:
+        failed = True
+        print(f"REINGEST FAIL  http {status}: {canonical(hidden)[:200]}")
+
+    failed = locked_out(web, account["email"]) is False or failed
+
     if not_ready:
         return NO_KEY_EXIT
     return 1 if failed else 0
+
+
+def locked_out(web: Browser, email: str) -> bool:
+    """LOCKOUT: six wrong logins to this run's own account. The first five
+    are 401, the sixth 429 login_limit with Retry-After. Prints its line."""
+    wrong = {"email": email, "password": smoke_password()}
+    statuses = [web.call("/auth/login", wrong)[0] for _ in range(5)]
+    status, sixth = web.call("/auth/login", wrong)
+    retry = web.headers.get("retry-after", "")
+    held = statuses == [401] * 5 and status == 429 and sixth.get("code") == "login_limit" and retry.isdigit()
+    if held:
+        print(f"LOCKOUT PASS  five wrong logins 401, the sixth 429 login_limit, Retry-After {retry} s")
+    else:
+        print(f"LOCKOUT FAIL  the first five {statuses}; the sixth http {status} {sixth.get('code')}; Retry-After {retry or 'absent'}")
+    return held
 
 
 if __name__ == "__main__":
