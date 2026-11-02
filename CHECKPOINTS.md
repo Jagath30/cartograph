@@ -9963,6 +9963,16 @@ with", each part found in requirements.txt, package.json,
 docker-compose.yml or render.yaml. DuckDB and GitHub Actions are in
 none of those four and are not in that line.
 
+**The owner's rulings on the nine unsourced sentences** (2 November
+2026): eight reworded to what a record supports (DD-12's own reason for
+setting heuristics aside: an assumption about a business that a schema
+cannot supply; DD-21 for ties being common; DD-07's questions asked
+across traces; Secure on the deployed site; every command that needs the
+key, show_retrieval and show_eval included); the four totals written
+with thousands separators, each figure unchanged. **The hosting reasons
+stay: they come from the planning chat's hosting record, checked
+against the providers' own pages on 26 October 2026.**
+
 **Next.** Step 14.
 
 ### Carried forward
