@@ -16,12 +16,19 @@ in a cookie. Each check prints one line that scripts/smoke.sh reads:
              days, no Domain.
   POST       one fixed development question through POST /queries is
              answered: a query id, rows, and a trace with its narrative,
-             at trace version 3 with its linking. TWO OR THREE PAID MODEL
-             CALLS (linking, choosing when it runs, generation).
+             at trace version 4 with its linking. TWO OR THREE PAID MODEL
+             CALLS (linking, choosing when it runs, generation), unless
+             the same question was answered within 24 hours on the same
+             code and schema: then it is served from the answer cache
+             (step 14), at $0, and the line says so. Either passes.
+  CACHED     the same question asked again is served from the cache:
+             answered, served_from_cache, $0, the same rows, a new
+             query id. No model is called.
   READBACK   GET /queries/<that id> returns a trace IDENTICAL to the one
              POST returned, compared as canonical JSON, and no rows: the
              trace was stored, whole, and the rows were not (DR-15).
-  HISTORY    GET /queries lists that query first, and only this account's.
+  HISTORY    GET /queries lists the two queries, newest first, and only
+             this account's.
   LOGOUT     POST /auth/logout is a 204 and clears the cookie.
   REFUSED    with the old cookie, GET /queries and GET /queries/<id> are
              401: the session was revoked.
@@ -165,9 +172,10 @@ def main() -> int:
         trace = asked["trace"]
         narrative = trace.get("narrative") or {}
         told = all(narrative.get(part) for part in ("found", "route", "not_taken", "sql", "result"))
-        linked = trace.get("trace_version") == 3 and bool((trace.get("linking") or {}).get("tables"))
+        linked = trace.get("trace_version") == 4 and bool((trace.get("linking") or {}).get("tables"))
         if asked["status"] == "answered" and asked["row_count"] and len(asked["rows"]) == asked["row_count"] and told and linked:
-            print(f"POST PASS  answered; {asked['row_count']} rows; conformance {trace['validation']['conformance']}; "
+            how = "served from the cache" if trace.get("served_from_cache") else "computed"
+            print(f"POST PASS  answered, {how}; {asked['row_count']} rows; conformance {trace['validation']['conformance']}; "
                   f"${trace['cost_usd']:.6f}; query {asked['query_id']}")  # fmt: skip
         elif asked["status"] == "not_answerable":
             failed = True
@@ -176,7 +184,7 @@ def main() -> int:
         else:
             failed = True
             print(f"POST FAIL  status {asked['status']} ({asked['message']}); rows {asked['row_count']}; narrative whole: {told}; "
-                  f"linked at version 3: {linked}")  # fmt: skip
+                  f"linked at version 4: {linked}")  # fmt: skip
 
         # Whatever the outcome, what was returned must be what was stored.
         status, read = web.call(f"/queries/{asked['query_id']}")
@@ -187,13 +195,17 @@ def main() -> int:
             same = status == 200 and canonical(read.get("trace")) == canonical(trace)
             print(f"READBACK FAIL  http {status}; trace identical: {same}; rows returned: {read.get('rows') is not None}")
 
+        again_id, again_ok = cached_again(web, asked)
+        failed = failed or not again_ok
+
         status, history = web.call("/queries")
         listed = [row["query_id"] for row in history.get("queries", [])] if status == 200 else []
-        if listed == [asked["query_id"]]:
-            print("HISTORY PASS  the question is in this account's history, and is all of it")
+        if again_id and listed == [again_id, asked["query_id"]]:
+            print("HISTORY PASS  both askings are in this account's history, newest first, and are all of it")
         else:
             failed = True
-            print(f"HISTORY FAIL  http {status}; listed {len(listed)}; the question first: {listed[:1] == [asked['query_id']]}")
+            print(f"HISTORY FAIL  http {status}; listed {len(listed)}; the two askings, newest first: "
+                  f"{listed == [again_id, asked['query_id']]}")  # fmt: skip
 
     status, _ = web.call("/auth/logout", method="POST")
     cleared = bool(web.set_cookie) and web.set_cookie.startswith(f'{COOKIE}=""') and "Max-Age=0" in web.set_cookie
@@ -216,6 +228,29 @@ def main() -> int:
     if not_ready:
         return NO_KEY_EXIT
     return 1 if failed else 0
+
+
+def cached_again(web: "Browser", first: dict) -> tuple[str | None, bool]:
+    """CACHED: the same question again, served from the answer cache at
+    $0, with the first asking's rows, under a new query id. Prints its
+    line; returns the new query id and whether it passed."""
+    status, again = web.call("/queries", {"question": QUESTION})
+    if status != 200:
+        print(f"CACHED FAIL  http {status}: {canonical(again)[:300]}")
+        return None, False
+    trace = again["trace"]
+    held = (
+        again["status"] == "answered" and trace.get("served_from_cache") is True and trace["cost_usd"] == 0
+        and trace["tokens_in"] == trace["tokens_out"] == 0 and again["rows"] == first["rows"]
+        and again["query_id"] != first["query_id"]
+    )  # fmt: skip
+    if held:
+        print(f"CACHED PASS  served from the cache; $0; {again['row_count']} rows, the first asking's; "
+              f"{trace['duration_ms']} ms; query {again['query_id']}")  # fmt: skip
+    else:
+        print(f"CACHED FAIL  status {again['status']}; served_from_cache {trace.get('served_from_cache')}; "
+              f"${trace['cost_usd']}; the same rows: {again['rows'] == first['rows']}")  # fmt: skip
+    return again["query_id"], held
 
 
 if __name__ == "__main__":

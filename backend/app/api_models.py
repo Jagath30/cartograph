@@ -8,13 +8,13 @@ No logic lives here beyond translation: a result's rows into values JSON
 can carry.
 """
 
-from datetime import date, datetime, time
-from decimal import Decimal
+from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, StringConstraints, field_validator
 
+from app.cells import Value, value
 from app.core.credentials import MAX_EMAIL, MAX_PASSWORD, MIN_PASSWORD, normalise_email
 from app.core.snapshot import SchemaSnapshot
 from app.core.trace_document import Outcome, TraceDocument
@@ -33,7 +33,6 @@ ErrorCode = Literal[
     "login_limit", "login_ceiling", "register_limit", "minute_limit", "rerun_limit",
 ]  # fmt: skip
 
-Value = str | int | float | bool | None
 
 
 class Body(BaseModel):
@@ -175,18 +174,6 @@ class SchemaOut(Body):
     hash: str
     nodes: list[SchemaNode]
     edges: list[SchemaLink]
-
-
-def value(raw: object) -> Value:
-    """One cell as JSON can carry it. A numeric is given as text, exact; a
-    date in ISO form."""
-    if raw is None or isinstance(raw, (bool, int, float, str)):
-        return raw
-    if isinstance(raw, Decimal):
-        return str(raw)
-    if isinstance(raw, (datetime, date, time)):
-        return raw.isoformat()
-    return str(raw)
 
 
 def query_out(document: TraceDocument, rows: tuple[tuple, ...] | None) -> QueryOut:

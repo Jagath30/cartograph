@@ -234,8 +234,9 @@ def test_the_api_builds_the_real_service_with_both_databases(monkeypatch) -> Non
     )  # fmt: skip
     api.get_service.cache_clear()
     try:
-        # And the deployed demonstration's allowance, from the settings (step 12).
-        assert api.get_service() == "service" and built == [("a", "w", Allowance(2.5, 7))]
+        # And the deployed demonstration's allowance, from the settings (step
+        # 12), and Redis for the answer cache (step 14).
+        assert api.get_service() == "service" and built == [("a", "w", Allowance(2.5, 7), "r")]
     finally:
         api.get_service.cache_clear()
 

@@ -1,0 +1,496 @@
+<section class="rounded-md border-2 border-amber-400 bg-amber-50 p-6 text-amber-950" role="alert" data-ask="amber"><h2 class="text-base font-semibold">This answer rests on a choice the system had no basis for</h2><ul class="mt-2 space-y-2"><li class="text-[15px] leading-relaxed">This answer uses the billing address. It could equally have used the shipping address; nothing in your question said which. If you meant the other, the answer may differ; ask again naming it.</li></ul></section>
+
+<section data-ask="narrative"><h2 class="text-sm font-semibold uppercase tracking-wide text-gray-600">How this answer was reached</h2><dl class="mt-3 space-y-3"><div><dt class="text-xs font-medium uppercase tracking-wide text-gray-500">The tables named for your question</dt><dd class="mt-0.5 text-[15px] leading-relaxed text-gray-900">A language model, shown all 24 tables, named 2 for your question: catalog sales and customer address.</dd></div><div><dt class="text-xs font-medium uppercase tracking-wide text-gray-500">How it was linked</dt><dd class="mt-0.5 text-[15px] leading-relaxed text-gray-900">The answer links each catalog sale to the billing address. The shipping address was equally possible and nothing in your question chose between them, so the choice was made alphabetically: it is arbitrary.</dd></div><div><dt class="text-xs font-medium uppercase tracking-wide text-gray-500">What was not used</dt><dd class="mt-0.5 text-[15px] leading-relaxed text-gray-900">Not used: the shipping address. If you meant the other, the answer may differ; ask again naming it. 151 longer routes also existed; the shortest was used.</dd></div><div><dt class="text-xs font-medium uppercase tracking-wide text-gray-500">What the query did</dt><dd class="mt-0.5 text-[15px] leading-relaxed text-gray-900">The query followed this plan exactly.</dd></div></dl></section>
+
+<div class="space-y-3"><details data-ask="retrieved"><summary class="cursor-pointer select-none rounded-md border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50">How the tables were found: the model&#x27;s naming, and retrieval&#x27;s scores</summary><div class="rounded-b-md border border-t-0 border-gray-200 bg-white px-4 py-4"><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">The tables the model named</h3><p class="mt-2 text-sm"><span class="font-mono text-xs">catalog_sales, customer_address</span></p><ul class="mt-2 space-y-2 text-sm"><li><span class="font-medium">Naming, attempt 1:</span> accepted<span class="text-gray-600"> · fake-scripted · 0 tokens in, 0 out · $0.000000 · 0.0 s</span></li></ul><details class="mt-3"><summary class="cursor-pointer text-sm text-gray-700">The naming prompt, as it was sent</summary><pre class="mt-2 overflow-x-auto whitespace-pre rounded bg-gray-50 p-3 font-mono text-xs text-gray-900" role="region" aria-label="The naming prompt&#x27;s system message" tabindex="0">You name the tables of a data warehouse that a question needs.
+
+You are given the tables as CREATE TABLE statements, then the keys by which they can be joined. The comment above each table and after each column says what it holds.
+
+Rules:
+- Name every table a query answering the question would read, including a table needed only to join two others.
+- Name no other table.
+- Use only the table names given.
+- If the question cannot be answered from these tables, do not guess: name none.
+
+Reply with one JSON object and nothing else:
+  {&quot;tables&quot;: [&quot;&lt;table name&gt;&quot;, ...]}
+or, when the question cannot be answered from these tables:
+  {&quot;tables&quot;: []}
+Do not explain.</pre><p class="mt-2 break-all text-sm text-gray-700">The user message held every table and key of the warehouse, and the question. It is kept by its sha256, <span class="font-mono text-xs">6e9f1791cfd6dd7d2cd3bea7791ea07b4ce81456fc8881434797aae5e7db8a24</span>, and is rebuilt from schema snapshot <span class="font-mono text-xs">abc123</span> and the question.</p></details><p class="mt-6 text-sm text-gray-600">This trace holds no retrieval.</p></div></details><details data-ask="generated"><summary class="cursor-pointer select-none rounded-md border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50">Generated SQL · validation · timings · cost</summary><div class="rounded-b-md border border-t-0 border-gray-200 bg-white px-4 py-4"><div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2"><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">The SQL that was run</h3><button type="button" class="rounded border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50" data-action="Copy SQL">Copy SQL</button><span class="sr-only" aria-live="polite"></span></div><pre class="mt-2 overflow-x-auto whitespace-pre rounded bg-gray-50 p-3 font-mono text-xs text-gray-900" role="region" aria-label="The SQL" tabindex="0">SELECT ca.ca_state, COUNT(*) AS customers FROM catalog_sales cs JOIN customer_address ca ON cs.cs_bill_addr_sk = ca.ca_address_sk GROUP BY ca.ca_state</pre><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">The model writing the query was asked 1 time</h3><ul class="mt-2 space-y-2 text-sm"><li><span class="font-medium">Attempt 1:</span> accepted<span class="text-gray-600"> · fake-scripted · 0 tokens in, 0 out · $0.000000 · 0.0 s</span></li></ul><p class="mt-2 text-sm"><span class="text-gray-600">Tables the model was shown:</span> <span class="font-mono text-xs">catalog_sales, customer_address</span></p><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">Validation</h3><p class="mt-2 text-sm">Parses: <strong>pass</strong> · read-only: <strong>pass</strong> · every table and column exists: <strong>pass</strong> · joins against the plan: <strong>conforms</strong></p><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">Execution</h3><p class="mt-2 text-sm">2 rows in 0.0 s. On the read-only connection, limit 30s, at most 1,000 rows.</p><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">The plan, table by table</h3><ul class="mt-2 space-y-2 text-sm"><li><span class="font-mono text-xs">catalog_sales</span><span class="block text-gray-800">Started from catalog sales: of the tables named, the question matched it best.</span></li><li><span class="font-mono text-xs">customer_address</span> <span class="text-gray-600">joined to</span> <span class="font-mono text-xs">catalog_sales</span><span class="text-gray-600"> · rule: alphabetical</span><span class="block text-gray-600">Decided by: the alphabet: no basis</span><span class="block text-gray-800">2 routes of 1 join connect customer address to the tables already joined. The tie was broken alphabetically, so the choice is arbitrary.</span></li></ul><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">What the model was asked about the choices the rules left open</h3><ul class="mt-2 space-y-3 text-sm"><li><ul class="space-y-1"><li><span class="font-mono text-xs">customer_address</span>: A. <span class="font-mono text-xs">catalog_sales.cs_bill_addr_sk=customer_address.ca_address_sk</span> — Each customer address row has many catalog sales rows, through their bill address surrogate key (asserted in the overlay, not declared by the database). <span class="text-gray-600">· not named</span></li><li><span class="font-mono text-xs">customer_address</span>: B. <span class="font-mono text-xs">catalog_sales.cs_ship_addr_sk=customer_address.ca_address_sk</span> — Each customer address row has many catalog sales rows, through their ship address surrogate key (asserted in the overlay, not declared by the database). <span class="text-gray-600">· not named</span></li></ul><span class="mt-1 block text-gray-700">Outcome: no route was named, and the choice was left to the alphabet.</span></li></ul><ul class="mt-2 space-y-2 text-sm"><li><span class="font-medium">Choosing, attempt 1:</span> accepted<span class="text-gray-600"> · fake-scripted · 0 tokens in, 0 out · $0.000000 · 0.0 s</span></li></ul><details class="mt-3"><summary class="cursor-pointer text-sm text-gray-700">The choosing prompt, exactly as it was sent</summary><pre class="mt-2 overflow-x-auto whitespace-pre rounded bg-gray-50 p-3 font-mono text-xs text-gray-900" role="region" aria-label="The choosing prompt&#x27;s system message" tabindex="0">You choose how the tables of a data warehouse are joined to answer a question.
+
+The tables a query needs have been chosen. Between some of them there is more than one way to join. For each choice below you are given its alternatives, each as a join condition and a sentence saying what it joins.
+
+Rules:
+- For each choice, name the alternative the question means.
+- If the question does not say which is meant, name none for that choice. Do not guess.
+- Use only the labels given.
+
+Reply with one JSON object and nothing else:
+  {&quot;choices&quot;: {&quot;&lt;choice number&gt;&quot;: &quot;&lt;alternative letter&gt;&quot; or null, ...}}
+with every choice number once. Do not explain.</pre><pre class="mt-2 overflow-x-auto whitespace-pre rounded bg-gray-50 p-3 font-mono text-xs text-gray-900" role="region" aria-label="The choosing prompt&#x27;s user message" tabindex="0">Question: Where are our catalog customers located?
+
+Choice 1: customer_address can be joined in these ways:
+  A. catalog_sales.cs_bill_addr_sk = customer_address.ca_address_sk — Each customer address row has many catalog sales rows, through their bill address surrogate key (asserted in the overlay, not declared by the database).
+  B. catalog_sales.cs_ship_addr_sk = customer_address.ca_address_sk — Each customer address row has many catalog sales rows, through their ship address surrogate key (asserted in the overlay, not declared by the database).</pre></details><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">Timings</h3><div class="mt-2 max-w-xl"><ul class="space-y-1 text-sm"><li class="flex justify-between gap-6"><span>A language model is naming the tables</span><span class="tabular-nums text-gray-600">0 ms</span></li><li class="flex justify-between gap-6"><span>Finding the joins between them</span><span class="tabular-nums text-gray-600">19 ms</span></li><li class="flex justify-between gap-6"><span>Asking the model about any choice the rules left open</span><span class="tabular-nums text-gray-600">0 ms</span></li><li class="flex justify-between gap-6"><span>Writing out what the model will be shown</span><span class="tabular-nums text-gray-600">0 ms</span></li><li class="flex justify-between gap-6"><span>The model is writing the SQL</span><span class="tabular-nums text-gray-600">0 ms</span></li><li class="flex justify-between gap-6"><span>Checking the SQL before it runs</span><span class="tabular-nums text-gray-600">19 ms</span></li><li class="flex justify-between gap-6"><span>Running it on the warehouse, read-only</span><span class="tabular-nums text-gray-600">0 ms</span></li></ul><p class="mt-1 flex justify-between gap-6 border-t pt-1 text-sm font-medium"><span>In all</span><span class="tabular-nums">38 ms</span></p></div><h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-600 first:mt-0">Cost and settings</h3><p class="mt-2 text-sm">$0.000000 · 0 tokens in, 0 out · model fake-scripted at temperature 0</p><p class="mt-1 break-all font-mono text-xs text-gray-600">schema snapshot 7 abc123 · preferences 59022985a445 · alpha — · cut — · cap — · margin — · bound 10 · max joins 3 · query 00000000-0000-4000-8000-000000000001</p><details class="mt-6"><summary class="cursor-pointer text-sm text-gray-700">The prompt, exactly as it was sent</summary><pre class="mt-2 overflow-x-auto whitespace-pre rounded bg-gray-50 p-3 font-mono text-xs text-gray-900" role="region" aria-label="The prompt&#x27;s system message" tabindex="0">You write one PostgreSQL query that answers a question about a data warehouse.
+
+You are given the tables you may use, as CREATE TABLE statements. The comment above each table and after each column says what it holds.
+
+Rules:
+- Write exactly one SELECT statement. It may begin with WITH. Never write anything that changes data.
+- Use only the tables and columns given. Do not use any other table or column, even one you know of.
+- Qualify every column with its table name or its alias.
+- Do not put comments in the SQL.
+- If the question cannot be answered from the tables given, do not guess and do not answer a different question.
+
+Reply with one JSON object and nothing else:
+  {&quot;status&quot;: &quot;sql&quot;, &quot;sql&quot;: &quot;&lt;the query&gt;&quot;}
+or, when the question cannot be answered from the tables given:
+  {&quot;status&quot;: &quot;not_answerable&quot;, &quot;sql&quot;: &quot;&quot;}
+Do not explain.</pre><pre class="mt-2 overflow-x-auto whitespace-pre rounded bg-gray-50 p-3 font-mono text-xs text-gray-900" role="region" aria-label="The prompt&#x27;s user message" tabindex="0">Tables:
+
+-- catalog sales
+CREATE TABLE catalog_sales (
+  cs_sold_date_sk bigint,  -- sold date surrogate key
+  cs_sold_time_sk bigint,  -- sold time surrogate key
+  cs_ship_date_sk bigint,  -- ship date surrogate key
+  cs_bill_customer_sk bigint,  -- bill customer surrogate key
+  cs_bill_cdemo_sk bigint,  -- bill customer demographics surrogate key
+  cs_bill_hdemo_sk bigint,  -- bill household demographics surrogate key
+  cs_bill_addr_sk bigint,  -- bill address surrogate key
+  cs_ship_customer_sk bigint,  -- ship customer surrogate key
+  cs_ship_cdemo_sk bigint,  -- ship customer demographics surrogate key
+  cs_ship_hdemo_sk bigint,  -- ship household demographics surrogate key
+  cs_ship_addr_sk bigint,  -- ship address surrogate key
+  cs_call_center_sk bigint,  -- call center surrogate key
+  cs_catalog_page_sk bigint,  -- catalog page surrogate key
+  cs_ship_mode_sk bigint,  -- ship mode surrogate key
+  cs_warehouse_sk bigint,  -- warehouse surrogate key
+  cs_item_sk bigint,  -- item surrogate key
+  cs_promo_sk bigint,  -- promotion surrogate key
+  cs_order_number bigint,  -- order number
+  cs_quantity bigint,  -- quantity
+  cs_wholesale_cost decimal(7,2),  -- wholesale cost
+  cs_list_price decimal(7,2),  -- list price
+  cs_sales_price decimal(7,2),  -- sales price
+  cs_ext_discount_amt decimal(7,2),  -- extended discount amount
+  cs_ext_sales_price decimal(7,2),  -- extended sales price
+  cs_ext_wholesale_cost decimal(7,2),  -- extended wholesale cost
+  cs_ext_list_price decimal(7,2),  -- extended list price
+  cs_ext_tax decimal(7,2),  -- extended tax
+  cs_coupon_amt decimal(7,2),  -- coupon amount
+  cs_ext_ship_cost decimal(7,2),  -- extended ship cost
+  cs_net_paid decimal(7,2),  -- net paid
+  cs_net_paid_inc_tax decimal(7,2),  -- net paid including tax
+  cs_net_paid_inc_ship decimal(7,2),  -- net paid including ship
+  cs_net_paid_inc_ship_tax decimal(7,2),  -- net paid including ship tax
+  cs_net_profit decimal(7,2)  -- net profit
+);
+
+-- customer address
+CREATE TABLE customer_address (
+  ca_address_sk bigint,  -- address surrogate key
+  ca_address_id varchar,  -- address identifier
+  ca_street_number varchar,  -- street number
+  ca_street_name varchar,  -- street name
+  ca_street_type varchar,  -- street type
+  ca_suite_number varchar,  -- suite number
+  ca_city varchar,  -- city
+  ca_county varchar,  -- county
+  ca_state varchar,  -- state
+  ca_zip varchar,  -- zip
+  ca_country varchar,  -- country
+  ca_gmt_offset decimal(5,2),  -- GMT offset
+  ca_location_type varchar  -- location type
+);
+
+Join conditions. These are the joins selected for this question. Wherever the query joins two of these tables, join them by exactly these conditions; a line with two conditions joined by AND is one join and needs both. Use only the tables the question needs: a table listed above need not appear in the query.
+  catalog_sales.cs_bill_addr_sk = customer_address.ca_address_sk
+
+Question: Where are our catalog customers located?</pre></details></div></details></div>
+
+{
+  "nodes": [
+    {
+      "id": "catalog_sales",
+      "readable": "catalog sales",
+      "anchor": true,
+      "inTree": true,
+      "columns": [
+        {
+          "name": "cs_sold_date_sk",
+          "readable": "catalog sales — sold date surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_sold_time_sk",
+          "readable": "catalog sales — sold time surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_ship_date_sk",
+          "readable": "catalog sales — ship date surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_bill_customer_sk",
+          "readable": "catalog sales — bill customer surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_bill_cdemo_sk",
+          "readable": "catalog sales — bill customer demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_bill_hdemo_sk",
+          "readable": "catalog sales — bill household demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_bill_addr_sk",
+          "readable": "catalog sales — bill address surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_ship_customer_sk",
+          "readable": "catalog sales — ship customer surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_ship_cdemo_sk",
+          "readable": "catalog sales — ship customer demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_ship_hdemo_sk",
+          "readable": "catalog sales — ship household demographics surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_ship_addr_sk",
+          "readable": "catalog sales — ship address surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_call_center_sk",
+          "readable": "catalog sales — call center surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_catalog_page_sk",
+          "readable": "catalog sales — catalog page surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_ship_mode_sk",
+          "readable": "catalog sales — ship mode surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_warehouse_sk",
+          "readable": "catalog sales — warehouse surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_item_sk",
+          "readable": "catalog sales — item surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_promo_sk",
+          "readable": "catalog sales — promotion surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": true
+        },
+        {
+          "name": "cs_order_number",
+          "readable": "catalog sales — order number",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_quantity",
+          "readable": "catalog sales — quantity",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_wholesale_cost",
+          "readable": "catalog sales — wholesale cost",
+          "dataType": "decimal(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_list_price",
+          "readable": "catalog sales — list price",
+          "dataType": "decimal(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_sales_price",
+          "readable": "catalog sales — sales price",
+          "dataType": "decimal(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_ext_discount_amt",
+          "readable": "catalog sales — extended discount amount",
+          "dataType": "decimal(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_ext_sales_price",
+          "readable": "catalog sales — extended sales price",
+          "dataType": "decimal(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_ext_wholesale_cost",
+          "readable": "catalog sales — extended wholesale cost",
+          "dataType": "decimal(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_ext_list_price",
+          "readable": "catalog sales — extended list price",
+          "dataType": "decimal(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_ext_tax",
+          "readable": "catalog sales — extended tax",
+          "dataType": "decimal(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_coupon_amt",
+          "readable": "catalog sales — coupon amount",
+          "dataType": "decimal(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_ext_ship_cost",
+          "readable": "catalog sales — extended ship cost",
+          "dataType": "decimal(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_net_paid",
+          "readable": "catalog sales — net paid",
+          "dataType": "decimal(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_net_paid_inc_tax",
+          "readable": "catalog sales — net paid including tax",
+          "dataType": "decimal(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_net_paid_inc_ship",
+          "readable": "catalog sales — net paid including ship",
+          "dataType": "decimal(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_net_paid_inc_ship_tax",
+          "readable": "catalog sales — net paid including ship tax",
+          "dataType": "decimal(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "cs_net_profit",
+          "readable": "catalog sales — net profit",
+          "dataType": "decimal(7,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        }
+      ],
+      "matched": []
+    },
+    {
+      "id": "customer_address",
+      "readable": "customer address",
+      "anchor": true,
+      "inTree": true,
+      "columns": [
+        {
+          "name": "ca_address_sk",
+          "readable": "customer address — address surrogate key",
+          "dataType": "bigint",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ca_address_id",
+          "readable": "customer address — address identifier",
+          "dataType": "varchar",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ca_street_number",
+          "readable": "customer address — street number",
+          "dataType": "varchar",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ca_street_name",
+          "readable": "customer address — street name",
+          "dataType": "varchar",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ca_street_type",
+          "readable": "customer address — street type",
+          "dataType": "varchar",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ca_suite_number",
+          "readable": "customer address — suite number",
+          "dataType": "varchar",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ca_city",
+          "readable": "customer address — city",
+          "dataType": "varchar",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ca_county",
+          "readable": "customer address — county",
+          "dataType": "varchar",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ca_state",
+          "readable": "customer address — state",
+          "dataType": "varchar",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ca_zip",
+          "readable": "customer address — zip",
+          "dataType": "varchar",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ca_country",
+          "readable": "customer address — country",
+          "dataType": "varchar",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ca_gmt_offset",
+          "readable": "customer address — GMT offset",
+          "dataType": "decimal(5,2)",
+          "primaryKey": false,
+          "foreignKey": false
+        },
+        {
+          "name": "ca_location_type",
+          "readable": "customer address — location type",
+          "dataType": "varchar",
+          "primaryKey": false,
+          "foreignKey": false
+        }
+      ],
+      "matched": []
+    }
+  ],
+  "edges": [
+    {
+      "id": "catalog_sales.cs_bill_addr_sk>customer_address.ca_address_sk",
+      "kind": "used",
+      "fromTable": "catalog_sales",
+      "fromColumns": [
+        "cs_bill_addr_sk"
+      ],
+      "toTable": "customer_address",
+      "toColumns": [
+        "ca_address_sk"
+      ],
+      "description": "Each customer address row has many catalog sales rows, through their bill address surrogate key (asserted in the overlay, not declared by the database).",
+      "status": null,
+      "source": "overlay",
+      "loud": true
+    },
+    {
+      "id": "catalog_sales.cs_ship_addr_sk>customer_address.ca_address_sk",
+      "kind": "alternative",
+      "fromTable": "catalog_sales",
+      "fromColumns": [
+        "cs_ship_addr_sk"
+      ],
+      "toTable": "customer_address",
+      "toColumns": [
+        "ca_address_sk"
+      ],
+      "description": "Each customer address row has many catalog sales rows, through their ship address surrogate key (asserted in the overlay, not declared by the database).",
+      "status": "tied",
+      "source": "overlay",
+      "loud": true
+    }
+  ],
+  "undrawn": []
+}

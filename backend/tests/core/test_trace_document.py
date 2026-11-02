@@ -23,7 +23,7 @@ D7 = ("catalog_sales", "catalog_returns", "customer_demographics", "customer", "
 
 def test_an_answered_question_has_every_section() -> None:
     made = document([reply(BILL)], *ADDRESS, question="Where are catalogue buyers billed?")
-    assert made.trace_version == 3 and made.outcome == "answered" and made.code is None
+    assert made.trace_version == 4 and made.outcome == "answered" and made.code is None
     assert (made.query_id, made.user_id, made.created_at) == (QUERY_ID, USER_ID, WHEN)
     assert made.question == "Where are catalogue buyers billed?"
     for section in ("subgraph", "paths", "generation", "validation", "execution"):

@@ -24,7 +24,7 @@ const text = (html: string) =>
   html.replace(/<[^>]+>/g, "").replaceAll("&#x27;", "'").replaceAll("&quot;", '"').replaceAll("&amp;", "&");
 
 test("the page reads version 3", () => {
-  expect(READABLE_VERSIONS).toEqual([1, 2, 3]);
+  expect(READABLE_VERSIONS).toEqual([1, 2, 3, 4]);
   expect(chosen.trace_version).toBe(3);
 });
 

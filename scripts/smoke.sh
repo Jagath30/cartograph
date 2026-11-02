@@ -292,13 +292,16 @@ fi
 # one new account (smoke-<UTC timestamp>-<random>@cartograph.invalid, its
 # password random and never printed), logged in; the schema graph; one
 # question through POST, its stored trace read back through GET, and found
-# in the account's history; the store must have gained exactly one query
-# and one trace. Then logout, and the old cookie refused. ONE MORE PAID
-# MODEL CALL; without OPENAI_API_KEY the server answers 503 and the paid
-# lines are clean SKIPs.
+# in the account's history; the same question again, served from the
+# answer cache at $0 (step 14); the store must have gained exactly two
+# queries and two traces, at least one of them from the cache. Then
+# logout, and the old cookie refused. ONE MORE PAID QUESTION, unless the
+# first asking is itself a cache hit; without OPENAI_API_KEY the server
+# answers 503 and the paid lines are clean SKIPs.
 stage "The API: signed in, asked, stored, read back, signed out (IR-02, IR-03, IR-06, IR-08, IR-09, FR-27, NFR-13)"
 PAID_LINES=("one question through POST is answered, with rows and a trace" "its stored trace read back through GET is identical"
-            "the question is in the account's history, and is all of it" "exactly one query and one trace were stored")
+            "the same question again is served from the cache, at \$0" "both askings are in the account's history, and are all of it"
+            "exactly two queries and two traces were stored, at least one from the cache")
 FREE_LINES=("asking without a session is refused, 401" "the schema graph is served as nodes and edges"
             "a new account is registered, and it is the only one this run made" "logging in sets the session cookie, HttpOnly, Lax, seven days"
             "logging out is a 204 and clears the cookie" "the revoked session is refused, 401")
@@ -308,6 +311,7 @@ elif [[ "$current" != "1" ]]; then
   for line in "${FREE_LINES[@]}" "${PAID_LINES[@]}"; do pending "$line -- no schema snapshot stored"; done
 else
   stored_before="$(app_sql "select (select count(*) from queries) || ',' || (select count(*) from traces)" 2>/dev/null || true)"
+  cached_before="$(app_sql "select count(*) from queries where served_from_cache" 2>/dev/null || true)"
   users_before="$(app_sql "select count(*) from users" 2>/dev/null || true)"
   api_code=0
   api="$(docker compose exec -T backend python -m app.smoke_api 2>/dev/null)" || api_code=$?
@@ -330,11 +334,18 @@ else
       "$(grep '^POST' <<<"$api" || true)"
     contains "its stored trace read back through GET is identical" "READBACK PASS" \
       "$(grep '^READBACK' <<<"$api" || true)"
-    contains "the question is in the account's history, and is all of it" "HISTORY PASS" \
+    contains "the same question again is served from the cache, at \$0" "CACHED PASS" \
+      "$(grep '^CACHED' <<<"$api" || true)"
+    contains "both askings are in the account's history, and are all of it" "HISTORY PASS" \
       "$(grep '^HISTORY' <<<"$api" || true)"
     stored_after="$(app_sql "select (select count(*) from queries) || ',' || (select count(*) from traces)" 2>/dev/null || true)"
-    equal "exactly one query and one trace were stored" \
-      "$(( ${stored_before%,*} + 1 )),$(( ${stored_before#*,} + 1 ))" "$stored_after"
+    cached_after="$(app_sql "select count(*) from queries where served_from_cache" 2>/dev/null || true)"
+    if [[ "$stored_after" == "$(( ${stored_before%,*} + 2 )),$(( ${stored_before#*,} + 2 ))" ]] \
+       && (( cached_after - cached_before >= 1 && cached_after - cached_before <= 2 )); then
+      ok "exactly two queries and two traces were stored, at least one from the cache"
+    else
+      bad "exactly two queries and two traces were stored, at least one from the cache -- $stored_before -> $stored_after; from the cache $cached_before -> $cached_after"
+    fi
   fi
   contains "logging out is a 204 and clears the cookie" "LOGOUT PASS" "$(grep '^LOGOUT' <<<"$api" || true)"
   contains "the revoked session is refused, 401" "REFUSED PASS" "$(grep '^REFUSED' <<<"$api" || true)"

@@ -10,6 +10,9 @@
  * attachment's `decided_by`. The backend leaves each out when absent, so
  * every one is optional here, and a trace of version 1 or 2 is read as it
  * was written.
+ *
+ * trace_version 4 (step 14) adds `served_from_cache`, true on an answer
+ * served from the answer cache and absent otherwise.
  */
 
 export type Outcome = "answered" | "not_answerable" | "validation_failed" | "model_failed" | "execution_failed";
@@ -19,7 +22,7 @@ export type EdgeUse = "present" | "partial" | "missing";
 export type KeySource = "catalog" | "overlay";
 
 /** The versions this page can draw. */
-export const READABLE_VERSIONS = [1, 2, 3];
+export const READABLE_VERSIONS = [1, 2, 3, 4];
 
 export type SchemaRef = { snapshot_id: number | null; hash: string; preferences_hash: string };
 
@@ -310,6 +313,8 @@ export type TraceDocument = {
   /** trace_version 3. */
   linking?: Linking;
   choosing?: Choosing;
+  /** trace_version 4: present, and true, only on an answer served from the cache. */
+  served_from_cache?: boolean;
 };
 
 /** One cell of a result. A numeric arrives as text, exact; a date in ISO form. */

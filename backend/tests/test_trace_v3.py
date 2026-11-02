@@ -57,8 +57,9 @@ def _ship_letter() -> str:
 # --------------------------------------------------------------------------
 
 
-def test_this_build_writes_version_3_and_reads_1_2_and_3() -> None:
-    assert TRACE_VERSION == 3 and READABLE_VERSIONS == (1, 2, 3)
+def test_this_build_writes_version_4_and_reads_1_to_4() -> None:
+    # Version 4 (step 14, tests/test_answer_cache.py) adds served_from_cache.
+    assert TRACE_VERSION == 4 and READABLE_VERSIONS == (1, 2, 3, 4)
 
 
 @pytest.mark.parametrize(
@@ -119,7 +120,7 @@ def _chosen(choose_script=None, link_script=None, generation_script=None):
 
 
 def test_a_version_3_answer_says_so() -> None:
-    assert _chosen().trace_version == 3
+    assert _chosen().trace_version == 4
 
 
 def test_linking_keeps_its_system_message_whole_and_its_user_message_by_hash() -> None:
@@ -259,7 +260,7 @@ def test_every_rule_has_its_own_name_for_who_decided(rule, decided_by) -> None:
 
 def test_a_version_3_answer_without_linking_still_says_who_decided() -> None:
     made = document([reply(SQL)], *TIED, question=QUESTION)
-    assert made.trace_version == 3 and made.linking is None
+    assert made.trace_version == 4 and made.linking is None
     assert made.paths.attachments[1].decided_by == "alphabet"
 
 

@@ -54,6 +54,16 @@ the shape ruled at stop F1). Adds, and changes nothing else:
 Each is left out of the document when it is absent, so a version 1 or 2
 answer is served exactly as before.
 
+trace_version 4 (step 14). Adds, and changes nothing else:
+
+  served_from_cache
+                true when this answer was served from the answer cache
+                (app.core.answer_cache): no model was called, it cost
+                nothing, and its stages are those of the computation that
+                was cached. Left out of every other answer, so a version 4
+                answer that was computed is a version 3 document with
+                another number, and versions 1 to 3 are served as before.
+
 Every section but question, outcome and timings is optional, and the
 document says what is absent by leaving it out: a question that could not
 be located has no generation, validation or execution.
@@ -80,12 +90,12 @@ from app.core.narrative import Narrative, narrate, plain_warnings
 from app.core.snapshot import SchemaSnapshot
 from app.core.warning_marks import Ran, had_ambiguity, mark_warnings
 
-TRACE_VERSION = 3
+TRACE_VERSION = 4
 # What this build can read. Version 1 is version 2 without `plain` on its
 # warnings; version 2 is version 3 without linking, choosing and
-# decided_by. A trace written then still renders (DD-07), and is never
-# rewritten (DD-06).
-READABLE_VERSIONS = (1, 2, 3)
+# decided_by; version 3 is version 4 without served_from_cache. A trace
+# written then still renders (DD-07), and is never rewritten (DD-06).
+READABLE_VERSIONS = (1, 2, 3, 4)
 # How many scored elements are kept, best first. Every table's score is
 # kept whatever this is.
 CANDIDATES_KEPT = 50
@@ -518,6 +528,9 @@ class TraceDocument(Section):
     # served as it was.
     linking: Linking | None = Field(default=None, exclude_if=_absent)
     choosing: Choosing | None = Field(default=None, exclude_if=_absent)
+    # trace_version 4. True on an answer served from the cache; left out
+    # otherwise.
+    served_from_cache: bool | None = Field(default=None, exclude_if=_absent)
 
     @property
     def conformance_result(self) -> str | None:

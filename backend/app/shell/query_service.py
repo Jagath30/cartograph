@@ -35,6 +35,16 @@ two questions asked at once cannot both take the month's last room.
 Refused, it is OverAllowance, before the pipeline is opened. A rerun
 calls no model and is never checked.
 
+THE ANSWER CACHE (FR-35, NFR-25, step 14). `answer` is what the API
+calls. Given a cache, it opens the pipeline, which knows the snapshot and
+the preferences the key needs, and looks the question up first: a hit is
+stored under the asker as a new trace (version 4, served_from_cache) and
+returned, its rows from the cache. A hit calls no model, costs 0, never
+comes to the allowance, so it is served over the month's budget and past
+the user's day, and is not counted in that day. A miss is `ask`, exactly
+as before, and an answer or a decline it gives is then cached. Without a
+cache, or with Redis down, `answer` is `ask`.
+
 OPENED AT START (step 12, the owner's ruling 3). `warm` opens the
 pipeline, and the application calls it in the background once the
 server has started, so a host's wake-up includes the opening and the
@@ -43,23 +53,28 @@ lock. If the opening is not ready, nothing is kept and the next question
 tries again, as before.
 """
 
+import hashlib
 import logging
 import threading
+import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Literal
-from uuid import UUID
+from typing import Any, Literal
+from uuid import UUID, uuid4
 
 import psycopg
 
+from app.core.answer_cache import cache_key, entry, served
+from app.cells import Value, json_rows
 from app.core.budget import BUDGET_SPENT, Allowance, Refusal, daily_limit_message, day_start, month_start, refusal
 from app.core.snapshot import SchemaSnapshot
 from app.core.sql_reading import schema_of
 from app.core.sql_validator import validate
 from app.core.trace_document import TraceDocument
-from app.orchestrator import Executor, Kept, Orchestrator
+from app.orchestrator import Executor, Kept, Orchestrator, TraceNotPersisted
+from app.shell.answer_cache import AnswerCache
 from app.shell.query_executor import Execution, QueryExecutor
 from app.shell.embedder import EmbeddingKeyMissing
 from app.shell.model_client import ModelKeyMissing
@@ -96,6 +111,20 @@ class Rerun:
     execution: Execution | None = None
 
 
+@dataclass(frozen=True)
+class Asked:
+    """What the API returns for a question: the trace as stored, and the
+    rows as JSON carries them; None when nothing ran."""
+
+    document: TraceDocument
+    rows: list[list[Value]] | None
+
+
+def rows_of(kept: Kept) -> list[list[Value]] | None:
+    execution = kept.trace.execution
+    return json_rows(execution.rows) if execution is not None and execution.ok else None
+
+
 class NothingToRerun(Exception):
     """The stored answer has no SQL: it was declined, or the model failed."""
 
@@ -113,6 +142,7 @@ class QueryService:
     def __init__(
         self, open_orchestrator: Callable[[], Orchestrator], traces: TraceStore, snapshots: SnapshotStore,
         rerun_executor: Executor | None = None, allowance: Allowance | None = None,
+        cache: AnswerCache | None = None, pipeline_identity: dict[str, Any] | None = None,
     ) -> None:  # fmt: skip
         self._open = open_orchestrator
         self._traces = traces
@@ -124,6 +154,12 @@ class QueryService:
         # Questions running now, by user.
         self._running: dict[int, int] = {}
         self._admitting = threading.Lock()
+        # The answer cache, and what the process was started with that the
+        # key holds (app.core.answer_cache). Both or neither.
+        if (cache is None) != (pipeline_identity is None):
+            raise ValueError("an answer cache needs the pipeline's identity, and the identity a cache")
+        self._cache = cache
+        self._identity = pipeline_identity
 
     def _pipeline(self) -> Orchestrator:
         with self._lock:
@@ -149,6 +185,35 @@ class QueryService:
             log.warning("the pipeline was not opened at start: %s", missing)
         except Exception as error:
             log.error("the pipeline was not opened at start: %s", type(error).__name__)
+
+    def answer(self, question: str, user_id: int, at: datetime | None = None) -> Asked:
+        """`ask`, through the answer cache when there is one."""
+        at = at or datetime.now(UTC)
+        if self._cache is None:
+            kept = self.ask(question, user_id, at)
+            return Asked(kept.document, rows_of(kept))
+        began = time.monotonic()
+        orchestrator = self._pipeline()
+        key = cache_key(question, *orchestrator.answer_basis, self._identity)
+        cached = self._cache.get(key)
+        if cached is not None:
+            return self._serve(cached, question, user_id, at, began)
+        kept = self.ask(question, user_id, at)
+        rows = rows_of(kept)
+        cachable = entry(kept.document, rows)
+        if cachable is not None:
+            self._cache.put(key, cachable)
+        return Asked(kept.document, rows)
+
+    def _serve(self, cached, question: str, user_id: int, at: datetime, began: float) -> Asked:
+        document = served(cached, uuid4(), user_id, question, at, round((time.monotonic() - began) * 1000))
+        try:
+            self._traces.save(document)
+        except Exception as error:
+            log.error("a cached answer's trace was not stored: %s; query %s", type(error).__name__, document.query_id)
+            raise TraceNotPersisted(document.query_id) from None
+        log.info("answer cache: hit, query %s, %d ms", document.query_id, document.duration_ms)
+        return Asked(document, cached.rows)
 
     def ask(self, question: str, user_id: int, at: datetime | None = None) -> Kept:
         with self._admitted(user_id, at or datetime.now(UTC)):
@@ -226,17 +291,35 @@ class QueryService:
             raise NotReady(_UNREACHABLE) from None
 
 
-def make_service(app_database_url: str, warehouse_database_url: str, allowance: Allowance | None = None) -> QueryService:
+def make_service(
+    app_database_url: str, warehouse_database_url: str, allowance: Allowance | None = None, redis_url: str | None = None
+) -> QueryService:
     """The real one: the pipeline as the commands open it, with a store,
     and for a rerun the executor an answer runs on: the warehouse's
-    read-only role, the default row cap. The API gives it the allowance."""
+    read-only role, the default row cap. The API gives it the allowance,
+    and Redis for the answer cache; the code fingerprint is read now."""
+    from app.config import get_settings
+    from app.core.answer_cache import pipeline_identity
+    from app.shell.answer_cache import read_fingerprint
     from app.shell.pipeline_session import APPLICATION_MODE, open_pipeline
+    from app.shell.retrieval_session import CALIBRATION
 
     traces = TraceStore(app_database_url)
+    cache = identity = None
+    if redis_url is not None:
+        settings = get_settings()
+        calibration = hashlib.sha256(CALIBRATION.read_bytes()).hexdigest() if CALIBRATION.exists() else "none"
+        identity = pipeline_identity(
+            APPLICATION_MODE, settings.sql_model, settings.sql_model_reasoning_effort, settings.sql_model_temperature,
+            settings.sql_model_max_output_tokens, settings.embedding_model, calibration, read_fingerprint(),
+        )  # fmt: skip
+        cache = AnswerCache.from_url(redis_url)
     return QueryService(
         lambda: open_pipeline("api", "api", store=traces, mode=APPLICATION_MODE).orchestrator,
         traces,
         SnapshotStore(app_database_url),
         QueryExecutor(warehouse_database_url),
         allowance,
+        cache,
+        identity,
     )

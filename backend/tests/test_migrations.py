@@ -342,3 +342,34 @@ def test_a_session_ends_after_it_begins(scratch_database) -> None:
     with psycopg.connect(scratch_database) as connection:
         with pytest.raises(psycopg.errors.CheckViolation):
             _session(connection, _user(connection), lifetime="0 seconds")
+
+
+def test_the_fourth_migration_marks_every_query_it_finds_as_not_from_the_cache(empty_database) -> None:
+    """Step 14: the column comes with a constant default, false, and the
+    rows before it keep everything else."""
+    config = alembic_config(empty_database)
+    command.upgrade(config, "0003")
+    with psycopg.connect(empty_database) as connection:
+        query = _query(connection, _local_user(connection))
+    command.upgrade(config, "head")
+    with psycopg.connect(empty_database) as connection:
+        assert connection.execute("select id, served_from_cache from queries").fetchall() == [(query, False)]
+        column = connection.execute(
+            "select data_type, is_nullable, column_default from information_schema.columns "
+            "where table_name = 'queries' and column_name = 'served_from_cache'"
+        ).fetchone()
+    assert column == ("boolean", "NO", "false")
+
+
+def test_the_fourth_migration_goes_down_and_drops_only_its_column(empty_database) -> None:
+    config = alembic_config(empty_database)
+    command.upgrade(config, "head")
+    with psycopg.connect(empty_database) as connection:
+        query = _query(connection, _local_user(connection))
+    command.downgrade(config, "0003")
+    with psycopg.connect(empty_database) as connection:
+        names = [row[0] for row in connection.execute(
+            "select column_name from information_schema.columns where table_name = 'queries'"
+        ).fetchall()]  # fmt: skip
+        assert "served_from_cache" not in names
+        assert connection.execute("select id from queries").fetchall() == [(query,)]

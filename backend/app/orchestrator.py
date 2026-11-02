@@ -354,6 +354,14 @@ class Orchestrator:
         self._declined = NOT_ANSWERABLE if linker is None else {**NOT_ANSWERABLE, **NOT_ANSWERABLE_NAMED}
         self._chooser = chooser
 
+    @property
+    def answer_basis(self) -> tuple[str, str]:
+        """The stored snapshot's hash and the hash of the preferences in
+        force: what this orchestrator answers over, for the answer cache's
+        key (step 14)."""
+        preferences = self._keep.context.preferences_hash if self._keep is not None else ""
+        return self._schema_ref[1], preferences
+
     def answer_and_keep(self, question: str, user_id: int | None = None) -> Kept:
         """`answer`, then the one write, under `user_id`: the caller the API
         signed in, or, when none is named, the pipeline's own user. Raises

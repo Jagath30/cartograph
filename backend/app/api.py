@@ -47,7 +47,7 @@ def get_service() -> QueryService:
     request needs it, so that importing the application needs nothing."""
     settings = get_settings()
     allowance = Allowance(settings.demo_monthly_budget_usd, settings.daily_questions_per_user)
-    return make_service(settings.app_database_url, settings.warehouse_database_url, allowance)
+    return make_service(settings.app_database_url, settings.warehouse_database_url, allowance, settings.redis_url)
 
 
 ServiceDep = Annotated[QueryService, Depends(get_service)]
@@ -190,13 +190,15 @@ def ask(body: QuestionIn, service: ServiceDep, user: UserDep, at: NowDep, counte
     message. The trace is stored before this returns (NFR-13), under the
     user who asked. A question past the month's budget or the user's day
     is not run (NFR-25): 503 or 429, and nothing is stored. Every ask
-    counts towards the minute's 10 (FR-36)."""
+    counts towards the minute's 10 (FR-36). A repeated question may be
+    served from the answer cache (FR-35): stored under this user at
+    version 4, costing 0, over the budget and the day as well."""
     limited(counters.count(QUESTIONS, user_subject(user.user_id)))
     try:
-        kept = service.ask(body.question, user.user_id, at)
+        asked = service.answer(body.question, user.user_id, at)
     except OverAllowance as over:
         raise Refused(OVER_ALLOWANCE_STATUS[over.refused], over.refused, over.message) from None
-    return query_out(kept.document, kept.trace.execution.rows if kept.trace.execution else None)
+    return query_out(asked.document, asked.rows)
 
 
 @router.get("/queries", response_model=HistoryOut, responses=ERRORS)

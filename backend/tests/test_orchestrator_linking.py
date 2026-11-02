@@ -217,7 +217,7 @@ def test_a_chosen_answer_is_kept_as_trace_version_3() -> None:
     kept = orchestrator.answer_and_keep("Where are our catalog customers located?")
     assert store.saved == [kept.document]
     document = kept.document
-    assert document.trace_version == 3 and document.outcome == "answered"
+    assert document.trace_version == 4 and document.outcome == "answered"
     assert document.linking.tables == ["catalog_sales", "customer_address"]
     assert document.choosing is not None and len(document.choosing.attempts) == 1
     assert kept.trace.linking is not None and kept.trace.choosing is not None

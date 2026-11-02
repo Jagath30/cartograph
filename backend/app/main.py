@@ -89,8 +89,23 @@ async def _opened_in_the_background(app: FastAPI) -> AsyncIterator[None]:
     yield
 
 
+def _logged() -> None:
+    """The application's own lines, INFO and above, to stderr beside
+    uvicorn's (step 14): the code fingerprint at start (the owner's ruling
+    8), a cache hit, each stage and model call (NFR-22). None holds a
+    secret or a question's text. Before step 14 nothing configured these
+    loggers, and only their warnings reached the log."""
+    logger = logging.getLogger("cartograph")
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(levelname)s:     %(name)s %(message)s"))
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     resolved = settings or get_settings()
+    _logged()
 
     app = FastAPI(title="Cartograph", version="0.1.0", lifespan=_opened_in_the_background)
 

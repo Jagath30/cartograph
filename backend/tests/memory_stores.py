@@ -43,7 +43,7 @@ class Memory:
 
     def asked_since(self, owner: int, since: datetime) -> int:
         documents = [TraceDocument.model_validate_json(body) for body in self.bodies.values()]
-        return sum(1 for d in documents if d.user_id == owner and d.created_at >= since)
+        return sum(1 for d in documents if d.user_id == owner and d.created_at >= since and not d.served_from_cache)
 
 
 class MemoryAccounts:

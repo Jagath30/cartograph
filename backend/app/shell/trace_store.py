@@ -64,12 +64,13 @@ class TraceStore:
             connection.execute(
                 """
                 insert into queries (id, user_id, question, created_at, outcome, had_ambiguity,
-                                     conformance_result, cost_estimate, duration_ms)
-                values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                     conformance_result, cost_estimate, duration_ms, served_from_cache)
+                values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     document.query_id, document.user_id, document.question, document.created_at, document.outcome,
                     document.had_ambiguity, document.conformance_result, document.cost_usd, document.duration_ms,
+                    bool(document.served_from_cache),
                 ),
             )  # fmt: skip
             connection.execute(
@@ -117,9 +118,11 @@ class TraceStore:
         return float(row[0])
 
     def asked_since(self, owner: int, since: datetime) -> int:
-        """How many questions `owner` has asked since `since`."""
+        """How many questions `owner` has asked since `since`. An answer
+        served from the cache is not counted (step 14)."""
         with psycopg.connect(self._dsn) as connection:
             row = connection.execute(
-                "select count(*) from queries where user_id = %s and created_at >= %s", (owner, since)
+                "select count(*) from queries where user_id = %s and created_at >= %s and not served_from_cache",
+                (owner, since),
             ).fetchone()
         return row[0]

@@ -58,5 +58,9 @@ services:
     name: cartograph-nl2sql-kv
     region: singapore
     plan: free
+    # The answer cache and the rate limits' counters (step 14). Full, it
+    # drops the least recently used key, whatever its kind: a cached answer
+    # is asked again, a counter lost lets a few requests more through.
+    maxmemoryPolicy: allkeys-lru
     # Empty: no connection from outside Render, only the API's.
     ipAllowList: []

@@ -365,9 +365,10 @@ def _names() -> dict:
 # ---- G: the version, and what it does not change ----------------------------
 
 
-def test_the_trace_is_version_3_and_a_warning_holds_plain() -> None:
+def test_the_trace_is_version_4_and_a_warning_holds_plain() -> None:
+    # Version 4 (step 14) adds served_from_cache and keeps version 2's plain.
     made = document([reply(BILL)], *ADDRESS)
-    assert TRACE_VERSION == 3 and made.trace_version == 3
+    assert TRACE_VERSION == 4 and made.trace_version == 4
     assert "plain" in made.model_dump(mode="json")["paths"]["warnings"][0]
 
 

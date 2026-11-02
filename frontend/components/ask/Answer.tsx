@@ -12,6 +12,24 @@ import { fromTrace } from "@/lib/graph/fromTrace";
 import { canRerun } from "@/lib/rerun";
 import { READABLE_VERSIONS, type QueryOut } from "@/lib/trace/types";
 
+/** CACHED_NOTICE's words are the page's whole account of a cache hit (step 14). */
+export const CACHED_NOTICE = {
+  title: "Served from the cache",
+  line:
+    "This question was answered in the last 24 hours on the same schema and the same code, so that answer was served " +
+    "again: no model was called and it cost nothing. The rows are the ones that answer returned, and the model calls " +
+    "listed under the technical details are the ones that made it.",
+};
+
+export function ServedFromCache() {
+  return (
+    <div className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-gray-800" data-ask="cached" role="note">
+      <p className="font-medium text-gray-900">{CACHED_NOTICE.title}</p>
+      <p className="mt-1">{CACHED_NOTICE.line}</p>
+    </div>
+  );
+}
+
 /**
  * One answer, in the order of DD-19: the amber block when a choice had no
  * basis; the plain-English account with the results beside it (FR-30);
@@ -46,6 +64,8 @@ export function Answer({ result, stored }: { result: QueryOut; stored: boolean }
           />
         </p>
       </div>
+
+      {trace.served_from_cache && <ServedFromCache />}
 
       <AmberBlock trace={trace} />
 
