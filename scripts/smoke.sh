@@ -96,6 +96,8 @@ expect "pgvector installed in the app database" "vector" \
 stage "Warehouse isolation (NFR-07)"
 refuse "read-only role cannot create a table" \
   pg 'PGPASSWORD="$WAREHOUSE_RO_PASSWORD" psql -v ON_ERROR_STOP=1 -U "$WAREHOUSE_RO_USER" -d "$WAREHOUSE_DB_NAME" -h 127.0.0.1 -c "create table smoke_should_not_exist (i int)"'
+refuse "read-only role cannot create a temporary table, even read-write" \
+  pg 'PGPASSWORD="$WAREHOUSE_RO_PASSWORD" psql -v ON_ERROR_STOP=1 -U "$WAREHOUSE_RO_USER" -d "$WAREHOUSE_DB_NAME" -h 127.0.0.1 -c "set default_transaction_read_only = off" -c "create temporary table smoke_scratch (i int)"'
 refuse "read-only role cannot reach the app database" \
   pg 'PGPASSWORD="$WAREHOUSE_RO_PASSWORD" psql -U "$WAREHOUSE_RO_USER" -d "$POSTGRES_DB" -h 127.0.0.1 -Atc "select 1"'
 
