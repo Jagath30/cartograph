@@ -217,6 +217,12 @@ accounts)
     -v "$(pwd)/backend:/app" -w /app cartograph-backend python -m app.clean_accounts ${2:+"$2"}
   ;;
 
+declared)
+  # Item 41: scripts/declared.sql, SELECTs only, as the reader, whose
+  # transactions are read-only by default. Changes nothing, and no overlay.
+  in_pg 'psql -X -At -v ON_ERROR_STOP=1 -d "$WAREHOUSE_DATABASE_URL"' < scripts/declared.sql
+  ;;
+
 *)
   echo "usage: $0 roles|databases|revoke-temp|whoami|load|app|check|accounts|declared" >&2
   exit 2
