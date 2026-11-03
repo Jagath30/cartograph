@@ -10762,3 +10762,63 @@ Deliberate deferrals, recorded while the reasoning is fresh:
      503 `budget_spent`, with a plain message; no answer cache exists
      (FR-35). The README says what is built. **Carried forward to step
      14**, with caching (FR-35).
+
+## Step 14 in progress: the supporting layer — opened 2 November 2026
+
+Built C1 to C9 (`6585bd5` to `fff58e0`) by the brief and the owner's
+rulings at the plan stop; the ritual passed. The close, with the items,
+comes after the deploy. Recorded before the push, by the owner's rulings
+of 3 November:
+
+**The runtime image, run as a server (check A).** The Dockerfile's last
+stage, built alone, run with its own CMD and PORT=8000, no bind mount, as
+uid 10001, on the compose network, port 8001, with the backend's
+environment (compose's `extends`, from a file outside the repository) and
+Redis database 1. `alembic upgrade head` a no-op (the store at 0004;
+`alembic current` as uid 10001: 0004), uvicorn PID 1, the fingerprint
+line logged; /health 200; /ready ready, all three checks. Its eval/: /app
+and /app/eval root 755; eval/.spend and eval/.cache cartograph 755, both
+empty in the image (.dockerignore), so the chown needs no -R; 541 files
+under eval, all root's; nothing else in /app writable by it. The running
+app writes only the ledger (eval/.spend/model_calls.jsonl) and the vector
+cache (eval/.cache). One question, computed ($0.0008632 for two model
+calls, 212 rows), then the same again, a hit at $0 in 82 ms. The ledger
+(uid 10001, 644) and six vector files (all uid 10001) were written; the
+log held no PermissionError and no error. Its one embedding call: 15
+tokens, $0.0000003. Stopped, not removed. No Dockerfile change.
+
+**Embedding calls on the running API (ruling 6 as restated).** None at
+start: `warm` opens the pipeline, which reads the catalog and builds the
+embedder and the index without calling them. One for each question the
+API computes: linking's `locate_named` scores the question and its
+words and word pairs (`SemanticIndex.score_question`), through the
+vector cache, so only texts not already cached are sent; choosing's
+`relocate` scores the same texts, then cached. None for a cache hit, a
+rerun, re-ingest, or a question refused by the budget, the day's 30 or a
+rate limit: the call is inside `ask`'s admission. On the ledger, outside
+the month's budget, which counts only stored queries' costs. One
+measured: 15 tokens, $0.0000003. Bounded by the admission (one call per
+admitted, computed question) and by the 500-character question: at most
+about 2,000 tokens, about $0.00004 a call. Embedding spend has no
+ceiling of its own; the schema is embedded only by the setup commands.
+No code change: no embedding call lies outside the admission. The
+README's Known limits says the same.
+
+**The application's INFO logging (accepted, ruling C).** `create_app`
+gives the `cartograph` loggers one stderr handler at INFO (C4,
+`7834e81`). Before step 14 nothing configured them and only their
+warnings reached the log, so the code fingerprint's line could not have
+appeared. It also makes the stage and model-call lines visible: no
+secret, and a question only as a hash prefix.
+
+**C7 committed without CI's command first** (`be2a3ca`, scripts only).
+Accepted this once, since C8 and C9 passed on a tree that includes it.
+The rule stands, with no exceptions, for the rest of the step.
+
+**Item 75 stays open** (ruling E): a preference-only overlay edit is not
+in the snapshot hash, so re-ingest says "unchanged" and leaves an open
+pipeline as it is; it is seen only after a restart (on Render an overlay
+edit arrives with a deploy, which restarts).
+
+**The spend so far:** smoke $0.001233, the question twice locally
+$0.000863, the runtime check $0.0008635: $0.0029595.
