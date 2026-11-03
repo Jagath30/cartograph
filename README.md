@@ -128,7 +128,8 @@ No credential is in the repository or its history. Locally, `bootstrap.sh` gener
 ## Deployment notes
 
 - The page: [cartograph-nl2sql.vercel.app](https://cartograph-nl2sql.vercel.app), on Vercel, with `BACKEND_ORIGIN` set at build time for the rewrite.
-- The API: a Render free web service and a free Key Value, both from [render.yaml](render.yaml), in Singapore. `FRONTEND_ORIGINS` names the page's address.
+- The API: a Render free web service and a free Key Value, both from [render.yaml](render.yaml), in Singapore. `FRONTEND_ORIGINS` names the page's address. The Key Value runs Valkey 8.1.10, which is Redis-compatible; the local stack runs Redis.
+- Render deploys the API once CI passes, when a push changes `backend/`. Pushes whose last commit did not touch `backend/` were not deployed by themselves, and were deployed by hand.
 - The data: Neon free, in Singapore, two databases: `warehouse` and `app`. [scripts/neon.sh](scripts/neon.sh) makes the roles and databases, loads the warehouse and checks it.
 - The deployed warehouse is TPC-DS at scale factor 0.25, measured at 447 MB on Neon; locally it is scale factor 1, 2.2 GB. The schema, and so the snapshot's hash, is the same at both; the numbers in an answer are not.
 - The first request after 15 minutes without visitors wakes the server, which can take up to a minute. After 3 seconds the page says: "Waking the server. Free hosting sleeps after 15 minutes without visitors; the first request can take up to a minute."

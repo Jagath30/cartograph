@@ -7,21 +7,35 @@ to explain, and what the next single deliverable is.
 
 ---
 
-## Current state — 1 November 2026, kept current at every close
+## Current state — 3 November 2026, kept current at every close
 
 **Live.** https://cartograph-nl2sql.vercel.app (Vercel Hobby, project
 `cartograph-nl2sql`, root `frontend`), its /api/v1 rewritten to
 https://cartograph-nl2sql-api.onrender.com (Render free, Singapore, from
-`render.yaml`, with the free Key Value `cartograph-nl2sql-kv`). The data
+`render.yaml`, with the free Key Value `cartograph-nl2sql-kv`: Valkey
+8.1.10, allkeys-lru, no persistence; it holds the answer cache and the
+rate limits' counters). The data
 on Neon Free, AWS Singapore: `warehouse`, TPC-DS at scale factor 0.25,
 447 MB, read by `cartograph_reader`; `app`, owned by `cartograph_app`.
 $2.00 a month for the model (DEMO_MONTHLY_BUDGET_USD), then 503; 30
-questions a day for each account (DAILY_QUESTIONS_PER_USER), then 429.
-The backend sleeps after 15 minutes idle; the page says so after 3 s.
-The deployed smoke (`python -m app.smoke_deployed`) passed once, 13 of 13.
+questions a day for each account (DAILY_QUESTIONS_PER_USER), then 429;
+a question answered in the last 24 hours is served from the cache at $0
+past both. Rate limits: 5 failed logins per email in 15 minutes, 300
+logins and 30 registrations an hour from everyone, 10 questions a minute
+and 30 reruns an hour per account. Re-ingest is not enabled (no
+ADMIN_TOKEN). The backend sleeps after 15 minutes idle; the page says so
+after 3 s. Render deploys after CI when a push's last commit touches
+backend/; otherwise by hand (item 121). The deployed smoke (`python -m
+app.smoke_deployed`) passed at step 14, 16 of 16.
 
-**What exists.** Steps 1 to 13 and a retrieval pass, tagged
-`checkpoint-01-stack` to `checkpoint-13-readme`. Step 13: the README
+**What exists.** Steps 1 to 14 and a retrieval pass, tagged
+`checkpoint-01-stack` to `checkpoint-14-supporting`. Step 14: the
+supporting layer: the answer cache (FR-35, NFR-25's cached answers),
+rate limits (FR-36), a re-ingest endpoint that refuses a changed schema
+(IR-07; FR-05 in part), a non-root runtime image without pytest (the
+Dockerfile's last stage, which Render builds; compose builds `dev`), the
+smoke accounts' cleanup, the declared relationships measured on Neon.
+Step 13: the README
 (criterion 10). Step 12: deployment
 (criterion 8), with the spend ceiling (NFR-25). Step 11: Step 11: accounts and
 history (criterion 12). Register, log in, log out; a session is an
@@ -35,14 +49,15 @@ table and key, names the tables; the join tree is built over them by
 DD-12's rules; where the alphabet would decide, the model is asked which
 route the question means; then the model writes the SQL, which is
 validated, checked against the plan and run read-only. Traces are stored
-at version 3 (`linking`, `choosing`, `decided_by`); versions 1 and 2 are
-served and drawn byte for byte as before. One page, `/ask`, as at step 9,
+at version 4 (version 3's `linking`, `choosing`, `decided_by`, and
+`served_from_cache` on a cache hit); versions 1 to 3 are served and
+drawn byte for byte as before. One page, `/ask`, as at step 9,
 with the tables named, who decided each join and the choices put to the
 model. Step 10's evaluation, then step 10b's: four modes, five runs, a
 protocol frozen before any run; v2.1 matches full-schema prompting on
 heldout2's tables (100.0%) and misses its path by one answer in sixty
-(98.3%). README "Evaluation". Smoke 48, 0, 0. Backend: CI's command 1764
-pass, 202 skip; the suite 1962 pass, 2 skip; frontend 301. `next` 16.4.1.
+(98.3%). README "Evaluation". Smoke 50, 0, 0. Backend: CI's command 1872
+pass, 210 skip; the suite 2079 pass, 3 skip; frontend 313. `next` 16.4.1.
 
 **Rules every session follows.**
 - `OPENAI_API_KEY` is never printed, displayed or read; `.env` is never
@@ -97,14 +112,17 @@ before the change. Step 10b's manifest records the code its runs used;
 it is checked at the commits they ran on (`a6a6aac` to `587cd61`), not
 on main.
 
-**Next.** Step 14: 75, 111, 112, 116 (caching, FR-35, with NFR-25's
-cached answers). Owed to the Design (carried, not done at step 13: the
-brief was the README): DD-01, 06, 07, 12 to 16, 19, 21, FR-13, IR-05,
+**Next.** The demo video. Owed to the Design (carried, not done at
+steps 13 and 14): DD-01, 06, 07, 12 to 16, 19, 21, FR-13, IR-05,
 section 04, step 10b's, step 11's sessions table and build-time
-BACKEND_ORIGIN, step 12's hosts. Open: 8, 9, 41. Future work: 53, 55,
-56, 98, 99, 100. Known limits: 62, 68, 69, 78, 87, 91, 113. Left behind:
-79. **Resume:** read this, the newest entry and the
-items named; `git status`; `./scripts/smoke.sh` (two paid calls).
+BACKEND_ORIGIN, step 12's hosts, step 14's cache, limits and re-ingest.
+Open: 8 (the dev images), 75. Deferred: 117, 118, 119, 120. Future
+work: 53, 55, 56, 98, 99, 100. Known limits: 62, 68, 69, 78, 87, 91,
+113. Left behind: 79. Rules from step 14: deploy by hand after a push
+whose last commit does not touch backend/ (121); CI's command before
+every commit, no exceptions. **Resume:** read this, the newest entry
+and the items named; `git status`; `./scripts/smoke.sh` (up to two paid
+questions; the API's second asking is a cache hit).
 
 ## checkpoint-01-stack — 12 September 2026
 
@@ -10008,7 +10026,19 @@ Deliberate deferrals, recorded while the reasoning is fresh:
 8. Neither Dockerfile uses a non-root user. The backend writes root-owned
    `.pytest_cache` and `__pycache__` into the repository — gitignored, so
    harmless today, but it is why NFR-24 wants this fixed at step 12.
+   **Closed at step 14 for the runtime image** (C1, `6585bd5`): the
+   Dockerfile's last stage, which Render builds, runs as `cartograph`,
+   uid 10001, owning only eval/.spend and eval/.cache; run as a server
+   locally (check A) and deployed. **Open for the dev images** (the
+   owner's ruling 1): the backend's dev stage and the frontend's image
+   stay root, because of the bind mount and the root-owned files already
+   in it; each Dockerfile says so in one line.
 9. The backend image carries `pytest` and `httpx` into the runtime.
+   **Closed at step 14** (C1): requirements-dev.txt holds pytest and the
+   four packages only it needs (iniconfig, packaging, pluggy, Pygments);
+   the runtime stage installs requirements.txt alone. httpx stays: the
+   model and embedding clients import it. scripts/check_runtime.sh: no
+   pytest family, pip check clean, every module under app/ imports.
 10. `NEXT_PUBLIC_API_BASE_URL` is read at runtime by `next dev` but inlined
     at build time by `next build`. Vercel needs it as a build variable.
 11. GitHub Actions raises Node 20 deprecation annotations for
@@ -10152,6 +10182,10 @@ Deliberate deferrals, recorded while the reasoning is fresh:
     database constraints, so nothing re-checks them when the warehouse is
     rebuilt at another scale factor. Step 12's reduced warehouse needs the
     measurement repeated before the notes can be believed there.
+    **Closed at step 14** (scripts/declared.sql, `./scripts/neon.sh
+    declared`, read-only as the reader): on Neon at sf=0.25 every fact
+    the five notes state holds, at smaller counts; no overlay changed.
+    The figures are in checkpoint-14-supporting.
 42. The two-column joins come out of the PathFinder with their column
     pairs in column-declaration order, not the order the key lists them.
     The pairing is right; only the order differs.
@@ -10444,6 +10478,12 @@ Deliberate deferrals, recorded while the reasoning is fresh:
 75. **The API opens its pipeline once per process** (step 8). A schema
     ingested again, or an overlay edited, is not seen until the backend
     restarts. The re-ingest endpoint of step 14 must reopen it.
+    **Open after step 14** (the owner's ruling E): re-ingest refuses a
+    changed schema (409) and reopens the pipeline only when it is not
+    open. A preference-only overlay edit is not in the snapshot hash, so
+    re-ingest says "unchanged" and an open pipeline keeps the old
+    preferences until a restart. On Render an overlay edit arrives with a
+    deploy, which restarts.
 76. **The development store holds development queries** (step 8). Every
     question asked through the API while building is a row of `queries`
     under the local user, with the narrative wording of the moment it
@@ -10744,9 +10784,18 @@ Deliberate deferrals, recorded while the reasoning is fresh:
      (`check-...@cartograph.invalid`, made by a live check of the
      rewrite), and two smoke accounts (the close's two runs). **Carried
      forward to step 14:** a cleanup command.
+     **Closed at step 14** (C6, `app.clean_accounts`, `./scripts/neon.sh
+     accounts`): two exact patterns, never the local user, a dry run by
+     default. On Neon, by the owner's ruling: 2 accounts, 2 sessions, 3
+     queries, 3 traces deleted; the dry run after finds 0.
 112. **Login has no rate limit** (step 11, the owner's ruling 4). A
      password may be guessed as fast as argon2id answers. **Carried
      forward to step 14** (FR-36); the README says so at step 13.
+     **Closed at step 14** (C3): 5 failed logins per email in 15 minutes,
+     checked before argon2 runs, the same answer for an unknown email;
+     300 logins an hour from everyone; with registration, questions and
+     reruns, each 429 with its own code and Retry-After. Shown live by the
+     deployed smoke's LOCKOUT line.
 113. **The history lists the newest 100, with no paging** (step 11, the
      owner's ruling 7). A known limit; the README says so at step 13.
 114. **Copy link opens only for the answer's owner** (step 11, the
@@ -10762,13 +10811,167 @@ Deliberate deferrals, recorded while the reasoning is fresh:
      503 `budget_spent`, with a plain message; no answer cache exists
      (FR-35). The README says what is built. **Carried forward to step
      14**, with caching (FR-35).
+     **Closed at step 14** (C4): over the budget, a question answered in
+     the last 24 hours on the same schema and code is served from the
+     answer cache at $0; any other is 503. Shown live by the deployed
+     smoke's CACHED line.
+117. **Rate limits per client address are deferred** (step 14, the brief's
+     decision 2). Behind Vercel and Render the address the API sees is
+     not yet one it can trust. The limits are per account and per email.
+118. **The global ceilings can lock everyone out for an hour** (step 14,
+     the brief's decision 2). 300 logins and 30 registrations an hour,
+     from everyone: anyone can spend them. Deferred with item 117; the
+     README's known limits say so.
+119. **FR-05 is met only in part** (step 14, the owner's ruling 2).
+     Re-ingest reads the live catalog and the overlay, stores nothing,
+     and calls no model or embedder: the same hash as the calibration is
+     200 "unchanged"; a different one is 409. A changed schema is
+     detected and refused, not served, because the frozen calibration
+     is bound to one hash; recalibrating is an offline step.
+120. **Embedding spend is outside the month's budget, but bounded** (step
+     14, ruling 6 as restated). One call per computed question, for the
+     texts the vector cache lacks; none at start, for a hit, a rerun,
+     re-ingest or a refused question. On the ledger, not in the month's
+     sum. Bounded by the admission and the 500-character question: at
+     most about 2,000 tokens, about $0.00004 a call; one measured, 15
+     tokens, $0.0000003.
+121. **Deploy by hand after a push whose last commit does not touch
+     backend/\*\*** (step 14, the owner's ruling 3). Render's Auto-Deploy is
+     "After CI Checks Pass" with buildFilter backend/\*\*, yet no push
+     from 1 to 3 November deployed. The deduction, not a documented fact:
+     Render judges the filter on each push's last commit. render.yaml
+     stays as it is; after such a push, "Deploy latest commit".
 
-## Step 14 in progress: the supporting layer — opened 2 November 2026
+## checkpoint-14-supporting — 3 November 2026
 
-Built C1 to C9 (`6585bd5` to `fff58e0`) by the brief and the owner's
-rulings at the plan stop; the ritual passed. The close, with the items,
-comes after the deploy. Recorded before the push, by the owner's rulings
-of 3 November:
+**What works now that did not before.** The public demo is sturdier, and
+no answer the pipeline gives has changed. A question asked again within
+24 hours, on the same schema, preferences, mode, models, calibration and
+code, is served from Redis at $0, past the month's budget and the day's
+30, into the asker's history as a trace at version 4 that says so (FR-35,
+NFR-25, NFR-03). Logins, registrations, questions and reruns are
+rate-limited, each 429 with its own code and Retry-After (FR-36). A
+re-ingest endpoint exists behind a token, and refuses a changed schema
+rather than serve it (IR-07; FR-05 in part). The deployed API runs a
+runtime image that is not root and holds no test packages. The smoke
+accounts can be counted and deleted. All shown on the live site.
+
+**To dissect.** Built with assistance and used correctly, but not yet
+understood well enough to defend under questioning:
+- fixed windows in Redis (INCR, then EXPIRE NX), and why a counter that
+  fails open is the right failure for a demo and the wrong one for a bank
+- what the answer cache's key must hold, and why a fingerprint of the
+  source is safer than a list of prompts
+- compose's `extends` with `!reset` and `!override`, used for check A
+- multi-stage Dockerfiles: which stage Render builds, and what a
+  non-recursive chown covers
+- how Render decides whether a push deploys (item 121: a deduction)
+
+**Next single deliverable.** The demo video.
+
+**The commits.** C1 `6585bd5` the images; C2 `788e317` TEMP revoked
+locally; C3 `7d3fe1f` the rate limits; C4 `7834e81` the answer cache and
+trace_version 4; C5 `11479e1` re-ingest; C6 `130a20d` the account
+cleanup; C7 `be2a3ca` declared.sql; C8 `0c82adc` the deployed smoke's
+three new checks; C9 `fff58e0` the README; `ae6dd78` check A and the
+embedding calls; and this close.
+
+**The ritual**, from a clean restart (`down`, never `-v`; anonymous
+volumes renewed), each exit status read: CI's command 1872 passed, 210
+skipped (was 1764, 202); the suite 2079 passed, 3 skipped (was 1962, 2);
+frontend 313 passed (was 301); tsc, lint and the production build 0;
+`npm audit --omit=dev` 0 vulnerabilities; the history scan's 4 matches,
+the placeholders of step 13, none new; none of the 64 files changed
+since checkpoint-13 frozen; scripts/check_runtime.sh: uid 10001, pip
+check clean, no pytest family, 80 modules import; smoke 50 passed, 0
+failed, 0 skipped (48, the TEMP line and the CACHED line); one question
+twice locally, the second a hit at $0, 85 ms round trip, 2 ms in its
+trace. Mutations: C3 three (3, 1, 5 tests fail), C4 four (3, 1, 2, 2),
+C5 three (1, 2, 3).
+
+**The deploy.** ae6dd78 deployed by hand on Render, live at 08:14 IST on
+3 November: uvicorn on $PORT 10000, the code fingerprint d4ad9e188b80
+from 38 files, the same as local. Alembic printed nothing; uvicorn
+started, so `alembic upgrade head` exited 0. Read on Neon as
+cartograph_app before the push: queries owned by cartograph_app, alembic
+at 0003; after the deploy: 0004, and queries.served_from_cache boolean,
+not null, default false.
+
+**The Key Value** (read by the owner on Render's dashboard, 3 November):
+cartograph-nl2sql-kv, Maxmemory Policy allkeys-lru, Persistence Off,
+Singapore, runtime Valkey 8.1.10. The local stack runs Redis 7.
+
+**Auto-deploy** (item 121). Render's Auto-Deploy for the API reads "After
+CI Checks Pass", and CI passed for ae6dd78, yet Render's latest deploy
+was still 9961ce7 (1 November, by hand): no push since 1 November had
+deployed, though d4fb29a and 5ec8c32 changed backend/. Every one of those
+pushes ended in a commit outside backend/\*\* (ae6dd78 changed only
+CHECKPOINTS.md and README.md). The owner's deduction, not a fact Render
+documents: Render judges the build filter on each push's last commit.
+render.yaml stays as it is; after such a push, deploy by hand.
+
+**The deployed smoke**, run once, alone, against the live site at
+ae6dd78, exit 0, 16 lines:
+- WAKE PASS: health answered through the rewrite after 1 s.
+- HEADERS PASS: /ask, http 200, the six.
+- SIGNEDOUT PASS: 401.
+- SCHEMA PASS: 24 nodes, 107 edges, 425 columns; snapshot 4e674c8f1628.
+- REGISTER PASS: smoke-20261103t024624z-fbf8af43@cartograph.invalid.
+- LOGIN PASS: HttpOnly, Max-Age=604800, Path=/, SameSite=lax, Secure.
+- FOREIGN PASS: Origin https://not-cartograph.example, 403 origin_refused.
+- POST PASS: answered, computed; 7 rows; conformance conforms; $0.000971.
+- CACHED PASS: served from the cache; $0; the same 7 rows; 1 ms.
+- HISTORY PASS: both askings, newest first, and all of it.
+- READBACK PASS: identical, 40,874 characters; no rows stored.
+- RERUN PASS: 7 rows, the same columns.
+- LOGOUT PASS: 204, the cookie cleared.
+- REFUSED PASS: 2 reads 401.
+- REINGEST PASS: POST /admin/reingest 404, as a path never routed.
+- LOCKOUT PASS: five wrong logins 401, the sixth 429 login_limit,
+  Retry-After 892 s.
+
+**The deletion** (item 111, the owner's ruling 1). `./scripts/neon.sh
+accounts --yes`: found and deleted 2 accounts (2 smoke, 0 check), 2
+sessions, 3 queries, 3 traces; the dry run after found 0. The 3 queries
+were step 12's smoke question ($0.000971, 1 November), this step's
+($0.000971) and its cache hit ($0): $0.001942 that no longer counts in
+November's spend, which the budget reads from stored queries. After the
+deletion Neon's app store holds 2 users, and November's stored spend is
+2 queries, $0.001926.
+
+**Item 41 on Neon** (sf=0.25, read-only as the reader, 8 s), against the
+notes' sf=1 figures; every fact a note states holds:
+- c_last_review_date_sk: 25,000 rows (100,000), 24,159 non-null
+  (96,516), 366 distinct (366), 2002-01-08 to 2003-01-08, contiguous, 0
+  violations.
+- wp_customer_sk: 15 rows (60), 3 non-null (21), 0 violations; every
+  integer 1 to 25,000 a key (1 to 100,000), so a match proves nothing,
+  as the note says, and 3 values are thinner evidence still.
+- store: 720,781 sales (2,880,404), 71,699 returns (287,867).
+- catalog: 360,125 sales (1,441,548), 36,040 returns (144,067).
+- web: 179,869 sales (719,384), 17,777 returns (71,654).
+- In each of the three: no null or repeated sales pair, every return
+  matching exactly one sale, 0 violations, no repeated return pair.
+Locally at sf=1 the same SQL gives every figure of the notes exactly.
+
+**Items.** Closed: 9, 41, 111, 112, 116, and 8 for the runtime image.
+Open: 8 for the dev images, and 75. Deferred, new: 117 (limits per
+client address), 118 (the global ceilings' one-hour lockout), 119 (FR-05
+met only in part), 120 (embedding spend outside the month's budget, but
+bounded). New: 121 (deploy by hand). FR-44's examples were already on
+the page: no change.
+
+**The spend.** $0.0039305 in all, under the $0.05 allowed: local smoke
+$0.001233; one question twice locally $0.000863; check A $0.0008635
+(its embedding call $0.0000003 included); the deployed smoke's question
+$0.000971 on the production key, whose embedding call, in Render's
+ledger, is not read here and is at most $0.00004 by item 120's bound.
+
+### Before the push — 3 November 2026
+
+Built C1 to C9 by the brief and the owner's rulings at the plan stop;
+the ritual passed. Recorded before the push, by the owner's rulings of 3
+November:
 
 **The runtime image, run as a server (check A).** The Dockerfile's last
 stage, built alone, run with its own CMD and PORT=8000, no bind mount, as
@@ -10820,5 +11023,8 @@ in the snapshot hash, so re-ingest says "unchanged" and leaves an open
 pipeline as it is; it is seen only after a restart (on Render an overlay
 edit arrives with a deploy, which restarts).
 
-**The spend so far:** smoke $0.001233, the question twice locally
-$0.000863, the runtime check $0.0008635: $0.0029595.
+**The spend before the push:** smoke $0.001233, the question twice
+locally $0.000863, the runtime check $0.0008635: $0.0029595.
+
+**The checks at the close**, each exit status read, are in the close's
+commit message.
